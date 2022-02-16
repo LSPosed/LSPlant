@@ -418,6 +418,10 @@ void OnPending(art::ArtMethod *target, art::ArtMethod *hook, art::ArtMethod *bac
     }
 }
 
+inline namespace v1 {
+
+using ::lsplant::IsHooked;
+
 [[maybe_unused]]
 bool Init(JNIEnv *env, const InitInfo &info) {
     bool static kInit = InitJNI(env) && InitNative(env, info);
@@ -489,14 +493,15 @@ Hook(JNIEnv *env, jmethodID target_method, jobject hooker_object, jmethodID call
             LOGE("Failed to decode target class");
             return nullptr;
         }
-        auto class_def = miror_class->GetClassDef();
+        const auto *class_def = miror_class->GetClassDef();
         if (!class_def) {
             LOGE("Failed to get target class def");
             return nullptr;
         }
         RecordPending(class_def, target, hook, backup);
         return backup_method;
-    } else if (DoHook(target, hook, backup)) {
+    }
+    if (DoHook(target, hook, backup)) {
         RecordHooked(target, JNI_NewGlobalRef(env, reflected_backup));
         if (!is_proxy) [[likely]] RecordJitMovement(target, backup);
         return backup_method;
@@ -551,6 +556,17 @@ bool IsHooked(JNIEnv *env, jmethodID method) {
 bool Deoptimize(JNIEnv *env, jmethodID method) {
     auto reflected = JNI_ToReflectedMethod(env, jclass{ nullptr }, method, false);
     auto *art_method = ArtMethod::FromReflectedMethod(env, reflected);
+    if (IsHooked(art_method)) {
+        std::shared_lock lk(hooked_methods_lock_);
+        auto it = hooked_methods_.find(art_method);
+        if (it != hooked_methods_.end()) {
+            auto *reflected_backup = it->second;
+            art_method = ArtMethod::FromReflectedMethod(env, reflected_backup);
+        }
+    }
+    if (!art_method) {
+        return false;
+    }
     return ClassLinker::SetEntryPointsToInterpreter(art_method);
 }
 
@@ -558,8 +574,11 @@ bool Deoptimize(JNIEnv *env, jmethodID method) {
 void *GetNativeFunction(JNIEnv *env, jmethodID method) {
     auto reflected = JNI_ToReflectedMethod(env, jclass{ nullptr }, method, false);
     auto *art_method = ArtMethod::FromReflectedMethod(env, reflected);
+    if (!art_method->IsNative()) return nullptr;
     return art_method->GetData();
 }
+
+}  // namespace v1
 
 }  // namespace lsplant
 

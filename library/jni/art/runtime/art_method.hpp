@@ -40,6 +40,10 @@ public:
         return GetAccessFlags() & kAccStatic;
     }
 
+    bool IsNative() {
+        return GetAccessFlags() & kAccNative;
+    }
+
     void CopyFrom(const ArtMethod *other) {
         memcpy(this, other, art_method_size);
     }
