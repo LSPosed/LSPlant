@@ -394,7 +394,6 @@ bool DoHook(ArtMethod *target, ArtMethod *hook, ArtMethod *backup) {
              backup, backup->GetAccessFlags(), backup->GetEntryPoint(),
              hook, hook->GetAccessFlags(), hook->GetEntryPoint());
 
-        RecordHooked(target, backup);
         return true;
     }
 }
@@ -498,8 +497,7 @@ Hook(JNIEnv *env, jmethodID target_method, jobject hooker_object, jmethodID call
         RecordPending(class_def, target, hook, backup);
         return backup_method;
     } else if (DoHook(target, hook, backup)) {
-        JNI_NewGlobalRef(env, reflected_hook);
-        JNI_NewGlobalRef(env, reflected_backup);
+        RecordHooked(target, JNI_NewGlobalRef(env, reflected_backup));
         if (!is_proxy) [[likely]] RecordJitMovement(target, backup);
         return backup_method;
     }
@@ -511,7 +509,7 @@ Hook(JNIEnv *env, jmethodID target_method, jobject hooker_object, jmethodID call
 bool UnHook(JNIEnv *env, jmethodID target_method) {
     auto reflected_target = JNI_ToReflectedMethod(env, jclass{ nullptr }, target_method, false);
     auto *target = ArtMethod::FromReflectedMethod(env, reflected_target);
-    ArtMethod *backup = nullptr;
+    jobject reflected_backup = nullptr;
     {
         std::unique_lock lk(pending_methods_lock_);
         if (auto it = pending_methods_.find(target); it != pending_methods_.end()) {
@@ -522,14 +520,16 @@ bool UnHook(JNIEnv *env, jmethodID target_method) {
     {
         std::unique_lock lk(hooked_methods_lock_);
         if (auto it = hooked_methods_.find(target);it != hooked_methods_.end()) {
-            backup = it->second;
+            reflected_backup = it->second;
             hooked_methods_.erase(it);
         }
     }
-    if (backup == nullptr) {
+    if (reflected_backup == nullptr) {
         LOGE("Unable to unhook a method that is not hooked");
         return false;
     }
+    auto *backup = ArtMethod::FromReflectedMethod(env, reflected_backup);
+    env->DeleteGlobalRef(reflected_backup);
     return DoUnHook(target, backup);
 }
 

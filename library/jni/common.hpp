@@ -74,7 +74,7 @@ class ClassDef;
 
 namespace {
 // target, backup
-inline std::unordered_map<art::ArtMethod *, art::ArtMethod *> hooked_methods_;
+inline std::unordered_map<art::ArtMethod *, jobject> hooked_methods_;
 inline std::shared_mutex hooked_methods_lock_;
 
 inline std::list<std::pair<art::ArtMethod *, art::ArtMethod *>> jit_movements_;
@@ -107,7 +107,7 @@ inline std::list<std::pair<art::ArtMethod *, art::ArtMethod *>> GetJitMovements(
     return std::move(jit_movements_);
 }
 
-inline void RecordHooked(art::ArtMethod *target, art::ArtMethod *backup) {
+inline void RecordHooked(art::ArtMethod *target, jobject backup) {
     std::unique_lock lk(hooked_methods_lock_);
     hooked_methods_.emplace(target, backup);
 }
