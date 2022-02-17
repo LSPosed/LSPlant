@@ -7,7 +7,6 @@
 #include <sys/system_properties.h>
 #include "utils/jni_helper.hpp"
 #include "art/runtime/gc/scoped_gc_critical_section.hpp"
-#include "art/runtime.hpp"
 #include "art/thread.hpp"
 #include "art/instrumentation.hpp"
 #include "art/runtime/jit/jit_code_cache.hpp"
@@ -28,7 +27,6 @@ using art::ArtMethod;
 using art::thread_list::ScopedSuspendAll;
 using art::ClassLinker;
 using art::mirror::Class;
-using art::Runtime;
 using art::Thread;
 using art::Instrumentation;
 using art::gc::ScopedGCCriticalSection;
@@ -143,10 +141,6 @@ bool InitNative(JNIEnv *env, const HookHandler &handler) {
     if (!handler.inline_hooker || !handler.inline_unhooker || !handler.art_symbol_resolver) {
         return false;
     }
-    if (!Runtime::Init(handler)) {
-        LOGE("Failed to init runtime");
-        return false;
-    }
     if (!ArtMethod::Init(env, handler)) {
         LOGE("Failed to init art method");
         return false;
@@ -165,7 +159,7 @@ bool InitNative(JNIEnv *env, const HookHandler &handler) {
         return false;
     }
     if (!Instrumentation::Init(handler)) {
-        LOGE("failed to init intrumentation");
+        LOGE("failed to init instrumentation");
         return false;
     }
     if (!ScopedSuspendAll::Init(handler)) {
