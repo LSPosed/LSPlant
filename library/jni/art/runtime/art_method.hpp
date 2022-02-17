@@ -111,7 +111,7 @@ public:
         jmethodID get_declared_constructors = JNI_GetMethodID(env, clazz, "getDeclaredConstructors",
                                                               "()[Ljava/lang/reflect/Constructor;");
         auto constructors = JNI_Cast<jobjectArray>(
-                JNI_CallObjectMethod(env, clazz, get_declared_constructors));
+                JNI_CallObjectMethod(env, throwable, get_declared_constructors));
         auto length = JNI_GetArrayLength(env, constructors);
         if (length < 2) {
             LOGE("Throwable has less than 2 constructors");

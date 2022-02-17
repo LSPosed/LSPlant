@@ -33,7 +33,7 @@ public:
         if (!RETRIEVE_MEM_FUNC_SYMBOL(SetJavaDebuggable, "_ZN3art7Runtime17SetJavaDebuggableEb")) {
             return false;
         }
-        return false;
+        return true;
     }
 };
 

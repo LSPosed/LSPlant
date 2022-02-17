@@ -20,6 +20,7 @@
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wunknown-pragmas"
 #pragma ide diagnostic ignored "ConstantConditionsOC"
+#pragma ide diagnostic ignored "Simplify"
 #pragma ide diagnostic ignored "UnreachableCode"
 namespace lsplant {
 
@@ -139,8 +140,9 @@ inline void UpdateTrampoline(decltype(entry_point_offset) offset) {
 }
 
 bool InitNative(JNIEnv *env, const HookHandler &handler) {
-    if (!handler.inline_hooker || !handler.inline_unhooker || !handler.art_symbol_resolver)
+    if (!handler.inline_hooker || !handler.inline_unhooker || !handler.art_symbol_resolver) {
         return false;
+    }
     if (!Runtime::Init(handler)) {
         LOGE("Failed to init runtime");
         return false;
