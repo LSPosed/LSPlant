@@ -120,7 +120,7 @@ public:
         auto *first = FromReflectedMethod(env,
                                           JNI_GetObjectArrayElement(env, constructors, 0).get());
         auto *second = FromReflectedMethod(env,
-                                           JNI_GetObjectArrayElement(env, constructors, 0).get());
+                                           JNI_GetObjectArrayElement(env, constructors, 1).get());
         art_method_size = reinterpret_cast<uintptr_t>(second) - reinterpret_cast<uintptr_t>(first);
         LOGD("ArtMethod size: %zu", art_method_size);
 
