@@ -20,6 +20,9 @@ template<class...Ts, template<class, class...> class U>
 struct is_instance<U<Ts...>, U> : public std::true_type {
 };
 
+template<class T, template<class, class...> class U>
+inline constexpr bool is_instance_v = is_instance<T, U>::value;
+
 template<typename T>
 concept JObject = std::is_base_of_v<std::remove_pointer_t<_jobject>, std::remove_pointer_t<T>>;
 
@@ -111,7 +114,7 @@ public:
 
 template<typename T, typename U>
 concept ScopeOrRaw = std::is_convertible_v<T, U> ||
-                     (is_instance<std::decay_t<T>, ScopedLocalRef>::value &&
+                     (is_instance_v<std::decay_t<T>, ScopedLocalRef> &&
                       std::is_convertible_v<typename std::decay_t<T>::BaseType, U>);
 
 template<typename T>
@@ -138,7 +141,7 @@ template<typename T>
 inline auto UnwrapScope(T &&x) {
     if constexpr(std::is_same_v<std::decay_t<T>, std::string_view>)
         return x.data();
-    else if constexpr(is_instance<std::decay_t<T>, ScopedLocalRef>::value)
+    else if constexpr(is_instance_v<std::decay_t<T>, ScopedLocalRef>)
         return x.get();
     else return std::forward<T>(x);
 }

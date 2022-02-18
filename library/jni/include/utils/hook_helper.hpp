@@ -166,7 +166,7 @@ concept HookerType = requires(T a) {
 template<HookerType T>
 inline static bool HookSymNoHandle(const HookHandler &handler, void *original, T &arg) {
     if (original) {
-        if constexpr(is_instance<decltype(arg.backup), MemberFunction>::value) {
+        if constexpr(is_instance_v<decltype(arg.backup), MemberFunction>) {
             void *backup = handler.inline_hooker(original, reinterpret_cast<void *>(arg.replace));
             arg.backup = reinterpret_cast<typename decltype(arg.backup)::FunType>(backup);
         } else {
