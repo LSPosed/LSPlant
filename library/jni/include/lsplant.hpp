@@ -1,6 +1,7 @@
 #pragma once
 
 #include <jni.h>
+
 #include <string_view>
 
 /// \namespace namespace of LSPlant
@@ -58,8 +59,8 @@ struct InitInfo {
 /// \return Indicate whether initialization succeed. Behavior is undefined if calling other
 /// LSPlant interfaces before initialization or after a fail initialization.
 /// \see InitInfo.
-[[nodiscard]] [[maybe_unused]] [[gnu::visibility("default")]]
-bool Init(JNIEnv *env, const InitInfo &info);
+[[nodiscard]] [[maybe_unused]] [[gnu::visibility("default")]] bool Init(JNIEnv *env,
+                                                                        const InitInfo &info);
 
 /// \brief Hook a Java method by providing the \p target_method together with the context object
 /// \p hooker_object and its callback \p callback_method.
@@ -93,9 +94,10 @@ bool Init(JNIEnv *env, const InitInfo &info);
 /// simultaneously call on this function with the same \p target_method does not guarantee only one
 /// will success. If you call this with different \p hooker_object on the same target_method
 /// simultaneously, the behavior is undefined.
-[[nodiscard]] [[maybe_unused]] [[gnu::visibility("default")]]
-jobject
-Hook(JNIEnv *env, jobject target_method, jobject hooker_object, jobject callback_method);
+[[nodiscard]] [[maybe_unused]] [[gnu::visibility("default")]] jobject Hook(JNIEnv *env,
+                                                                           jobject target_method,
+                                                                           jobject hooker_object,
+                                                                           jobject callback_method);
 
 /// \brief Unhook a Java function that is previously hooked.
 /// \param[in] env The Java environment.
@@ -104,8 +106,8 @@ Hook(JNIEnv *env, jobject target_method, jobject hooker_object, jobject callback
 /// \note Calling \p backup (the return method of #Hook()) after unhooking is undefined behavior.
 /// Please read #Hook()'s note for more details.
 /// \see Hook()
-[[nodiscard]] [[maybe_unused]] [[gnu::visibility("default")]]
-bool UnHook(JNIEnv *env, jobject target_method);
+[[nodiscard]] [[maybe_unused]] [[gnu::visibility("default")]] bool UnHook(JNIEnv *env,
+                                                                          jobject target_method);
 
 /// \brief Check if a Java function is hooked by LSPlant or not
 /// \param[in] env The Java environment.
@@ -113,33 +115,33 @@ bool UnHook(JNIEnv *env, jobject target_method);
 /// \return If \p method hooked, ture; otherwise, false.
 /// Please read #Hook()'s note for more details.
 /// \see Hook()
-[[nodiscard]] [[maybe_unused]] [[gnu::visibility("default")]]
-bool IsHooked(JNIEnv *env, jobject method);
+[[nodiscard]] [[maybe_unused]] [[gnu::visibility("default")]] bool IsHooked(JNIEnv *env,
+                                                                            jobject method);
 
 /// \brief Deoptimize a method to avoid hooked callee not being called because of inline
 /// \param[in] env The Java environment.
 /// \param[in] method The method to deoptimize. By deoptimizing the method, the method will back all
 /// callee without inlining. For example, if you hooked a short method B that is invoked by method
 /// A, and you find that your callback to B is not invoked after hooking, then it may mean A has
-/// inlined B inside its method body. To force A to call your hooked B, you can deoptimize A and then
-/// your hook can take effect. Generally, you need to find all the callers of your hooked callee
-/// and that can be hardly achieve. Use this function if you are sure the deoptimized callers
+/// inlined B inside its method body. To force A to call your hooked B, you can deoptimize A and
+/// then your hook can take effect. Generally, you need to find all the callers of your hooked
+/// callee and that can be hardly achieve. Use this function if you are sure the deoptimized callers
 /// are all you need. Otherwise, it would be better to change the hook point or to deoptimize the
 /// whole app manually (by simple reinstall the app without uninstalled).
 /// \return Indicate whether the deoptimizing succeed or not.
 /// \note It is safe to call deoptimizing on a hooked method because the deoptimization will
 /// perform on the backup method instead.
-[[nodiscard]] [[maybe_unused]] [[gnu::visibility("default")]]
-bool Deoptimize(JNIEnv *env, jobject method);
+[[nodiscard]] [[maybe_unused]] [[gnu::visibility("default")]] bool Deoptimize(JNIEnv *env,
+                                                                              jobject method);
 
-/// \brief Get the registered native function pointer of a native function. It helps user to hook native
-/// methods directly by backing up the native function pointer this function returns and
+/// \brief Get the registered native function pointer of a native function. It helps user to hook
+/// native methods directly by backing up the native function pointer this function returns and
 /// env->registerNatives another native function pointer.
 /// \param[in] env The Java environment.
 /// \param[in] method The native method to get the native function pointer.
 /// \return The native function pointer the \p method previously registered. If it has not been
 /// registered or it is not a native method, null is returned instead.
-[[nodiscard]] [[maybe_unused]] [[gnu::visibility("default")]]
-void *GetNativeFunction(JNIEnv *env, jobject method);
-}
-} // namespace lsplant
+[[nodiscard]] [[maybe_unused]] [[gnu::visibility("default")]] void *GetNativeFunction(
+    JNIEnv *env, jobject method);
+}  // namespace v1
+}  // namespace lsplant

@@ -1,14 +1,13 @@
 #pragma once
 
+#include "art/thread.hpp"
 #include "common.hpp"
 
 namespace lsplant::art {
 
 namespace dex {
-class ClassDef {
-
-};
-}
+class ClassDef {};
+}  // namespace dex
 
 namespace mirror {
 
@@ -71,8 +70,7 @@ public:
     }
 
     const dex::ClassDef *GetClassDef() {
-        if (GetClassDefSym)
-            return GetClassDef(this);
+        if (GetClassDefSym) return GetClassDef(this);
         return nullptr;
     }
 
@@ -94,5 +92,5 @@ private:
     inline static bool is_unsigned = false;
 };
 
-}
-}
+}  // namespace mirror
+}  // namespace lsplant::art

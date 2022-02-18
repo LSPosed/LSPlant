@@ -16,7 +16,8 @@ enum GcCause {
     kGcCauseForNativeAlloc,
     // GC triggered for a collector transition.
     kGcCauseCollectorTransition,
-    // Not a real GC cause, used when we disable moving GC (currently for GetPrimitiveArrayCritical).
+    // Not a real GC cause, used when we disable moving GC (currently for
+    // GetPrimitiveArrayCritical).
     kGcCauseDisableMovingGc,
     // Not a real GC cause, used when we trim the heap.
     kGcCauseTrim,
@@ -41,4 +42,4 @@ enum GcCause {
     // GC cause for the profile saver.
     kGcCauseProfileSaver,
 };
-}  // namespace art
+}  // namespace lsplant::art::gc

@@ -1,24 +1,21 @@
 #pragma once
 
-#include "art/runtime/art_method.hpp"
 #include "art/mirror/class.hpp"
+#include "art/runtime/art_method.hpp"
 #include "art/thread.hpp"
 #include "common.hpp"
 
 namespace lsplant::art {
-
 class ClassLinker {
-
 private:
-    CREATE_MEM_FUNC_SYMBOL_ENTRY(
-            void, SetEntryPointsToInterpreter, ClassLinker *thiz, ArtMethod *art_method) {
+    CREATE_MEM_FUNC_SYMBOL_ENTRY(void, SetEntryPointsToInterpreter, ClassLinker *thiz,
+                                 ArtMethod *art_method) {
         if (SetEntryPointsToInterpreterSym) [[likely]] {
             SetEntryPointsToInterpreterSym(thiz, art_method);
         }
     }
 
-    [[gnu::always_inline]]
-    static void MaybeDelayHook(mirror::Class *clazz) {
+    [[gnu::always_inline]] static void MaybeDelayHook(mirror::Class *clazz) {
         const auto *class_def = clazz->GetClassDef();
         bool should_intercept = class_def && IsPending(class_def);
         if (should_intercept) [[unlikely]] {
@@ -28,60 +25,58 @@ private:
     }
 
     CREATE_MEM_HOOK_STUB_ENTRY(
-            "_ZN3art11ClassLinker22FixupStaticTrampolinesENS_6ObjPtrINS_6mirror5ClassEEE",
-            void, FixupStaticTrampolines, (ClassLinker * thiz, mirror::Class * clazz), {
-                backup(thiz, clazz);
-                MaybeDelayHook(clazz);
-            });
+        "_ZN3art11ClassLinker22FixupStaticTrampolinesENS_6ObjPtrINS_6mirror5ClassEEE", void,
+        FixupStaticTrampolines, (ClassLinker * thiz, mirror::Class *clazz), {
+            backup(thiz, clazz);
+            MaybeDelayHook(clazz);
+        });
 
     CREATE_MEM_HOOK_STUB_ENTRY(
-            "_ZN3art11ClassLinker22FixupStaticTrampolinesEPNS_6ThreadENS_6ObjPtrINS_6mirror5ClassEEE",
-            void, FixupStaticTrampolinesWithThread,
-            (ClassLinker * thiz, Thread * self, mirror::Class * clazz), {
-                backup(thiz, self, clazz);
-                MaybeDelayHook(clazz);
-            });
+        "_ZN3art11ClassLinker22FixupStaticTrampolinesEPNS_6ThreadENS_6ObjPtrINS_6mirror5ClassEEE",
+        void, FixupStaticTrampolinesWithThread,
+        (ClassLinker * thiz, Thread *self, mirror::Class *clazz), {
+            backup(thiz, self, clazz);
+            MaybeDelayHook(clazz);
+        });
 
     CREATE_MEM_HOOK_STUB_ENTRY(
-            "_ZN3art11ClassLinker20MarkClassInitializedEPNS_6ThreadENS_6HandleINS_6mirror5ClassEEE",
-            void*, MarkClassInitialized, (ClassLinker * thiz, Thread * self, uint32_t * clazz_ptr),
-            {
-                void *result = backup(thiz, self, clazz_ptr);
-                auto clazz = reinterpret_cast<mirror::Class *>(*clazz_ptr);
-                MaybeDelayHook(clazz);
-                return result;
-            });
+        "_ZN3art11ClassLinker20MarkClassInitializedEPNS_6ThreadENS_6HandleINS_6mirror5ClassEEE",
+        void *, MarkClassInitialized, (ClassLinker * thiz, Thread *self, uint32_t *clazz_ptr), {
+            void *result = backup(thiz, self, clazz_ptr);
+            auto clazz = reinterpret_cast<mirror::Class *>(*clazz_ptr);
+            MaybeDelayHook(clazz);
+            return result;
+        });
 
     CREATE_HOOK_STUB_ENTRY(
-            "_ZN3art11ClassLinker30ShouldUseInterpreterEntrypointEPNS_9ArtMethodEPKv",
-            bool, ShouldUseInterpreterEntrypoint, (ArtMethod * art_method, const void *quick_code),
-            {
-                if (quick_code != nullptr &&
-                    (IsHooked(art_method) || IsPending(art_method))) [[unlikely]] {
-                    return false;
-                }
-                return backup(art_method, quick_code);
-            });
+        "_ZN3art11ClassLinker30ShouldUseInterpreterEntrypointEPNS_9ArtMethodEPKv", bool,
+        ShouldUseInterpreterEntrypoint, (ArtMethod * art_method, const void *quick_code), {
+            if (quick_code != nullptr && (IsHooked(art_method) || IsPending(art_method)))
+                [[unlikely]] {
+                return false;
+            }
+            return backup(art_method, quick_code);
+        });
 
-    CREATE_FUNC_SYMBOL_ENTRY(void, art_quick_to_interpreter_bridge, void*) {}
+    CREATE_FUNC_SYMBOL_ENTRY(void, art_quick_to_interpreter_bridge, void *) {}
 
-    CREATE_FUNC_SYMBOL_ENTRY(void, art_quick_generic_jni_trampoline, void*) {}
+    CREATE_FUNC_SYMBOL_ENTRY(void, art_quick_generic_jni_trampoline, void *) {}
 
-    CREATE_HOOK_STUB_ENTRY(
-            "_ZN3art11interpreter29ShouldStayInSwitchInterpreterEPNS_9ArtMethodE",
-            bool, ShouldStayInSwitchInterpreter, (ArtMethod * art_method), {
-                if (IsHooked(art_method) || IsPending(art_method)) [[unlikely]] {
-                    return false;
-                }
-                return backup(art_method);
-            });
+    CREATE_HOOK_STUB_ENTRY("_ZN3art11interpreter29ShouldStayInSwitchInterpreterEPNS_9ArtMethodE",
+                           bool, ShouldStayInSwitchInterpreter, (ArtMethod * art_method), {
+                               if (IsHooked(art_method) || IsPending(art_method)) [[unlikely]] {
+                                   return false;
+                               }
+                               return backup(art_method);
+                           });
 
 public:
     static bool Init(const HookHandler &handler) {
         int api_level = GetAndroidApiLevel();
 
-        if (!RETRIEVE_MEM_FUNC_SYMBOL(SetEntryPointsToInterpreter,
-                                      "_ZNK3art11ClassLinker27SetEntryPointsToInterpreterEPNS_9ArtMethodE")) {
+        if (!RETRIEVE_MEM_FUNC_SYMBOL(
+                SetEntryPointsToInterpreter,
+                "_ZNK3art11ClassLinker27SetEntryPointsToInterpreterEPNS_9ArtMethodE")) {
             return false;
         }
 
@@ -123,15 +118,14 @@ public:
         return true;
     }
 
-    [[gnu::always_inline]]
-    static bool SetEntryPointsToInterpreter(ArtMethod *art_method) {
+    [[gnu::always_inline]] static bool SetEntryPointsToInterpreter(ArtMethod *art_method) {
         if (art_quick_to_interpreter_bridgeSym && art_quick_generic_jni_trampolineSym) [[likely]] {
             if (art_method->GetAccessFlags() & ArtMethod::kAccNative) [[unlikely]] {
                 art_method->SetEntryPoint(
-                        reinterpret_cast<void *>(art_quick_generic_jni_trampolineSym));
+                    reinterpret_cast<void *>(art_quick_generic_jni_trampolineSym));
             } else {
                 art_method->SetEntryPoint(
-                        reinterpret_cast<void *>(art_quick_to_interpreter_bridgeSym));
+                    reinterpret_cast<void *>(art_quick_to_interpreter_bridgeSym));
             }
             return true;
         }
@@ -141,6 +135,5 @@ public:
         }
         return false;
     }
-
 };
-}
+}  // namespace lsplant::art

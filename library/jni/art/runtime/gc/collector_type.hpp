@@ -39,4 +39,4 @@ enum CollectorType {
     // Fake collector type for ScopedGCCriticalSection
     kCollectorTypeCriticalSection,
 };
-}  // namespace gc
+}  // namespace lsplant::art::gc

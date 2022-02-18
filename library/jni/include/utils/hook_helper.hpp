@@ -1,82 +1,74 @@
 #pragma once
 
-#include "logging.hpp"
-#include "jni_helper.hpp"
-#include "hook_helper.hpp"
 #include <concepts>
+
+#include "hook_helper.hpp"
+#include "jni_helper.hpp"
+#include "logging.hpp"
 
 #define CONCATENATE(a, b) a##b
 
-#define CREATE_HOOK_STUB_ENTRY(SYM, RET, FUNC, PARAMS, DEF)                                  \
-  inline static struct : public lsplant::Hooker<RET PARAMS, decltype(CONCATENATE(SYM,_tstr))>{ \
-    inline static RET replace PARAMS DEF                                                       \
-  } FUNC
+#define CREATE_HOOK_STUB_ENTRY(SYM, RET, FUNC, PARAMS, DEF)                                        \
+    inline static struct : public lsplant::Hooker<RET PARAMS, decltype(CONCATENATE(SYM, _tstr))>{  \
+                               inline static RET replace PARAMS DEF} FUNC
 
-#define CREATE_MEM_HOOK_STUB_ENTRY(SYM, RET, FUNC, PARAMS, DEF)                                  \
-  inline static struct : public lsplant::MemHooker<RET PARAMS, decltype(CONCATENATE(SYM,_tstr))>{  \
-    inline static RET replace PARAMS DEF                                                           \
-  } FUNC
+#define CREATE_MEM_HOOK_STUB_ENTRY(SYM, RET, FUNC, PARAMS, DEF)                                    \
+    inline static struct : public lsplant::MemHooker<RET PARAMS,                                   \
+                                                     decltype(CONCATENATE(SYM, _tstr))>{           \
+                               inline static RET replace PARAMS DEF} FUNC
 
-#define RETRIEVE_FUNC_SYMBOL(name, ...)             \
-        (name##Sym = reinterpret_cast<name##Type>(   \
-                lsplant::Dlsym(handler, __VA_ARGS__)))
+#define RETRIEVE_FUNC_SYMBOL(name, ...)                                                            \
+    (name##Sym = reinterpret_cast<name##Type>(lsplant::Dlsym(handler, __VA_ARGS__)))
 
-#define RETRIEVE_MEM_FUNC_SYMBOL(name, ...)                \
-        (name##Sym = reinterpret_cast<name##Type::FunType>( \
-                lsplant::Dlsym(handler, __VA_ARGS__)))
+#define RETRIEVE_MEM_FUNC_SYMBOL(name, ...)                                                        \
+    (name##Sym = reinterpret_cast<name##Type::FunType>(lsplant::Dlsym(handler, __VA_ARGS__)))
 
-#define RETRIEVE_FIELD_SYMBOL(name, ...)              \
-        (name = reinterpret_cast<decltype(name)>(lsplant::Dlsym(handler, __VA_ARGS__)))
+#define RETRIEVE_FIELD_SYMBOL(name, ...)                                                           \
+    (name = reinterpret_cast<decltype(name)>(lsplant::Dlsym(handler, __VA_ARGS__)))
 
-#define CREATE_FUNC_SYMBOL_ENTRY(ret, func, ...)     \
-        typedef ret (*func##Type)(__VA_ARGS__);      \
-        inline static ret (*func##Sym)(__VA_ARGS__); \
-        inline static ret func(__VA_ARGS__)
+#define CREATE_FUNC_SYMBOL_ENTRY(ret, func, ...)                                                   \
+    typedef ret (*func##Type)(__VA_ARGS__);                                                        \
+    inline static ret (*func##Sym)(__VA_ARGS__);                                                   \
+    inline static ret func(__VA_ARGS__)
 
-#define CREATE_MEM_FUNC_SYMBOL_ENTRY(ret, func, thiz, ...) \
-        using func##Type = lsplant::MemberFunction<ret(__VA_ARGS__)>; \
-        inline static func##Type func##Sym; \
-        inline static ret func(thiz, ## __VA_ARGS__)
+#define CREATE_MEM_FUNC_SYMBOL_ENTRY(ret, func, thiz, ...)                                         \
+    using func##Type = lsplant::MemberFunction<ret(__VA_ARGS__)>;                                  \
+    inline static func##Type func##Sym;                                                            \
+    inline static ret func(thiz, ##__VA_ARGS__)
 
 namespace lsplant {
 
 using HookHandler = InitInfo;
 
-template<char... chars>
+template <char... chars>
 struct tstring : public std::integer_sequence<char, chars...> {
-    inline constexpr static const char *c_str() {
-        return str_;
-    }
+    inline constexpr static const char *c_str() { return str_; }
 
-    inline constexpr operator std::string_view() const {
-        return { c_str(), sizeof...(chars) };
-    }
+    inline constexpr operator std::string_view() const { return {c_str(), sizeof...(chars)}; }
 
 private:
-    inline static constexpr char str_[]{ chars..., '\0' };
+    inline static constexpr char str_[]{chars..., '\0'};
 };
 
-template<typename T, T... chars>
-inline constexpr tstring<chars...> operator ""_tstr() {
+template <typename T, T... chars>
+inline constexpr tstring<chars...> operator""_tstr() {
     return {};
 }
 
-
-template<char... as, char... bs>
-inline constexpr tstring<as..., bs...>
-operator+(const tstring<as...> &, const tstring<bs...> &) {
+template <char... as, char... bs>
+inline constexpr tstring<as..., bs...> operator+(const tstring<as...> &, const tstring<bs...> &) {
     return {};
 }
 
-template<char... as>
+template <char... as>
 inline constexpr auto operator+(const std::string &a, const tstring<as...> &) {
-    char b[]{ as..., '\0' };
+    char b[]{as..., '\0'};
     return a + b;
 }
 
-template<char... as>
+template <char... as>
 inline constexpr auto operator+(const tstring<as...> &, const std::string &b) {
-    char a[]{ as..., '\0' };
+    char a[]{as..., '\0'};
     return a + b;
 }
 
@@ -84,9 +76,9 @@ inline void *Dlsym(const HookHandler &handle, const char *name) {
     return handle.art_symbol_resolver(name);
 }
 
-template<typename Class, typename Return, typename T, typename... Args>
-requires (std::is_same_v<T, void> || std::is_same_v<Class, T>)
-inline static auto memfun_cast(Return (*func)(T *, Args...)) {
+template <typename Class, typename Return, typename T, typename... Args>
+requires(std::is_same_v<T, void> ||
+         std::is_same_v<Class, T>) inline static auto memfun_cast(Return (*func)(T *, Args...)) {
     union {
         Return (Class::*f)(Args...);
 
@@ -94,28 +86,31 @@ inline static auto memfun_cast(Return (*func)(T *, Args...)) {
             decltype(func) p;
             std::ptrdiff_t adj;
         } data;
-    } u{ .data = { func, 0 }};
+    } u{.data = {func, 0}};
     static_assert(sizeof(u.f) == sizeof(u.data), "Try different T");
     return u.f;
 }
 
-template<std::same_as<void> T, typename Return, typename... Args>
+template <std::same_as<void> T, typename Return, typename... Args>
 inline auto memfun_cast(Return (*func)(T *, Args...)) {
     return memfun_cast<T>(func);
 }
 
-template<typename, typename=void>
+template <typename, typename = void>
 class MemberFunction;
 
-template<typename This, typename Return, typename ... Args>
+template <typename This, typename Return, typename... Args>
 class MemberFunction<Return(Args...), This> {
     using SelfType = MemberFunction<Return(This *, Args...), This>;
     using ThisType = std::conditional_t<std::is_same_v<This, void>, SelfType, This>;
-    using MemFunType = Return(ThisType::*)(Args...);
+    using MemFunType = Return (ThisType::*)(Args...);
+
 public:
     using FunType = Return (*)(This *, Args...);
+
 private:
     MemFunType f_ = nullptr;
+
 public:
     MemberFunction() = default;
 
@@ -127,51 +122,49 @@ public:
         return (reinterpret_cast<ThisType *>(thiz)->*f_)(std::forward<Args>(args)...);
     }
 
-    inline operator bool() {
-        return f_ != nullptr;
-    }
+    inline operator bool() { return f_ != nullptr; }
 };
 
 // deduction guide
-template<typename This, typename Return, typename...Args>
-MemberFunction(Return(*f)(This *, Args...)) -> MemberFunction<Return(Args...), This>;
+template <typename This, typename Return, typename... Args>
+MemberFunction(Return (*f)(This *, Args...)) -> MemberFunction<Return(Args...), This>;
 
-template<typename This, typename Return, typename...Args>
-MemberFunction(Return(This::*f)(Args...)) -> MemberFunction<Return(Args...), This>;
+template <typename This, typename Return, typename... Args>
+MemberFunction(Return (This::*f)(Args...)) -> MemberFunction<Return(Args...), This>;
 
-template<typename, typename>
+template <typename, typename>
 struct Hooker;
 
-template<typename Ret, typename... Args, char... cs>
+template <typename Ret, typename... Args, char... cs>
 struct Hooker<Ret(Args...), tstring<cs...>> {
     inline static Ret (*backup)(Args...) = nullptr;
 
     inline static constexpr std::string_view sym = tstring<cs...>{};
 };
 
-template<typename, typename>
+template <typename, typename>
 struct MemHooker;
-template<typename Ret, typename This, typename... Args, char... cs>
+template <typename Ret, typename This, typename... Args, char... cs>
 struct MemHooker<Ret(This, Args...), tstring<cs...>> {
     inline static MemberFunction<Ret(Args...)> backup;
     inline static constexpr std::string_view sym = tstring<cs...>{};
 };
 
-template<typename T>
+template <typename T>
 concept HookerType = requires(T a) {
     a.backup;
     a.replace;
 };
 
-template<HookerType T>
+template <HookerType T>
 inline static bool HookSymNoHandle(const HookHandler &handler, void *original, T &arg) {
     if (original) {
-        if constexpr(is_instance_v<decltype(arg.backup), MemberFunction>) {
+        if constexpr (is_instance_v<decltype(arg.backup), MemberFunction>) {
             void *backup = handler.inline_hooker(original, reinterpret_cast<void *>(arg.replace));
             arg.backup = reinterpret_cast<typename decltype(arg.backup)::FunType>(backup);
         } else {
-            arg.backup = reinterpret_cast<decltype(arg.backup)>(handler.inline_hooker(original,
-                                                                                      reinterpret_cast<void *>(arg.replace)));
+            arg.backup = reinterpret_cast<decltype(arg.backup)>(
+                handler.inline_hooker(original, reinterpret_cast<void *>(arg.replace)));
         }
         return true;
     } else {
@@ -179,13 +172,13 @@ inline static bool HookSymNoHandle(const HookHandler &handler, void *original, T
     }
 }
 
-template<HookerType T>
+template <HookerType T>
 inline static bool HookSym(const HookHandler &handler, T &arg) {
     auto original = handler.art_symbol_resolver(arg.sym);
     return HookSymNoHandle(handler, original, arg);
 }
 
-template<HookerType T, HookerType...Args>
+template <HookerType T, HookerType... Args>
 inline static bool HookSyms(const HookHandler &handle, T &first, Args &...rest) {
     if (!(HookSym(handle, first) || ... || HookSym(handle, rest))) {
         LOGW("Hook Fails: %*s", static_cast<int>(first.sym.size()), first.sym.data());
@@ -194,4 +187,4 @@ inline static bool HookSyms(const HookHandler &handle, T &first, Args &...rest) 
     return true;
 }
 
-}
+}  // namespace lsplant

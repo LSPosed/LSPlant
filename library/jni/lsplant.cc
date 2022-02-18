@@ -1,20 +1,22 @@
 #include "lsplant.hpp"
 
-#include <sys/mman.h>
 #include <android/api-level.h>
-#include <atomic>
-#include <array>
+#include <sys/mman.h>
 #include <sys/system_properties.h>
-#include "utils/jni_helper.hpp"
-#include "art/runtime/gc/scoped_gc_critical_section.hpp"
-#include "art/thread.hpp"
+
+#include <array>
+#include <atomic>
+
 #include "art/instrumentation.hpp"
-#include "art/runtime/jit/jit_code_cache.hpp"
 #include "art/runtime/art_method.hpp"
-#include "art/thread_list.hpp"
 #include "art/runtime/class_linker.hpp"
-#include "dex_builder.h"
+#include "art/runtime/gc/scoped_gc_critical_section.hpp"
+#include "art/runtime/jit/jit_code_cache.hpp"
+#include "art/thread.hpp"
+#include "art/thread_list.hpp"
 #include "common.hpp"
+#include "dex_builder.h"
+#include "utils/jni_helper.hpp"
 
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wunknown-pragmas"
@@ -24,48 +26,45 @@
 namespace lsplant {
 
 using art::ArtMethod;
-using art::thread_list::ScopedSuspendAll;
 using art::ClassLinker;
-using art::mirror::Class;
-using art::Thread;
 using art::Instrumentation;
+using art::Thread;
 using art::gc::ScopedGCCriticalSection;
 using art::jit::JitCodeCache;
+using art::mirror::Class;
+using art::thread_list::ScopedSuspendAll;
 
 namespace {
-template<typename T, T... chars>
-inline consteval auto operator ""_uarr() {
-    return std::array<uint8_t, sizeof...(chars)>{ static_cast<uint8_t>(chars)... };
+template <typename T, T... chars>
+inline consteval auto operator""_uarr() {
+    return std::array<uint8_t, sizeof...(chars)>{static_cast<uint8_t>(chars)...};
 }
 
 consteval inline auto GetTrampoline() {
-    if constexpr(kArch == Arch::kArm) {
-        return std::make_tuple(
-                "\x00\x00\x9f\xe5\x20\xf0\x90\xe5\x78\x56\x34\x12"_uarr,
-                // NOLINTNEXTLINE
-                uint8_t{ 32u }, uintptr_t{ 8u });
+    if constexpr (kArch == Arch::kArm) {
+        return std::make_tuple("\x00\x00\x9f\xe5\x20\xf0\x90\xe5\x78\x56\x34\x12"_uarr,
+                               // NOLINTNEXTLINE
+                               uint8_t{32u}, uintptr_t{8u});
     }
-    if constexpr(kArch == Arch::kArm64) {
+    if constexpr (kArch == Arch::kArm64) {
         return std::make_tuple(
-                "\x60\x00\x00\x58\x10\x00\x40\xf8\x00\x02\x1f\xd6\x78\x56\x34\x12\x78\x56\x34\x12"_uarr,
-                // NOLINTNEXTLINE
-                uint8_t{ 44u }, uintptr_t{ 12u });
+            "\x60\x00\x00\x58\x10\x00\x40\xf8\x00\x02\x1f\xd6\x78\x56\x34\x12\x78\x56\x34\x12"_uarr,
+            // NOLINTNEXTLINE
+            uint8_t{44u}, uintptr_t{12u});
     }
-    if constexpr(kArch == Arch::kX86) {
-        return std::make_tuple(
-                "\xb8\x78\x56\x34\x12\xff\x70\x20\xc3"_uarr,
-                // NOLINTNEXTLINE
-                uint8_t{ 56u }, uintptr_t{ 1u });
+    if constexpr (kArch == Arch::kX86) {
+        return std::make_tuple("\xb8\x78\x56\x34\x12\xff\x70\x20\xc3"_uarr,
+                               // NOLINTNEXTLINE
+                               uint8_t{56u}, uintptr_t{1u});
     }
-    if constexpr(kArch == Arch::kX8664) {
-        return std::make_tuple(
-                "\x48\xbf\x78\x56\x34\x12\x78\x56\x34\x12\xff\x77\x20\xc3"_uarr,
-                // NOLINTNEXTLINE
-                uint8_t{ 96u }, uintptr_t{ 2u });
+    if constexpr (kArch == Arch::kX8664) {
+        return std::make_tuple("\x48\xbf\x78\x56\x34\x12\x78\x56\x34\x12\xff\x77\x20\xc3"_uarr,
+                               // NOLINTNEXTLINE
+                               uint8_t{96u}, uintptr_t{2u});
     }
 }
 
-auto[trampoline, entry_point_offset, art_method_offset] = GetTrampoline();
+auto [trampoline, entry_point_offset, art_method_offset] = GetTrampoline();
 
 jmethodID method_get_name = nullptr;
 jmethodID method_get_declaring_class = nullptr;
@@ -110,13 +109,14 @@ bool InitJNI(JNIEnv *env) {
         return false;
     }
 
-    if (method_get_name = JNI_GetMethodID(env, executable, "getName",
-                                          "()Ljava/lang/String;"); !method_get_name) {
+    if (method_get_name = JNI_GetMethodID(env, executable, "getName", "()Ljava/lang/String;");
+        !method_get_name) {
         LOGE("Failed to find getName method");
         return false;
     }
-    if (method_get_declaring_class = JNI_GetMethodID(env, executable, "getDeclaringClass",
-                                                     "()Ljava/lang/Class;"); !method_get_declaring_class) {
+    if (method_get_declaring_class =
+            JNI_GetMethodID(env, executable, "getDeclaringClass", "()Ljava/lang/Class;");
+        !method_get_declaring_class) {
         LOGE("Failed to find getName method");
         return false;
     }
@@ -126,15 +126,15 @@ bool InitJNI(JNIEnv *env) {
         return false;
     }
 
-    if (class_get_class_loader = JNI_GetMethodID(env, clazz, "getClassLoader",
-                                                 "()Ljava/lang/ClassLoader;");
-            !class_get_class_loader) {
+    if (class_get_class_loader =
+            JNI_GetMethodID(env, clazz, "getClassLoader", "()Ljava/lang/ClassLoader;");
+        !class_get_class_loader) {
         LOGE("Failed to find getClassLoader");
         return false;
     }
 
     if (class_get_name = JNI_GetMethodID(env, clazz, "getName", "()Ljava/lang/String;");
-            !class_get_name) {
+        !class_get_name) {
         LOGE("Failed to find getName");
         return false;
     }
@@ -144,10 +144,10 @@ bool InitJNI(JNIEnv *env) {
         return false;
     }
 
-    in_memory_class_loader = JNI_NewGlobalRef(env, JNI_FindClass(env,
-                                                                 "dalvik/system/InMemoryDexClassLoader"));
-    in_memory_class_loader_init = JNI_GetMethodID(env, in_memory_class_loader, "<init>",
-                                                  "(Ljava/nio/ByteBuffer;Ljava/lang/ClassLoader;)V");
+    in_memory_class_loader =
+        JNI_NewGlobalRef(env, JNI_FindClass(env, "dalvik/system/InMemoryDexClassLoader"));
+    in_memory_class_loader_init = JNI_GetMethodID(
+        env, in_memory_class_loader, "<init>", "(Ljava/nio/ByteBuffer;Ljava/lang/ClassLoader;)V");
 
     load_class = JNI_GetMethodID(env, in_memory_class_loader, "loadClass",
                                  "(Ljava/lang/String;)Ljava/lang/Class;");
@@ -161,7 +161,7 @@ bool InitJNI(JNIEnv *env) {
         return false;
     }
     if (set_accessible = JNI_GetMethodID(env, accessible_object, "setAccessible", "(Z)V");
-            !set_accessible) {
+        !set_accessible) {
         LOGE("Failed to find AccessibleObject.setAccessible");
         return false;
     }
@@ -171,7 +171,7 @@ bool InitJNI(JNIEnv *env) {
 inline void UpdateTrampoline(uint8_t offset) {
     trampoline[entry_point_offset / CHAR_BIT] |= offset << (entry_point_offset % CHAR_BIT);
     trampoline[entry_point_offset / CHAR_BIT + 1] |=
-            offset >> (CHAR_BIT - entry_point_offset % CHAR_BIT);
+        offset >> (CHAR_BIT - entry_point_offset % CHAR_BIT);
 }
 
 bool InitNative(JNIEnv *env, const HookHandler &handler) {
@@ -214,16 +214,17 @@ bool InitNative(JNIEnv *env, const HookHandler &handler) {
     return true;
 }
 
-std::tuple<jclass, jfieldID, jmethodID, jmethodID>
-BuildDex(JNIEnv *env, jobject class_loader,
-         std::string_view shorty, bool is_static, std::string_view method_name,
-         std::string_view hooker_class, std::string_view callback_name) {
+std::tuple<jclass, jfieldID, jmethodID, jmethodID> BuildDex(JNIEnv *env, jobject class_loader,
+                                                            std::string_view shorty, bool is_static,
+                                                            std::string_view method_name,
+                                                            std::string_view hooker_class,
+                                                            std::string_view callback_name) {
     // NOLINTNEXTLINE
     using namespace startop::dex;
 
     if (shorty.empty()) {
         LOGE("Invalid shorty");
-        return { nullptr, nullptr, nullptr, nullptr };
+        return {nullptr, nullptr, nullptr, nullptr};
     }
 
     DexBuilder dex_file;
@@ -232,66 +233,62 @@ BuildDex(JNIEnv *env, jobject class_loader,
     parameter_types.reserve(shorty.size() - 1);
     std::string storage;
     auto return_type =
-            shorty[0] == 'L' ? TypeDescriptor::Object : TypeDescriptor::FromDescriptor(
-                    shorty[0]);
-    if (!is_static) parameter_types.push_back(TypeDescriptor::Object); // this object
-    for (const char &param: shorty.substr(1)) {
-        parameter_types.push_back(
-                param == 'L' ? TypeDescriptor::Object : TypeDescriptor::FromDescriptor(
-                        static_cast<char>(param)));
+        shorty[0] == 'L' ? TypeDescriptor::Object : TypeDescriptor::FromDescriptor(shorty[0]);
+    if (!is_static) parameter_types.push_back(TypeDescriptor::Object);  // this object
+    for (const char &param : shorty.substr(1)) {
+        parameter_types.push_back(param == 'L'
+                                      ? TypeDescriptor::Object
+                                      : TypeDescriptor::FromDescriptor(static_cast<char>(param)));
     }
 
-    ClassBuilder cbuilder{ dex_file.MakeClass(generated_class_name) };
+    ClassBuilder cbuilder{dex_file.MakeClass(generated_class_name)};
     if (!generated_source_name.empty()) cbuilder.set_source_file(generated_source_name);
 
     auto hooker_type = TypeDescriptor::FromClassname(hooker_class.data());
 
     auto *hooker_field = cbuilder.CreateField(generated_field_name, hooker_type)
-            .access_flags(dex::kAccStatic)
-            .Encode();
+                             .access_flags(dex::kAccStatic)
+                             .Encode();
 
-    auto hook_builder{ cbuilder.CreateMethod(
-            generated_method_name == "{target}" ? method_name.data() : generated_method_name,
-            Prototype{ return_type, parameter_types }) };
+    auto hook_builder{cbuilder.CreateMethod(
+        generated_method_name == "{target}" ? method_name.data() : generated_method_name,
+        Prototype{return_type, parameter_types})};
     // allocate tmp first because of wide
-    auto tmp{ hook_builder.AllocRegister() };
+    auto tmp{hook_builder.AllocRegister()};
     hook_builder.BuildConst(tmp, static_cast<int>(parameter_types.size()));
-    auto hook_params_array{ hook_builder.AllocRegister() };
+    auto hook_params_array{hook_builder.AllocRegister()};
     hook_builder.BuildNewArray(hook_params_array, TypeDescriptor::Object, tmp);
     for (size_t i = 0U, j = 0U; i < parameter_types.size(); ++i, ++j) {
         hook_builder.BuildBoxIfPrimitive(Value::Parameter(j), parameter_types[i],
                                          Value::Parameter(j));
         hook_builder.BuildConst(tmp, static_cast<int>(i));
-        hook_builder.BuildAput(Instruction::Op::kAputObject, hook_params_array,
-                               Value::Parameter(j), tmp);
+        hook_builder.BuildAput(Instruction::Op::kAputObject, hook_params_array, Value::Parameter(j),
+                               tmp);
         if (parameter_types[i].is_wide()) ++j;
     }
-    auto handle_hook_method{ dex_file.GetOrDeclareMethod(
-            hooker_type, callback_name.data(),
-            Prototype{ TypeDescriptor::Object, TypeDescriptor::Object.ToArray() }) };
+    auto handle_hook_method{dex_file.GetOrDeclareMethod(
+        hooker_type, callback_name.data(),
+        Prototype{TypeDescriptor::Object, TypeDescriptor::Object.ToArray()})};
     hook_builder.AddInstruction(
-            Instruction::GetStaticObjectField(hooker_field->decl->orig_index, tmp));
-    hook_builder.AddInstruction(Instruction::InvokeVirtualObject(
-            handle_hook_method.id, tmp, tmp, hook_params_array));
+        Instruction::GetStaticObjectField(hooker_field->decl->orig_index, tmp));
+    hook_builder.AddInstruction(
+        Instruction::InvokeVirtualObject(handle_hook_method.id, tmp, tmp, hook_params_array));
     if (return_type == TypeDescriptor::Void) {
         hook_builder.BuildReturn();
     } else if (return_type.is_primitive()) {
-        auto box_type{ return_type.ToBoxType() };
+        auto box_type{return_type.ToBoxType()};
         const ir::Type *type_def = dex_file.GetOrAddType(box_type);
-        hook_builder.AddInstruction(
-                Instruction::Cast(tmp, Value::Type(type_def->orig_index)));
+        hook_builder.AddInstruction(Instruction::Cast(tmp, Value::Type(type_def->orig_index)));
         hook_builder.BuildUnBoxIfPrimitive(tmp, box_type, tmp);
         hook_builder.BuildReturn(tmp, false, return_type.is_wide());
     } else {
         const ir::Type *type_def = dex_file.GetOrAddType(return_type);
-        hook_builder.AddInstruction(
-                Instruction::Cast(tmp, Value::Type(type_def->orig_index)));
+        hook_builder.AddInstruction(Instruction::Cast(tmp, Value::Type(type_def->orig_index)));
         hook_builder.BuildReturn(tmp, true);
     }
     auto *hook_method = hook_builder.Encode();
 
-    auto backup_builder{
-            cbuilder.CreateMethod("backup", Prototype{ return_type, parameter_types }) };
+    auto backup_builder{cbuilder.CreateMethod("backup", Prototype{return_type, parameter_types})};
     if (return_type == TypeDescriptor::Void) {
         backup_builder.BuildReturn();
     } else if (return_type.is_wide()) {
@@ -307,30 +304,32 @@ BuildDex(JNIEnv *env, jobject class_loader,
     }
     auto *backup_method = backup_builder.Encode();
 
-    slicer::MemView image{ dex_file.CreateImage() };
+    slicer::MemView image{dex_file.CreateImage()};
 
     auto *dex_buffer = env->NewDirectByteBuffer(const_cast<void *>(image.ptr()), image.size());
-    auto my_cl = JNI_NewObject(env, in_memory_class_loader, in_memory_class_loader_init,
-                               dex_buffer, class_loader);
+    auto my_cl = JNI_NewObject(env, in_memory_class_loader, in_memory_class_loader_init, dex_buffer,
+                               class_loader);
     env->DeleteLocalRef(dex_buffer);
 
     if (my_cl) {
-        auto *target_class = JNI_Cast<jclass>(
+        auto *target_class =
+            JNI_Cast<jclass>(
                 JNI_CallObjectMethod(env, my_cl, load_class,
-                                     JNI_NewStringUTF(env, generated_class_name.data()))).release();
+                                     JNI_NewStringUTF(env, generated_class_name.data())))
+                .release();
         if (target_class) {
             return {
-                    target_class,
-                    JNI_GetStaticFieldID(env, target_class, hooker_field->decl->name->c_str(),
-                                         hooker_field->decl->type->descriptor->c_str()),
-                    JNI_GetStaticMethodID(env, target_class, hook_method->decl->name->c_str(),
-                                          hook_method->decl->prototype->Signature().data()),
-                    JNI_GetStaticMethodID(env, target_class, backup_method->decl->name->c_str(),
-                                          backup_method->decl->prototype->Signature().data()),
+                target_class,
+                JNI_GetStaticFieldID(env, target_class, hooker_field->decl->name->c_str(),
+                                     hooker_field->decl->type->descriptor->c_str()),
+                JNI_GetStaticMethodID(env, target_class, hook_method->decl->name->c_str(),
+                                      hook_method->decl->prototype->Signature().data()),
+                JNI_GetStaticMethodID(env, target_class, backup_method->decl->name->c_str(),
+                                      backup_method->decl->prototype->Signature().data()),
             };
         }
     }
-    return { nullptr, nullptr, nullptr, nullptr };
+    return {nullptr, nullptr, nullptr, nullptr};
 }
 
 static_assert(std::endian::native == std::endian::little, "Unsupported architecture");
@@ -338,16 +337,16 @@ static_assert(std::endian::native == std::endian::little, "Unsupported architect
 union Trampoline {
 public:
     uintptr_t address;
-    unsigned count: 12;
+    unsigned count : 12;
 };
 
 static_assert(sizeof(Trampoline) == sizeof(uintptr_t), "Unsupported architecture");
 static_assert(std::atomic_uintptr_t::is_always_lock_free, "Unsupported architecture");
 
-std::atomic_uintptr_t trampoline_pool{ 0 };
-std::atomic_flag trampoline_lock{ false };
+std::atomic_uintptr_t trampoline_pool{0};
+std::atomic_flag trampoline_lock{false};
 constexpr size_t kTrampolineSize = RoundUpTo(sizeof(trampoline), kPointerSize);
-constexpr size_t kPageSize = 4096; // assume
+constexpr size_t kPageSize = 4096;  // assume
 constexpr size_t kTrampolineNumPerPage = kPageSize / kTrampolineSize;
 constexpr uintptr_t kAddressMask = 0xFFFU;
 
@@ -355,7 +354,7 @@ void *GenerateTrampolineFor(art::ArtMethod *hook) {
     unsigned count;
     uintptr_t address;
     while (true) {
-        auto tl = Trampoline{ .address = trampoline_pool.fetch_add(1, std::memory_order_release) };
+        auto tl = Trampoline{.address = trampoline_pool.fetch_add(1, std::memory_order_release)};
         count = tl.count;
         address = tl.address & ~kAddressMask;
         if (address == 0 || count >= kTrampolineNumPerPage) {
@@ -378,7 +377,6 @@ void *GenerateTrampolineFor(art::ArtMethod *hook) {
             trampoline_pool.store(tl.address, std::memory_order_release);
             trampoline_lock.clear(std::memory_order_release);
             trampoline_lock.notify_all();
-
         }
         LOGV("trampoline: count = %u, address = %zx, target = %zx", count, address,
              address + count * kTrampolineSize);
@@ -396,8 +394,7 @@ void *GenerateTrampolineFor(art::ArtMethod *hook) {
 }
 
 bool DoHook(ArtMethod *target, ArtMethod *hook, ArtMethod *backup) {
-    ScopedGCCriticalSection section(art::Thread::Current(),
-                                    art::gc::kGcCauseDebugger,
+    ScopedGCCriticalSection section(art::Thread::Current(), art::gc::kGcCauseDebugger,
                                     art::gc::kCollectorTypeDebugger);
     ScopedSuspendAll suspend("LSPlant Hook", false);
     LOGV("Hooking: target = %p, hook = %p, backup = %p", target, hook, backup);
@@ -421,27 +418,25 @@ bool DoHook(ArtMethod *target, ArtMethod *hook, ArtMethod *backup) {
 
         backup->SetPrivate();
 
-        LOGV("Done hook: target(%p:0x%x) -> %p; backup(%p:0x%x) -> %p; hook(%p:0x%x) -> %p",
-             target, target->GetAccessFlags(), target->GetEntryPoint(),
-             backup, backup->GetAccessFlags(), backup->GetEntryPoint(),
-             hook, hook->GetAccessFlags(), hook->GetEntryPoint());
+        LOGV("Done hook: target(%p:0x%x) -> %p; backup(%p:0x%x) -> %p; hook(%p:0x%x) -> %p", target,
+             target->GetAccessFlags(), target->GetEntryPoint(), backup, backup->GetAccessFlags(),
+             backup->GetEntryPoint(), hook, hook->GetAccessFlags(), hook->GetEntryPoint());
 
         return true;
     }
 }
 
 bool DoUnHook(ArtMethod *target, ArtMethod *backup) {
-    ScopedGCCriticalSection section(art::Thread::Current(),
-                                    art::gc::kGcCauseDebugger,
+    ScopedGCCriticalSection section(art::Thread::Current(), art::gc::kGcCauseDebugger,
                                     art::gc::kCollectorTypeDebugger);
     ScopedSuspendAll suspend("LSPlant Hook", false);
     LOGV("Unhooking: target = %p, backup = %p", target, backup);
     auto access_flags = target->GetAccessFlags();
     target->CopyFrom(backup);
     target->SetAccessFlags(access_flags);
-    LOGV("Done unhook: target(%p:0x%x) -> %p; backup(%p:0x%x) -> %p;",
-         target, target->GetAccessFlags(), target->GetEntryPoint(),
-         backup, backup->GetAccessFlags(), backup->GetEntryPoint());
+    LOGV("Done unhook: target(%p:0x%x) -> %p; backup(%p:0x%x) -> %p;", target,
+         target->GetAccessFlags(), target->GetEntryPoint(), backup, backup->GetAccessFlags(),
+         backup->GetEntryPoint());
     return true;
 }
 
@@ -458,16 +453,13 @@ inline namespace v1 {
 
 using ::lsplant::IsHooked;
 
-[[maybe_unused]]
-bool Init(JNIEnv *env, const InitInfo &info) {
+[[maybe_unused]] bool Init(JNIEnv *env, const InitInfo &info) {
     bool static kInit = InitConfig(info) && InitJNI(env) && InitNative(env, info);
     return kInit;
 }
 
-
-[[maybe_unused]]
-jobject
-Hook(JNIEnv *env, jobject target_method, jobject hooker_object, jobject callback_method) {
+[[maybe_unused]] jobject Hook(JNIEnv *env, jobject target_method, jobject hooker_object,
+                              jobject callback_method) {
     if (!env->IsInstanceOf(target_method, executable)) {
         LOGE("target method is not an executable");
         return nullptr;
@@ -481,8 +473,8 @@ Hook(JNIEnv *env, jobject target_method, jobject hooker_object, jobject callback
     jmethodID backup_method = nullptr;
     jfieldID hooker_field = nullptr;
 
-    auto target_class = JNI_Cast<jclass>(
-            JNI_CallObjectMethod(env, target_method, method_get_declaring_class));
+    auto target_class =
+        JNI_Cast<jclass>(JNI_CallObjectMethod(env, target_method, method_get_declaring_class));
     bool is_proxy = JNI_CallBooleanMethod(env, target_class, class_is_proxy);
     auto *target = ArtMethod::FromReflectedMethod(env, target_method);
     bool is_static = target->IsStatic();
@@ -492,30 +484,26 @@ Hook(JNIEnv *env, jobject target_method, jobject hooker_object, jobject callback
         return nullptr;
     }
 
-    ScopedLocalRef<jclass> built_class{ env };
+    ScopedLocalRef<jclass> built_class{env};
     {
-        auto callback_name = JNI_Cast<jstring>(
-                JNI_CallObjectMethod(env, callback_method, method_get_name));
+        auto callback_name =
+            JNI_Cast<jstring>(JNI_CallObjectMethod(env, callback_method, method_get_name));
         JUTFString method_name(callback_name);
-        auto callback_class = JNI_Cast<jclass>(JNI_CallObjectMethod(env, callback_method,
-                                                                    method_get_declaring_class));
-        auto callback_class_loader = JNI_CallObjectMethod(env, callback_class,
-                                                          class_get_class_loader);
-        auto callback_class_name = JNI_Cast<jstring>(JNI_CallObjectMethod(env, callback_class,
-                                                                          class_get_name));
+        auto callback_class = JNI_Cast<jclass>(
+            JNI_CallObjectMethod(env, callback_method, method_get_declaring_class));
+        auto callback_class_loader =
+            JNI_CallObjectMethod(env, callback_class, class_get_class_loader);
+        auto callback_class_name =
+            JNI_Cast<jstring>(JNI_CallObjectMethod(env, callback_class, class_get_name));
         JUTFString class_name(callback_class_name);
         if (!env->IsInstanceOf(hooker_object, callback_class)) {
             LOGE("callback_method is not a method of hooker_object");
             return nullptr;
         }
-        std::tie(built_class, hooker_field, hook_method, backup_method) =
-                WrapScope(env, BuildDex(env, callback_class_loader,
-                                        ArtMethod::GetMethodShorty(env, env->FromReflectedMethod(
-                                                target_method)),
-                                        is_static,
-                                        method_name.get(),
-                                        class_name.get(),
-                                        method_name.get()));
+        std::tie(built_class, hooker_field, hook_method, backup_method) = WrapScope(
+            env, BuildDex(env, callback_class_loader,
+                          ArtMethod::GetMethodShorty(env, env->FromReflectedMethod(target_method)),
+                          is_static, method_name.get(), class_name.get(), method_name.get()));
         if (!built_class || !hooker_field || !hook_method || !backup_method) {
             LOGE("Failed to generate hooker");
             return nullptr;
@@ -550,15 +538,15 @@ Hook(JNIEnv *env, jobject target_method, jobject hooker_object, jobject callback
     if (DoHook(target, hook, backup)) {
         jobject global_backup = JNI_NewGlobalRef(env, reflected_backup);
         RecordHooked(target, global_backup);
-        if (!is_proxy) [[likely]] RecordJitMovement(target, backup);
+        if (!is_proxy) [[likely]]
+            RecordJitMovement(target, backup);
         return global_backup;
     }
 
     return nullptr;
 }
 
-[[maybe_unused]]
-bool UnHook(JNIEnv *env, jobject target_method) {
+[[maybe_unused]] bool UnHook(JNIEnv *env, jobject target_method) {
     if (!env->IsInstanceOf(target_method, executable)) {
         LOGE("target method is not an executable");
         return false;
@@ -574,7 +562,7 @@ bool UnHook(JNIEnv *env, jobject target_method) {
     }
     {
         std::unique_lock lk(hooked_methods_lock_);
-        if (auto it = hooked_methods_.find(target);it != hooked_methods_.end()) {
+        if (auto it = hooked_methods_.find(target); it != hooked_methods_.end()) {
             reflected_backup = it->second;
             hooked_methods_.erase(it);
         }
@@ -588,8 +576,7 @@ bool UnHook(JNIEnv *env, jobject target_method) {
     return DoUnHook(target, backup);
 }
 
-[[maybe_unused]]
-bool IsHooked(JNIEnv *env, jobject method) {
+[[maybe_unused]] bool IsHooked(JNIEnv *env, jobject method) {
     if (!env->IsInstanceOf(method, executable)) {
         LOGE("method is not an executable");
         return false;
@@ -605,8 +592,7 @@ bool IsHooked(JNIEnv *env, jobject method) {
     return false;
 }
 
-[[maybe_unused]]
-bool Deoptimize(JNIEnv *env, jobject method) {
+[[maybe_unused]] bool Deoptimize(JNIEnv *env, jobject method) {
     if (!env->IsInstanceOf(method, executable)) {
         LOGE("method is not an executable");
         return false;
@@ -626,8 +612,7 @@ bool Deoptimize(JNIEnv *env, jobject method) {
     return ClassLinker::SetEntryPointsToInterpreter(art_method);
 }
 
-[[maybe_unused]]
-void *GetNativeFunction(JNIEnv *env, jobject method) {
+[[maybe_unused]] void *GetNativeFunction(JNIEnv *env, jobject method) {
     if (!env->IsInstanceOf(method, executable)) {
         LOGE("method is not an executable");
         return nullptr;

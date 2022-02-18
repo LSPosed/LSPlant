@@ -1,15 +1,18 @@
 #pragma once
 
-#include "common.hpp"
 #include "art/mirror/class.hpp"
+#include "common.hpp"
 
 namespace lsplant::art {
 
 class ArtMethod {
     CREATE_MEM_FUNC_SYMBOL_ENTRY(std::string, PrettyMethod, ArtMethod *thiz, bool with_signature) {
-        if (thiz == nullptr) [[unlikely]] return "null";
-        else if (PrettyMethodSym) [[likely]] return PrettyMethodSym(thiz, with_signature);
-        else return "null sym";
+        if (thiz == nullptr) [[unlikely]]
+            return "null";
+        else if (PrettyMethodSym) [[likely]]
+            return PrettyMethodSym(thiz, with_signature);
+        else
+            return "null sym";
     }
 
 public:
@@ -36,43 +39,35 @@ public:
         }
     }
 
-    bool IsStatic() {
-        return GetAccessFlags() & kAccStatic;
-    }
+    bool IsStatic() { return GetAccessFlags() & kAccStatic; }
 
-    bool IsNative() {
-        return GetAccessFlags() & kAccNative;
-    }
+    bool IsNative() { return GetAccessFlags() & kAccNative; }
 
-    void CopyFrom(const ArtMethod *other) {
-        memcpy(this, other, art_method_size);
-    }
+    void CopyFrom(const ArtMethod *other) { memcpy(this, other, art_method_size); }
 
     void SetEntryPoint(void *entry_point) {
-        *reinterpret_cast<void **>(reinterpret_cast<uintptr_t>(this) +
-                                   entry_point_offset) = entry_point;
+        *reinterpret_cast<void **>(reinterpret_cast<uintptr_t>(this) + entry_point_offset) =
+            entry_point;
     }
 
     void *GetEntryPoint() {
-        return *reinterpret_cast<void **>(reinterpret_cast<uintptr_t>(this) +
-                                          entry_point_offset);
+        return *reinterpret_cast<void **>(reinterpret_cast<uintptr_t>(this) + entry_point_offset);
     }
 
     void *GetData() {
-        return *reinterpret_cast<void **>(reinterpret_cast<uintptr_t>(this) +
-                                          data_offset);
+        return *reinterpret_cast<void **>(reinterpret_cast<uintptr_t>(this) + data_offset);
     }
 
     uint32_t GetAccessFlags() {
-        return (reinterpret_cast<const std::atomic<uint32_t> *>(
-                reinterpret_cast<uintptr_t>(this) + access_flags_offset))->load(
-                std::memory_order_relaxed);
+        return (reinterpret_cast<const std::atomic<uint32_t> *>(reinterpret_cast<uintptr_t>(this) +
+                                                                access_flags_offset))
+            ->load(std::memory_order_relaxed);
     }
 
     void SetAccessFlags(uint32_t flags) {
-        return (reinterpret_cast<std::atomic<uint32_t> *>(
-                reinterpret_cast<uintptr_t>(this) + access_flags_offset))->store(
-                flags, std::memory_order_relaxed);
+        return (reinterpret_cast<std::atomic<uint32_t> *>(reinterpret_cast<uintptr_t>(this) +
+                                                          access_flags_offset))
+            ->store(flags, std::memory_order_relaxed);
     }
 
     std::string PrettyMethod(bool with_signature = true) {
@@ -90,8 +85,8 @@ public:
             return false;
         }
 
-        if (art_method_field = JNI_GetFieldID(env, executable, "artMethod",
-                                              "J"); !art_method_field) {
+        if (art_method_field = JNI_GetFieldID(env, executable, "artMethod", "J");
+            !art_method_field) {
             LOGE("Failed to find artMethod field");
             return false;
         }
@@ -105,8 +100,8 @@ public:
         static_assert(std::is_same_v<decltype(clazz)::BaseType, jclass>);
         jmethodID get_declared_constructors = JNI_GetMethodID(env, clazz, "getDeclaredConstructors",
                                                               "()[Ljava/lang/reflect/Constructor;");
-        auto constructors = JNI_Cast<jobjectArray>(
-                JNI_CallObjectMethod(env, throwable, get_declared_constructors));
+        auto constructors =
+            JNI_Cast<jobjectArray>(JNI_CallObjectMethod(env, throwable, get_declared_constructors));
         auto length = JNI_GetArrayLength(env, constructors);
         if (length < 2) {
             LOGE("Throwable has less than 2 constructors");
@@ -130,7 +125,7 @@ public:
         LOGD("ArtMethod::data offset: %zu", data_offset);
 
         if (auto access_flags_field = JNI_GetFieldID(env, executable, "accessFlags", "I");
-                access_flags_field) {
+            access_flags_field) {
             uint32_t real_flags = JNI_GetIntField(env, first_ctor, access_flags_field);
             for (size_t i = 0; i < art_method_size; i += sizeof(uint32_t)) {
                 if (*reinterpret_cast<uint32_t *>(reinterpret_cast<uintptr_t>(first) + i) ==
@@ -151,26 +146,24 @@ public:
         if (sdk_int < __ANDROID_API_Q__) kAccFastInterpreterToInterpreterInvoke = 0;
 
         get_method_shorty_symbol = GetArtSymbol<decltype(get_method_shorty_symbol)>(
-                info.art_symbol_resolver,
-                "_ZN3artL15GetMethodShortyEP7_JNIEnvP10_jmethodID");
+            info.art_symbol_resolver, "_ZN3artL15GetMethodShortyEP7_JNIEnvP10_jmethodID");
         if (!get_method_shorty_symbol) return false;
         return true;
     }
 
     static const char *GetMethodShorty(_JNIEnv *env, _jmethodID *method) {
-        if (get_method_shorty_symbol) [[likely]] return get_method_shorty_symbol(env, method);
+        if (get_method_shorty_symbol) [[likely]]
+            return get_method_shorty_symbol(env, method);
         return nullptr;
     }
 
-    static size_t GetEntryPointOffset() {
-        return entry_point_offset;
-    }
+    static size_t GetEntryPointOffset() { return entry_point_offset; }
 
-    constexpr static uint32_t kAccPublic = 0x0001;  // class, field, method, ic
-    constexpr static uint32_t kAccPrivate = 0x0002;  // field, method, ic
+    constexpr static uint32_t kAccPublic = 0x0001;     // class, field, method, ic
+    constexpr static uint32_t kAccPrivate = 0x0002;    // field, method, ic
     constexpr static uint32_t kAccProtected = 0x0004;  // field, method, ic
-    constexpr static uint32_t kAccStatic = 0x0008;  // field, method, ic
-    constexpr static uint32_t kAccNative = 0x0100;  // method
+    constexpr static uint32_t kAccStatic = 0x0008;     // field, method, ic
+    constexpr static uint32_t kAccNative = 0x0100;     // method
 
 private:
     inline static jfieldID art_method_field = nullptr;
@@ -182,8 +175,8 @@ private:
     inline static uint32_t kAccPreCompiled = 0x00200000;
     inline static uint32_t kAccCompileDontBother = 0x02000000;
 
-    inline static const char *
-    (*get_method_shorty_symbol)(_JNIEnv *env, _jmethodID *method) = nullptr;
+    inline static const char *(*get_method_shorty_symbol)(_JNIEnv *env,
+                                                          _jmethodID *method) = nullptr;
 };
 
-}
+}  // namespace lsplant::art
