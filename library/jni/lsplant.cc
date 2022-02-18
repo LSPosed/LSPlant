@@ -35,7 +35,7 @@ using art::jit::JitCodeCache;
 namespace {
 template<typename T, T... chars>
 inline consteval auto operator ""_uarr() {
-    return std::array<unsigned char, sizeof...(chars)>{ static_cast<unsigned char>(chars)... };
+    return std::array<uint8_t, sizeof...(chars)>{ static_cast<uint8_t>(chars)... };
 }
 
 consteval inline auto GetTrampoline() {
@@ -400,7 +400,7 @@ bool DoHook(ArtMethod *target, ArtMethod *hook, ArtMethod *backup) {
                                     art::gc::kGcCauseDebugger,
                                     art::gc::kCollectorTypeDebugger);
     ScopedSuspendAll suspend("LSPlant Hook", false);
-    LOGD("target = %p, hook = %p, backup = %p", target, hook, backup);
+    LOGV("Hooking: target = %p, hook = %p, backup = %p", target, hook, backup);
 
     if (auto *trampoline = GenerateTrampolineFor(hook); !trampoline) {
         LOGE("Failed to generate trampoline");
@@ -421,8 +421,7 @@ bool DoHook(ArtMethod *target, ArtMethod *hook, ArtMethod *backup) {
 
         backup->SetPrivate();
 
-        LOGD("done hook");
-        LOGV("target(%p:0x%x) -> %p; backup(%p:0x%x) -> %p; hook(%p:0x%x) -> %p",
+        LOGV("Done hook: target(%p:0x%x) -> %p; backup(%p:0x%x) -> %p; hook(%p:0x%x) -> %p",
              target, target->GetAccessFlags(), target->GetEntryPoint(),
              backup, backup->GetAccessFlags(), backup->GetEntryPoint(),
              hook, hook->GetAccessFlags(), hook->GetEntryPoint());
@@ -436,9 +435,13 @@ bool DoUnHook(ArtMethod *target, ArtMethod *backup) {
                                     art::gc::kGcCauseDebugger,
                                     art::gc::kCollectorTypeDebugger);
     ScopedSuspendAll suspend("LSPlant Hook", false);
+    LOGV("Unhooking: target = %p, backup = %p", target, backup);
     auto access_flags = target->GetAccessFlags();
     target->CopyFrom(backup);
     target->SetAccessFlags(access_flags);
+    LOGV("Done unhook: target(%p:0x%x) -> %p; backup(%p:0x%x) -> %p;",
+         target, target->GetAccessFlags(), target->GetEntryPoint(),
+         backup, backup->GetAccessFlags(), backup->GetEntryPoint());
     return true;
 }
 
@@ -548,7 +551,6 @@ Hook(JNIEnv *env, jobject target_method, jobject hooker_object, jobject callback
         jobject global_backup = JNI_NewGlobalRef(env, reflected_backup);
         RecordHooked(target, global_backup);
         if (!is_proxy) [[likely]] RecordJitMovement(target, backup);
-        LOGD("Done hook");
         return global_backup;
     }
 
