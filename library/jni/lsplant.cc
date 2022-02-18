@@ -69,7 +69,7 @@ auto[trampoline, entry_point_offset, art_method_offset] = GetTrampoline();
 
 jmethodID method_get_name = nullptr;
 jmethodID method_get_declaring_class = nullptr;
-jmethodID class_get_canonical_name = nullptr;
+jmethodID class_get_name = nullptr;
 jmethodID class_get_class_loader = nullptr;
 jmethodID class_is_proxy = nullptr;
 jclass in_memory_class_loader = nullptr;
@@ -131,10 +131,9 @@ bool InitJNI(JNIEnv *env) {
         return false;
     }
 
-    if (class_get_canonical_name = JNI_GetMethodID(env, clazz, "getCanonicalName",
-                                                   "()Ljava/lang/String;");
-            !class_get_canonical_name) {
-        LOGE("Failed to find getCanonicalName");
+    if (class_get_name = JNI_GetMethodID(env, clazz, "getName", "()Ljava/lang/String;");
+            !class_get_name) {
+        LOGE("Failed to find getName");
         return false;
     }
 
@@ -303,18 +302,20 @@ BuildDex(JNIEnv *env, jobject class_loader,
     env->DeleteLocalRef(dex_buffer);
 
     if (my_cl) {
-        auto target_class = JNI_Cast<jclass>(JNI_CallObjectMethod(env, my_cl, load_class,
-                                                                  JNI_NewStringUTF(env,
-                                                                                   "LspHooker_")));
-        return {
-                target_class.release(),
-                JNI_GetStaticFieldID(env, target_class, hooker_field->decl->name->c_str(),
-                                     hooker_field->decl->type->Decl().data()),
-                JNI_GetStaticMethodID(env, target_class, hook_method->decl->name->c_str(),
-                                      hook_method->decl->prototype->Signature().data()),
-                JNI_GetStaticMethodID(env, target_class, backup_method->decl->name->c_str(),
-                                      backup_method->decl->prototype->Signature().data()),
-        };
+        auto *target_class = JNI_Cast<jclass>(
+                JNI_CallObjectMethod(env, my_cl, load_class,
+                                     JNI_NewStringUTF(env, generated_class_name.data()))).release();
+        if (target_class) {
+            return {
+                    target_class,
+                    JNI_GetStaticFieldID(env, target_class, hooker_field->decl->name->c_str(),
+                                         hooker_field->decl->type->descriptor->c_str()),
+                    JNI_GetStaticMethodID(env, target_class, hook_method->decl->name->c_str(),
+                                          hook_method->decl->prototype->Signature().data()),
+                    JNI_GetStaticMethodID(env, target_class, backup_method->decl->name->c_str(),
+                                          backup_method->decl->prototype->Signature().data()),
+            };
+        }
     }
     return { nullptr, nullptr, nullptr, nullptr };
 }
@@ -385,7 +386,7 @@ bool DoHook(ArtMethod *target, ArtMethod *hook, ArtMethod *backup) {
     ScopedGCCriticalSection section(art::Thread::Current(),
                                     art::gc::kGcCauseDebugger,
                                     art::gc::kCollectorTypeDebugger);
-    ScopedSuspendAll suspend("Yahfa Hook", false);
+    ScopedSuspendAll suspend("LSPlant Hook", false);
     LOGD("target = %p, hook = %p, backup = %p", target, hook, backup);
 
     if (auto *trampoline = GenerateTrampolineFor(hook); !trampoline) {
@@ -421,7 +422,7 @@ bool DoUnHook(ArtMethod *target, ArtMethod *backup) {
     ScopedGCCriticalSection section(art::Thread::Current(),
                                     art::gc::kGcCauseDebugger,
                                     art::gc::kCollectorTypeDebugger);
-    ScopedSuspendAll suspend("Yahfa Hook", false);
+    ScopedSuspendAll suspend("LSPlant Hook", false);
     auto access_flags = target->GetAccessFlags();
     target->CopyFrom(backup);
     target->SetAccessFlags(access_flags);
@@ -431,7 +432,7 @@ bool DoUnHook(ArtMethod *target, ArtMethod *backup) {
 }  // namespace
 
 void OnPending(art::ArtMethod *target, art::ArtMethod *hook, art::ArtMethod *backup) {
-    LOGD("On pending hook");
+    LOGD("On pending hook for %p", target);
     if (!DoHook(target, hook, backup)) {
         LOGE("Pending hook failed");
     }
@@ -476,7 +477,7 @@ Hook(JNIEnv *env, jobject target_method, jobject hooker_object, jobject callback
         auto callback_class_loader = JNI_CallObjectMethod(env, callback_class,
                                                           class_get_class_loader);
         auto callback_class_name = JNI_Cast<jstring>(JNI_CallObjectMethod(env, callback_class,
-                                                                          class_get_canonical_name));
+                                                                          class_get_name));
         JUTFString class_name(callback_class_name);
         if (!env->IsInstanceOf(hooker_object, callback_class)) {
             LOGE("callback_method is not a method of hooker_object");
@@ -515,13 +516,16 @@ Hook(JNIEnv *env, jobject target_method, jobject hooker_object, jobject callback
             LOGE("Failed to get target class def");
             return nullptr;
         }
+        LOGD("Record pending hook for %p", target);
         RecordPending(class_def, target, hook, backup);
-        return reflected_backup;
+        return JNI_NewGlobalRef(env, reflected_backup);
     }
     if (DoHook(target, hook, backup)) {
-        RecordHooked(target, JNI_NewGlobalRef(env, reflected_backup));
+        jobject global_backup = JNI_NewGlobalRef(env, reflected_backup);
+        RecordHooked(target, global_backup);
         if (!is_proxy) [[likely]] RecordJitMovement(target, backup);
-        return reflected_backup;
+        LOGD("Done hook");
+        return global_backup;
     }
 
     return nullptr;
