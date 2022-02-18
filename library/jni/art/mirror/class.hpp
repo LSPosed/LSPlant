@@ -77,7 +77,7 @@ public:
     }
 
     static int GetStatus(JNIEnv *env, jclass clazz) {
-        int status = JNI_GetLongField(env, clazz, class_status);
+        int status = JNI_GetIntField(env, clazz, class_status);
         return is_unsigned ? static_cast<uint32_t>(status) >> (32 - 4) : status;
     }
 
