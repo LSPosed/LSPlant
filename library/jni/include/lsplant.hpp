@@ -101,7 +101,8 @@ Hook(JNIEnv *env, jobject target_method, jobject hooker_object, jobject callback
 /// \param[in] env The Java environment.
 /// \param[in] target_method The target method that is previously hooked.
 /// \return Indicate whether the unhook succeed.
-/// \note please read #Hook()'s note for more details.
+/// \note Calling \p backup (the return method of #Hook()) after unhooking is undefined behavior.
+/// Please read #Hook()'s note for more details.
 /// \see Hook()
 [[nodiscard]] [[maybe_unused]] [[gnu::visibility("default")]]
 bool UnHook(JNIEnv *env, jobject target_method);
@@ -110,7 +111,8 @@ bool UnHook(JNIEnv *env, jobject target_method);
 /// \param[in] env The Java environment.
 /// \param[in] method The method to check if it was hooked or not.
 /// \return If \p method hooked, ture; otherwise, false.
-/// \note please read #Hook()'s note for more details.
+/// Please read #Hook()'s note for more details.
+/// \see Hook()
 [[nodiscard]] [[maybe_unused]] [[gnu::visibility("default")]]
 bool IsHooked(JNIEnv *env, jobject method);
 
