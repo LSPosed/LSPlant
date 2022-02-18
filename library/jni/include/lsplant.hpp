@@ -35,9 +35,20 @@ struct InitInfo {
     InlineUnhookFunType inline_unhooker;
     /// \brief The symbol resolver to \p libart.so. Must not be null.
     ArtSymbolResolver art_symbol_resolver;
+
+    /// \brief The generated class name. Must not be empty. It contains a field and a method
+    /// and they could be set by \p generated_field_name and \p generated_method_name respectively.
+    std::string_view generated_class_name = "LSPHooker_";
+    /// \brief The generated source name. Could be empty.
+    std::string_view generated_source_name = "LSP";
+    /// \brief The generated field name. Must not be empty.
+    std::string_view generated_field_name = "hooker";
+    /// \brief The generated class name. Must not be emtpy. If {target} is set,
+    /// it will follows the name of the target.
+    std::string_view generated_method_name = "{target}";
 };
 
-/// \brief Initialize LSPlant for procceding hook.
+/// \brief Initialize LSPlant for the proceeding hook.
 /// It mainly prefetch needed symbols and hook some functions.
 /// \param[in] env The Java environment. Must not be null.
 /// \param[in] info The information for initialized. \ref InitInfo.
@@ -71,6 +82,9 @@ bool Init(JNIEnv *env, const InitInfo &info);
 /// This method must be a method to \p hooker_object.
 /// \return The backup method. You can invoke it by reflection to invoke the original method. null
 /// if fails.
+/// \note This function will automatically generate a stub class for hook. To help debug, you
+/// can set the generated class name, its field name, its source name and its method name
+/// by setting generated_* in \p InitInfo.
 /// \note This function thread safe (you can call it simultaneously from multiple thread)
 /// but it's not atomic to the same \b target_method. That means \p UnHook or \p IsUnhook does
 /// not guarantee to work properly on the same \p target_method before it returns. Also,

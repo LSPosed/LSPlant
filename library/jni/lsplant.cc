@@ -76,6 +76,31 @@ jclass in_memory_class_loader = nullptr;
 jmethodID in_memory_class_loader_init = nullptr;
 jmethodID load_class = nullptr;
 
+std::string generated_class_name;
+std::string generated_source_name;
+std::string generated_field_name;
+std::string generated_method_name;
+
+bool InitConfig(const InitInfo &info) {
+    if (info.generated_class_name.empty()) {
+        LOGE("generated class name cannot be empty");
+        return false;
+    }
+    generated_class_name = info.generated_class_name;
+    if (info.generated_field_name.empty()) {
+        LOGE("generated field name cannot be empty");
+        return false;
+    }
+    generated_field_name = info.generated_field_name;
+    if (info.generated_method_name.empty()) {
+        LOGE("generated method name cannot be empty");
+        return false;
+    }
+    generated_method_name = info.generated_method_name;
+    generated_source_name = info.generated_source_name;
+    return true;
+}
+
 bool InitJNI(JNIEnv *env) {
     auto executable = JNI_FindClass(env, "java/lang/reflect/Executable");
     if (!executable) {
@@ -204,20 +229,18 @@ BuildDex(JNIEnv *env, jobject class_loader,
                         static_cast<char>(param)));
     }
 
-    // TODO(yujincheng08): customize it
-    ClassBuilder cbuilder{ dex_file.MakeClass("LspHooker_") };
-    // TODO(yujincheng08): customize it
-    cbuilder.set_source_file("LSP");
+    ClassBuilder cbuilder{ dex_file.MakeClass(generated_class_name) };
+    if (!generated_source_name.empty()) cbuilder.set_source_file(generated_source_name);
 
     auto hooker_type = TypeDescriptor::FromClassname(hooker_class.data());
 
-    // TODO(yujincheng08): customize it
-    auto *hooker_field = cbuilder.CreateField("hooker", hooker_type)
+    auto *hooker_field = cbuilder.CreateField(generated_field_name, hooker_type)
             .access_flags(dex::kAccStatic)
             .Encode();
 
     auto hook_builder{ cbuilder.CreateMethod(
-            method_name.data(), Prototype{ return_type, parameter_types }) };
+            generated_method_name == "{target}" ? method_name.data() : generated_method_name,
+            Prototype{ return_type, parameter_types }) };
     // allocate tmp first because of wide
     auto tmp{ hook_builder.AllocRegister() };
     hook_builder.BuildConst(tmp, static_cast<int>(parameter_types.size()));
@@ -420,7 +443,7 @@ using ::lsplant::IsHooked;
 
 [[maybe_unused]]
 bool Init(JNIEnv *env, const InitInfo &info) {
-    bool static kInit = InitJNI(env) && InitNative(env, info);
+    bool static kInit = InitConfig(info) && InitJNI(env) && InitNative(env, info);
     return kInit;
 }
 
