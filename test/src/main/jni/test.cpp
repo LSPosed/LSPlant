@@ -39,14 +39,14 @@ Java_org_lsposed_lsplant_LSPTest_initHooker(JNIEnv*, jclass) {
 
 extern "C"
 JNIEXPORT jobject JNICALL
-Java_org_lsposed_lsplant_Hooker_doHook(JNIEnv* env, jobject thiz, jobject original, jobject callback) {
-    return lsplant::Hook(env, original, thiz, callback);
+Java_org_lsposed_lsplant_Hooker_doHook(JNIEnv* env, jobject thiz, jobject target, jobject callback) {
+    return lsplant::Hook(env, target, thiz, callback);
 }
 
 extern "C"
 JNIEXPORT jboolean JNICALL
-Java_org_lsposed_lsplant_Hooker_doUnhook(JNIEnv* env, jobject, jobject replacement) {
-    return lsplant::UnHook(env, replacement);
+Java_org_lsposed_lsplant_Hooker_doUnhook(JNIEnv* env, jobject, jobject target) {
+    return lsplant::UnHook(env, target);
 }
 
 JNIEXPORT jint JNICALL

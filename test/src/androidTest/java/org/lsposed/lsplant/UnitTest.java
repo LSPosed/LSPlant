@@ -17,12 +17,11 @@ import java.util.List;
 @FixMethodOrder(MethodSorters.NAME_ASCENDING)
 public class UnitTest {
 
-    private final List<Hooker> hookers = new ArrayList<>();
+    private static final List<Hooker> hookers = new ArrayList<>();
 
     @Test
     public void t00_initTest() {
-        boolean result = LSPTest.initHooker();
-        Assert.assertTrue(result);
+        Assert.assertTrue(LSPTest.initHooker());
     }
 
     @Test

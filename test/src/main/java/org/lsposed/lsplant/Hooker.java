@@ -12,14 +12,14 @@ public class Hooker {
     public Executable backup;
 
     private boolean isStatic;
-    private Executable replacement;
+    private Executable target, replacement;
 
     private Hooker() {
     }
 
     private native Executable doHook(Executable original, Executable callback);
 
-    private native boolean doUnhook(Executable replacement);
+    private native boolean doUnhook(Executable target);
 
     public Object callback(Object[] args) throws InvocationTargetException, IllegalAccessException, InstantiationException {
         if (replacement instanceof Method) {
@@ -36,17 +36,18 @@ public class Hooker {
     }
 
     public boolean unhook() {
-        return doUnhook(replacement);
+        return doUnhook(target);
     }
 
-    public static Hooker hook(Executable original, Executable replacement) {
+    public static Hooker hook(Executable target, Executable replacement) {
         Hooker hooker = new Hooker();
         try {
             var callbackMethod = Hooker.class.getDeclaredMethod("callback", Object[].class);
-            var result = hooker.doHook(original, callbackMethod);
+            var result = hooker.doHook(target, callbackMethod);
             if (result == null) return null;
             hooker.isStatic = (replacement.getModifiers() & Modifier.STATIC) != 0;
             hooker.backup = result;
+            hooker.target = target;
             hooker.replacement = replacement;
         } catch (NoSuchMethodException ignored) {
         }
