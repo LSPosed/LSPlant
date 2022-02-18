@@ -9,4 +9,5 @@ dependencyResolutionManagement {
 rootProject.name = "LSPlant"
 include(
     ":library",
+    ":test"
 )

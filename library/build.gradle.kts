@@ -34,6 +34,13 @@ android {
 
     buildFeatures {
         prefab = true
+        prefabPublishing = true
+    }
+
+    prefab {
+        create("lsplant") {
+            headers = "jni/include"
+        }
     }
 
     defaultConfig {
