@@ -8,21 +8,22 @@ namespace lsplant {
 
 inline namespace v1 {
 /// \struct InitInfo
+/// \brief Information and configuration that are needed to call #Init()
 struct InitInfo {
     /// \brief Type of inline hook function.
-    /// In \p std::function form so that user can use lambda expression with capture list.<br>
+    /// In \ref std::function form so that user can use lambda expression with capture list.<br>
     /// \p target is the target function to be hooked.<br>
     /// \p hooker is the hooker function to replace the \p target function.<br>
     /// \p return is the backup function that points to the previous target function.
     /// it should return null if hook fails and nonnull if successes.
     using InlineHookFunType = std::function<void *(void *target, void *hooker)>;
     /// \brief Type of inline unhook function.
-    /// In \p std::function form so that user can use lambda expression with capture list.<br>
+    /// In \ref std::function form so that user can use lambda expression with capture list.<br>
     /// \p func is the target function that is previously hooked.<br>
     /// \p return should indicate the status of unhooking.<br>
     using InlineUnhookFunType = std::function<bool(void *func)>;
     /// \brief Type of symbol resolver to \p libart.so.
-    /// In \p std::function form so that user can use lambda expression with capture list.<br>
+    /// In \ref std::function form so that user can use lambda expression with capture list.<br>
     /// \p symbol_name is the symbol name that needs to retrieve.<br>
     /// \p return is the absolute address in the memory that points to the target symbol. It should
     /// be null if the symbol cannot be found. <br>
@@ -51,11 +52,12 @@ struct InitInfo {
 /// \brief Initialize LSPlant for the proceeding hook.
 /// It mainly prefetch needed symbols and hook some functions.
 /// \param[in] env The Java environment. Must not be null.
-/// \param[in] info The information for initialized. \ref InitInfo.
+/// \param[in] info The information for initialized.
 /// Basically, the info provides the inline hooker and unhooker together with a symbol resolver of
 /// libart.so to hook and extract needed native functions of ART.
 /// \return Indicate whether initialization succeed. Behavior is undefined if calling other
 /// LSPlant interfaces before initialization or after a fail initialization.
+/// \see InitInfo.
 [[nodiscard]] [[maybe_unused]] [[gnu::visibility("default")]]
 bool Init(JNIEnv *env, const InitInfo &info);
 
@@ -95,23 +97,24 @@ bool Init(JNIEnv *env, const InitInfo &info);
 jmethodID
 Hook(JNIEnv *env, jmethodID target_method, jobject hooker_object, jmethodID callback_method);
 
-/// Unhook a Java function that is previously hooked.
+/// \brief Unhook a Java function that is previously hooked.
 /// \param[in] env The Java environment.
 /// \param[in] target_method The target method that is previously hooked.
 /// \return Indicate whether the unhook succeed.
-/// \note please read Hook's note for more details.
+/// \note please read #Hook()'s note for more details.
+/// \see Hook()
 [[nodiscard]] [[maybe_unused]] [[gnu::visibility("default")]]
 bool UnHook(JNIEnv *env, jmethodID target_method);
 
-/// Check if a Java function is hooked by LSPlant or not
+/// \brief Check if a Java function is hooked by LSPlant or not
 /// \param[in] env The Java environment.
 /// \param[in] method The method to check if it was hooked or not.
 /// \return If \p method hooked, ture; otherwise, false.
-/// \note please read Hook's note for more details.
+/// \note please read #Hook()'s note for more details.
 [[nodiscard]] [[maybe_unused]] [[gnu::visibility("default")]]
 bool IsHooked(JNIEnv *env, jmethodID method);
 
-/// Deoptimize a method to avoid hooked callee not being called because of inline
+/// \brief Deoptimize a method to avoid hooked callee not being called because of inline
 /// \param[in] env The Java environment.
 /// \param[in] method The method to deoptimize. By deoptimizing the method, the method will back all
 /// callee without inlining. For example, if you hooked a short method B that is invoked by method
@@ -127,7 +130,7 @@ bool IsHooked(JNIEnv *env, jmethodID method);
 [[nodiscard]] [[maybe_unused]] [[gnu::visibility("default")]]
 bool Deoptimize(JNIEnv *env, jmethodID method);
 
-/// Get the registered native function pointer of a native function. It helps user to hook native
+/// \brief Get the registered native function pointer of a native function. It helps user to hook native
 /// methods directly by backing up the native function pointer this function returns and
 /// env->registerNatives another native function pointer.
 /// \param[in] env The Java environment.
