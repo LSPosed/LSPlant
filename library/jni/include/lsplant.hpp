@@ -9,19 +9,19 @@ namespace lsplant {
 inline namespace v1 {
 /// \struct InitInfo
 struct InitInfo {
-    /// \typedef Type of inline hook function.
+    /// \brief Type of inline hook function.
     /// In \p std::function form so that user can use lambda expression with capture list.<br>
     /// \p target is the target function to be hooked.<br>
     /// \p hooker is the hooker function to replace the \p target function.<br>
     /// \p return is the backup function that points to the previous target function.
     /// it should return null if hook fails and nonnull if successes.
     using InlineHookFunType = std::function<void *(void *target, void *hooker)>;
-    /// \typedef Type of inline unhook function.
+    /// \brief Type of inline unhook function.
     /// In \p std::function form so that user can use lambda expression with capture list.<br>
     /// \p func is the target function that is previously hooked.<br>
     /// \p return should indicate the status of unhooking.<br>
     using InlineUnhookFunType = std::function<bool(void *func)>;
-    /// \typedef Type of symbol resolver to \p libart.so.
+    /// \brief Type of symbol resolver to \p libart.so.
     /// In \p std::function form so that user can use lambda expression with capture list.<br>
     /// \p symbol_name is the symbol name that needs to retrieve.<br>
     /// \p return is the absolute address in the memory that points to the target symbol. It should
