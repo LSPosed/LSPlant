@@ -75,6 +75,7 @@ jmethodID class_is_proxy = nullptr;
 jclass in_memory_class_loader = nullptr;
 jmethodID in_memory_class_loader_init = nullptr;
 jmethodID load_class = nullptr;
+jmethodID set_accessible = nullptr;
 jclass executable = nullptr;
 
 std::string generated_class_name;
@@ -139,7 +140,7 @@ bool InitJNI(JNIEnv *env) {
     }
 
     if (class_is_proxy = JNI_GetMethodID(env, clazz, "isProxy", "()Z"); !class_is_proxy) {
-        LOGE("Failed to find isProxy");
+        LOGE("Failed to find Class.isProxy");
         return false;
     }
 
@@ -153,6 +154,16 @@ bool InitJNI(JNIEnv *env) {
     if (!load_class) {
         load_class = JNI_GetMethodID(env, in_memory_class_loader, "findClass",
                                      "(Ljava/lang/String;)Ljava/lang/Class;");
+    }
+    auto accessible_object = JNI_FindClass(env, "java/lang/reflect/AccessibleObject");
+    if (!accessible_object) {
+        LOGE("Failed to find AccessibleObject");
+        return false;
+    }
+    if (set_accessible = JNI_GetMethodID(env, accessible_object, "setAccessible", "(Z)V");
+            !set_accessible) {
+        LOGE("Failed to find AccessibleObject.setAccessible");
+        return false;
     }
     return true;
 }
@@ -509,6 +520,8 @@ Hook(JNIEnv *env, jobject target_method, jobject hooker_object, jobject callback
 
     auto reflected_hook = JNI_ToReflectedMethod(env, built_class, hook_method, is_static);
     auto reflected_backup = JNI_ToReflectedMethod(env, built_class, backup_method, is_static);
+
+    JNI_CallVoidMethod(env, reflected_backup, set_accessible, JNI_TRUE);
 
     auto *hook = ArtMethod::FromReflectedMethod(env, reflected_hook);
     auto *backup = ArtMethod::FromReflectedMethod(env, reflected_backup);
