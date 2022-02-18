@@ -6,8 +6,7 @@
 #include <jni.h>
 
 #include <string>
-
-#include "logging.hpp"
+#include <string_view>
 
 #define DISALLOW_COPY_AND_ASSIGN(TypeName)                                                         \
     TypeName(const TypeName &) = delete;                                                           \
@@ -214,7 +213,13 @@ requires(std::is_function_v<Func>)
 
         ~finally() {
             if (auto exception = ClearException(env_)) {
-                LOGE("%s", JUTFString(env_, exception.get()).get());
+                __android_log_print(ANDROID_LOG_ERROR,
+#ifdef LOG_TAG
+                                    LOG_TAG,
+#else
+                                    "JNIHelper",
+#endif
+                                    "%s", JUTFString(env_, exception.get()).get());
             }
         }
 

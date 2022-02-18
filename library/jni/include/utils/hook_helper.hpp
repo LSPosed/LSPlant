@@ -2,9 +2,7 @@
 
 #include <concepts>
 
-#include "hook_helper.hpp"
 #include "jni_helper.hpp"
-#include "logging.hpp"
 
 #define CONCATENATE(a, b) a##b
 
@@ -181,7 +179,14 @@ inline static bool HookSym(const HookHandler &handler, T &arg) {
 template <HookerType T, HookerType... Args>
 inline static bool HookSyms(const HookHandler &handle, T &first, Args &...rest) {
     if (!(HookSym(handle, first) || ... || HookSym(handle, rest))) {
-        LOGW("Hook Fails: %*s", static_cast<int>(first.sym.size()), first.sym.data());
+        __android_log_print(ANDROID_LOG_ERROR,
+#ifdef LOG_TAG
+                            LOG_TAG,
+#else
+                            "HookHelper",
+#endif
+                            "Hook Fails: %*s", static_cast<int>(first.sym.size()),
+                            first.sym.data());
         return false;
     }
     return true;
