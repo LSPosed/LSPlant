@@ -34,34 +34,34 @@ using art::jit::JitCodeCache;
 
 namespace {
 template<typename T, T... chars>
-inline consteval auto operator ""_arr() {
-    return std::array<T, sizeof...(chars)>{ chars... };
+inline consteval auto operator ""_uarr() {
+    return std::array<unsigned char, sizeof...(chars)>{ static_cast<unsigned char>(chars)... };
 }
 
 consteval inline auto GetTrampoline() {
     if constexpr(kArch == Arch::kArm) {
         return std::make_tuple(
-                "\x00\x00\x9f\xe5\x20\xf0\x90\xe5\x78\x56\x34\x12"_arr,
+                "\x00\x00\x9f\xe5\x20\xf0\x90\xe5\x78\x56\x34\x12"_uarr,
                 // NOLINTNEXTLINE
-                uint8_t{ 4u }, uintptr_t{ 8u });
+                uint8_t{ 32u }, uintptr_t{ 8u });
     }
     if constexpr(kArch == Arch::kArm64) {
         return std::make_tuple(
-                "\x60\x00\x00\x58\x10\x00\x40\xf8\x00\x02\x1f\xd6\x78\x56\x34\x12\x78\x56\x34\x12"_arr,
+                "\x60\x00\x00\x58\x10\x00\x40\xf8\x00\x02\x1f\xd6\x78\x56\x34\x12\x78\x56\x34\x12"_uarr,
                 // NOLINTNEXTLINE
-                uint16_t{ 5u }, uintptr_t{ 12u });
+                uint8_t{ 44u }, uintptr_t{ 12u });
     }
     if constexpr(kArch == Arch::kX86) {
         return std::make_tuple(
-                "\xb8\x78\x56\x34\x12\xff\x70\x20\xc3"_arr,
+                "\xb8\x78\x56\x34\x12\xff\x70\x20\xc3"_uarr,
                 // NOLINTNEXTLINE
-                uint8_t{ 7u }, uintptr_t{ 1u });
+                uint8_t{ 56u }, uintptr_t{ 1u });
     }
     if constexpr(kArch == Arch::kX8664) {
         return std::make_tuple(
-                "\x48\xbf\x78\x56\x34\x12\x78\x56\x34\x12\xff\x77\x20\xc3"_arr,
+                "\x48\xbf\x78\x56\x34\x12\x78\x56\x34\x12\xff\x77\x20\xc3"_uarr,
                 // NOLINTNEXTLINE
-                uint8_t{ 12u }, uintptr_t{ 2u });
+                uint8_t{ 96u }, uintptr_t{ 2u });
     }
 }
 
@@ -168,9 +168,10 @@ bool InitJNI(JNIEnv *env) {
     return true;
 }
 
-inline void UpdateTrampoline(decltype(entry_point_offset) offset) {
-    *reinterpret_cast<decltype(entry_point_offset) *>(trampoline.data() +
-                                                      entry_point_offset) = offset;
+inline void UpdateTrampoline(uint8_t offset) {
+    trampoline[entry_point_offset / CHAR_BIT] |= offset << (entry_point_offset % CHAR_BIT);
+    trampoline[entry_point_offset / CHAR_BIT + 1] |=
+            offset >> (CHAR_BIT - entry_point_offset % CHAR_BIT);
 }
 
 bool InitNative(JNIEnv *env, const HookHandler &handler) {
