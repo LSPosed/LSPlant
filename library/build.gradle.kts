@@ -40,6 +40,15 @@ android {
     prefab {
         create("lsplant") {
             headers = "jni/include"
+            libraryName = "liblsplant"
+            name = "lsplant"
+        }
+
+        // only for unit test
+        create("dex_builder") {
+            headers = "jni/external/dex_builder/include"
+            libraryName = "libdex_builder"
+            name = "dex_builder"
         }
     }
 

@@ -13,7 +13,7 @@
 #include "art/runtime/art_method.hpp"
 #include "art/thread_list.hpp"
 #include "art/runtime/class_linker.hpp"
-#include "external/dex_builder/dex_builder.h"
+#include "dex_builder.h"
 #include "common.hpp"
 
 #pragma clang diagnostic push
