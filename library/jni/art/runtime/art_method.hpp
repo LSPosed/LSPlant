@@ -79,11 +79,6 @@ public:
         return PrettyMethod(this, with_signature);
     }
 
-    mirror::Class *GetDeclaringClass() {
-        return *reinterpret_cast<mirror::Class **>(reinterpret_cast<uintptr_t>(this) +
-                                                   declaring_class_offset);
-    }
-
     static art::ArtMethod *FromReflectedMethod(JNIEnv *env, jobject method) {
         return reinterpret_cast<art::ArtMethod *>(JNI_GetLongField(env, method, art_method_field));
     }
@@ -117,10 +112,10 @@ public:
             LOGE("Throwable has less than 2 constructors");
             return false;
         }
-        auto *first = FromReflectedMethod(env,
-                                          JNI_GetObjectArrayElement(env, constructors, 0).get());
-        auto *second = FromReflectedMethod(env,
-                                           JNI_GetObjectArrayElement(env, constructors, 1).get());
+        auto first_ctor = JNI_GetObjectArrayElement(env, constructors, 0);
+        auto second_ctor = JNI_GetObjectArrayElement(env, constructors, 1);
+        auto *first = FromReflectedMethod(env, first_ctor.get());
+        auto *second = FromReflectedMethod(env, second_ctor.get());
         art_method_size = reinterpret_cast<uintptr_t>(second) - reinterpret_cast<uintptr_t>(first);
         LOGD("ArtMethod size: %zu", art_method_size);
 
@@ -134,11 +129,22 @@ public:
         data_offset = entry_point_offset - sizeof(void *);
         LOGD("ArtMethod::data offset: %zu", data_offset);
 
-        declaring_class_offset = 0U;
-        LOGD("ArtMethod::declaring_class offset: %zu", declaring_class_offset);
-
-        access_flags_offset = 4U;
-        LOGD("ArtMethod::access_flags offset: %zu", access_flags_offset);
+        if (auto access_flags_field = JNI_GetFieldID(env, executable, "accessFlags", "I");
+                access_flags_field) {
+            uint32_t real_flags = JNI_GetIntField(env, first_ctor, access_flags_field);
+            for (size_t i = 0; i < art_method_size; i += sizeof(uint32_t)) {
+                if (*reinterpret_cast<uint32_t *>(reinterpret_cast<uintptr_t>(first) + i) ==
+                    real_flags) {
+                    access_flags_offset = i;
+                    LOGD("ArtMethod::access_flags offset: %zu", access_flags_offset);
+                    break;
+                }
+            }
+        }
+        if (access_flags_offset == 0) {
+            LOGW("Failed to find accessFlags field. Fallback to 4.");
+            access_flags_offset = 4U;
+        }
         auto sdk_int = GetAndroidApiLevel();
 
         if (sdk_int < __ANDROID_API_R__) kAccPreCompiled = 0;
@@ -171,7 +177,6 @@ private:
     inline static size_t art_method_size = 0;
     inline static size_t entry_point_offset = 0;
     inline static size_t data_offset = 0;
-    inline static size_t declaring_class_offset = 0;
     inline static size_t access_flags_offset = 0;
     inline static uint32_t kAccFastInterpreterToInterpreterInvoke = 0x40000000;
     inline static uint32_t kAccPreCompiled = 0x00200000;

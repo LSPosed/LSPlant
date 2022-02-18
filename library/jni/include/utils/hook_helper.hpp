@@ -53,7 +53,7 @@ struct tstring : public std::integer_sequence<char, chars...> {
     }
 
 private:
-    constexpr static char str_[]{ chars..., '\0' };
+    inline static constexpr char str_[]{ chars..., '\0' };
 };
 
 template<typename T, T... chars>
