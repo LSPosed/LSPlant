@@ -448,20 +448,17 @@ bool Init(JNIEnv *env, const InitInfo &info) {
 }
 
 
-// TODO: sync? does not record hook immediately
 [[maybe_unused]]
-jmethodID
-Hook(JNIEnv *env, jmethodID target_method, jobject hooker_object, jmethodID callback_method) {
-    auto reflected_target = JNI_ToReflectedMethod(env, jclass{ nullptr }, target_method, false);
-    auto reflected_callback = JNI_ToReflectedMethod(env, jclass{ nullptr }, callback_method, false);
+jobject
+Hook(JNIEnv *env, jobject target_method, jobject hooker_object, jobject callback_method) {
     jmethodID hook_method = nullptr;
     jmethodID backup_method = nullptr;
     jfieldID hooker_field = nullptr;
 
     auto target_class = JNI_Cast<jclass>(
-            JNI_CallObjectMethod(env, reflected_target, method_get_declaring_class));
+            JNI_CallObjectMethod(env, target_method, method_get_declaring_class));
     bool is_proxy = JNI_CallBooleanMethod(env, target_class, class_is_proxy);
-    auto *target = ArtMethod::FromReflectedMethod(env, reflected_target);
+    auto *target = ArtMethod::FromReflectedMethod(env, target_method);
     bool is_static = target->IsStatic();
 
     if (IsHooked(target) || IsPending(target)) {
@@ -472,22 +469,23 @@ Hook(JNIEnv *env, jmethodID target_method, jobject hooker_object, jmethodID call
     ScopedLocalRef<jclass> built_class{ env };
     {
         auto callback_name = JNI_Cast<jstring>(
-                JNI_CallObjectMethod(env, reflected_callback, method_get_name));
+                JNI_CallObjectMethod(env, callback_method, method_get_name));
         JUTFString method_name(callback_name);
-        auto callback_class = JNI_Cast<jclass>(JNI_CallObjectMethod(env, reflected_callback,
+        auto callback_class = JNI_Cast<jclass>(JNI_CallObjectMethod(env, callback_method,
                                                                     method_get_declaring_class));
         auto callback_class_loader = JNI_CallObjectMethod(env, callback_class,
                                                           class_get_class_loader);
         auto callback_class_name = JNI_Cast<jstring>(JNI_CallObjectMethod(env, callback_class,
                                                                           class_get_canonical_name));
         JUTFString class_name(callback_class_name);
-        if (env->IsInstanceOf(hooker_object, callback_class)) {
+        if (!env->IsInstanceOf(hooker_object, callback_class)) {
             LOGE("callback_method is not a method of hooker_object");
             return nullptr;
         }
         std::tie(built_class, hooker_field, hook_method, backup_method) =
                 WrapScope(env, BuildDex(env, callback_class_loader,
-                                        ArtMethod::GetMethodShorty(env, target_method),
+                                        ArtMethod::GetMethodShorty(env, env->FromReflectedMethod(
+                                                target_method)),
                                         is_static,
                                         method_name.get(),
                                         class_name.get(),
@@ -498,8 +496,8 @@ Hook(JNIEnv *env, jmethodID target_method, jobject hooker_object, jmethodID call
         }
     }
 
-    auto reflected_hook = JNI_ToReflectedMethod(env, jclass{ nullptr }, hook_method, false);
-    auto reflected_backup = JNI_ToReflectedMethod(env, jclass{ nullptr }, backup_method, false);
+    auto reflected_hook = JNI_ToReflectedMethod(env, built_class, hook_method, is_static);
+    auto reflected_backup = JNI_ToReflectedMethod(env, built_class, backup_method, is_static);
 
     auto *hook = ArtMethod::FromReflectedMethod(env, reflected_hook);
     auto *backup = ArtMethod::FromReflectedMethod(env, reflected_backup);
@@ -518,21 +516,20 @@ Hook(JNIEnv *env, jmethodID target_method, jobject hooker_object, jmethodID call
             return nullptr;
         }
         RecordPending(class_def, target, hook, backup);
-        return backup_method;
+        return reflected_backup;
     }
     if (DoHook(target, hook, backup)) {
         RecordHooked(target, JNI_NewGlobalRef(env, reflected_backup));
         if (!is_proxy) [[likely]] RecordJitMovement(target, backup);
-        return backup_method;
+        return reflected_backup;
     }
 
     return nullptr;
 }
 
 [[maybe_unused]]
-bool UnHook(JNIEnv *env, jmethodID target_method) {
-    auto reflected_target = JNI_ToReflectedMethod(env, jclass{ nullptr }, target_method, false);
-    auto *target = ArtMethod::FromReflectedMethod(env, reflected_target);
+bool UnHook(JNIEnv *env, jobject target_method) {
+    auto *target = ArtMethod::FromReflectedMethod(env, target_method);
     jobject reflected_backup = nullptr;
     {
         std::unique_lock lk(pending_methods_lock_);
@@ -558,9 +555,8 @@ bool UnHook(JNIEnv *env, jmethodID target_method) {
 }
 
 [[maybe_unused]]
-bool IsHooked(JNIEnv *env, jmethodID method) {
-    auto reflected = JNI_ToReflectedMethod(env, jclass{ nullptr }, method, false);
-    auto *art_method = ArtMethod::FromReflectedMethod(env, reflected);
+bool IsHooked(JNIEnv *env, jobject method) {
+    auto *art_method = ArtMethod::FromReflectedMethod(env, method);
 
     if (std::shared_lock lk(hooked_methods_lock_); hooked_methods_.contains(art_method)) {
         return true;
@@ -572,9 +568,8 @@ bool IsHooked(JNIEnv *env, jmethodID method) {
 }
 
 [[maybe_unused]]
-bool Deoptimize(JNIEnv *env, jmethodID method) {
-    auto reflected = JNI_ToReflectedMethod(env, jclass{ nullptr }, method, false);
-    auto *art_method = ArtMethod::FromReflectedMethod(env, reflected);
+bool Deoptimize(JNIEnv *env, jobject method) {
+    auto *art_method = ArtMethod::FromReflectedMethod(env, method);
     if (IsHooked(art_method)) {
         std::shared_lock lk(hooked_methods_lock_);
         auto it = hooked_methods_.find(art_method);
@@ -590,9 +585,8 @@ bool Deoptimize(JNIEnv *env, jmethodID method) {
 }
 
 [[maybe_unused]]
-void *GetNativeFunction(JNIEnv *env, jmethodID method) {
-    auto reflected = JNI_ToReflectedMethod(env, jclass{ nullptr }, method, false);
-    auto *art_method = ArtMethod::FromReflectedMethod(env, reflected);
+void *GetNativeFunction(JNIEnv *env, jobject method) {
+    auto *art_method = ArtMethod::FromReflectedMethod(env, method);
     if (!art_method->IsNative()) return nullptr;
     return art_method->GetData();
 }

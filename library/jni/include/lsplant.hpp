@@ -94,8 +94,8 @@ bool Init(JNIEnv *env, const InitInfo &info);
 /// will success. If you call this with different \p hooker_object on the same target_method
 /// simultaneously, the behavior is undefined.
 [[nodiscard]] [[maybe_unused]] [[gnu::visibility("default")]]
-jmethodID
-Hook(JNIEnv *env, jmethodID target_method, jobject hooker_object, jmethodID callback_method);
+jobject
+Hook(JNIEnv *env, jobject target_method, jobject hooker_object, jobject callback_method);
 
 /// \brief Unhook a Java function that is previously hooked.
 /// \param[in] env The Java environment.
@@ -104,7 +104,7 @@ Hook(JNIEnv *env, jmethodID target_method, jobject hooker_object, jmethodID call
 /// \note please read #Hook()'s note for more details.
 /// \see Hook()
 [[nodiscard]] [[maybe_unused]] [[gnu::visibility("default")]]
-bool UnHook(JNIEnv *env, jmethodID target_method);
+bool UnHook(JNIEnv *env, jobject target_method);
 
 /// \brief Check if a Java function is hooked by LSPlant or not
 /// \param[in] env The Java environment.
@@ -112,7 +112,7 @@ bool UnHook(JNIEnv *env, jmethodID target_method);
 /// \return If \p method hooked, ture; otherwise, false.
 /// \note please read #Hook()'s note for more details.
 [[nodiscard]] [[maybe_unused]] [[gnu::visibility("default")]]
-bool IsHooked(JNIEnv *env, jmethodID method);
+bool IsHooked(JNIEnv *env, jobject method);
 
 /// \brief Deoptimize a method to avoid hooked callee not being called because of inline
 /// \param[in] env The Java environment.
@@ -128,7 +128,7 @@ bool IsHooked(JNIEnv *env, jmethodID method);
 /// \note It is safe to call deoptimizing on a hooked method because the deoptimization will
 /// perform on the backup method instead.
 [[nodiscard]] [[maybe_unused]] [[gnu::visibility("default")]]
-bool Deoptimize(JNIEnv *env, jmethodID method);
+bool Deoptimize(JNIEnv *env, jobject method);
 
 /// \brief Get the registered native function pointer of a native function. It helps user to hook native
 /// methods directly by backing up the native function pointer this function returns and
@@ -138,6 +138,6 @@ bool Deoptimize(JNIEnv *env, jmethodID method);
 /// \return The native function pointer the \p method previously registered. If it has not been
 /// registered or it is not a native method, null is returned instead.
 [[nodiscard]] [[maybe_unused]] [[gnu::visibility("default")]]
-void *GetNativeFunction(JNIEnv *env, jmethodID method);
+void *GetNativeFunction(JNIEnv *env, jobject method);
 }
 } // namespace lsplant
