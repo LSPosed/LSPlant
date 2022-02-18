@@ -7,4 +7,8 @@ public class LSPTest {
     }
 
     native static boolean initHooker();
+
+    static boolean staticMethod() {
+        return false;
+    }
 }

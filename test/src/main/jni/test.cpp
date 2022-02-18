@@ -37,6 +37,18 @@ Java_org_lsposed_lsplant_LSPTest_initHooker(JNIEnv*, jclass) {
     return init_result;
 }
 
+extern "C"
+JNIEXPORT jobject JNICALL
+Java_org_lsposed_lsplant_Hooker_doHook(JNIEnv* env, jobject thiz, jobject original, jobject callback) {
+    return lsplant::Hook(env, original, thiz, callback);
+}
+
+extern "C"
+JNIEXPORT jboolean JNICALL
+Java_org_lsposed_lsplant_Hooker_doUnhook(JNIEnv* env, jobject, jobject replacement) {
+    return lsplant::UnHook(env, replacement);
+}
+
 JNIEXPORT jint JNICALL
 JNI_OnLoad(JavaVM* vm, void* reserved) {
     JNIEnv* env;
@@ -48,7 +60,7 @@ JNI_OnLoad(JavaVM* vm, void* reserved) {
             .inline_hooker = InlineHooker,
             .inline_unhooker = InlineUnhooker,
             .art_symbol_resolver = [&art](std::string_view symbol) -> void* {
-                auto *out = reinterpret_cast<void*>(art.getSymbAddress(symbol));
+                auto* out = reinterpret_cast<void*>(art.getSymbAddress(symbol));
                 return out;
             }
     };
