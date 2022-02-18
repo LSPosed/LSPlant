@@ -75,6 +75,7 @@ jmethodID class_is_proxy = nullptr;
 jclass in_memory_class_loader = nullptr;
 jmethodID in_memory_class_loader_init = nullptr;
 jmethodID load_class = nullptr;
+jclass executable = nullptr;
 
 std::string generated_class_name;
 std::string generated_source_name;
@@ -102,7 +103,7 @@ bool InitConfig(const InitInfo &info) {
 }
 
 bool InitJNI(JNIEnv *env) {
-    auto executable = JNI_FindClass(env, "java/lang/reflect/Executable");
+    executable = JNI_NewGlobalRef(env, JNI_FindClass(env, "java/lang/reflect/Executable"));
     if (!executable) {
         LOGE("Failed to found Executable");
         return false;
@@ -452,6 +453,15 @@ bool Init(JNIEnv *env, const InitInfo &info) {
 [[maybe_unused]]
 jobject
 Hook(JNIEnv *env, jobject target_method, jobject hooker_object, jobject callback_method) {
+    if (!env->IsInstanceOf(target_method, executable)) {
+        LOGE("target method is not an executable");
+        return nullptr;
+    }
+    if (!env->IsInstanceOf(callback_method, executable)) {
+        LOGE("callback method is not an executable");
+        return nullptr;
+    }
+
     jmethodID hook_method = nullptr;
     jmethodID backup_method = nullptr;
     jfieldID hooker_field = nullptr;
@@ -533,6 +543,10 @@ Hook(JNIEnv *env, jobject target_method, jobject hooker_object, jobject callback
 
 [[maybe_unused]]
 bool UnHook(JNIEnv *env, jobject target_method) {
+    if (!env->IsInstanceOf(target_method, executable)) {
+        LOGE("target method is not an executable");
+        return false;
+    }
     auto *target = ArtMethod::FromReflectedMethod(env, target_method);
     jobject reflected_backup = nullptr;
     {
@@ -560,6 +574,10 @@ bool UnHook(JNIEnv *env, jobject target_method) {
 
 [[maybe_unused]]
 bool IsHooked(JNIEnv *env, jobject method) {
+    if (!env->IsInstanceOf(method, executable)) {
+        LOGE("method is not an executable");
+        return false;
+    }
     auto *art_method = ArtMethod::FromReflectedMethod(env, method);
 
     if (std::shared_lock lk(hooked_methods_lock_); hooked_methods_.contains(art_method)) {
@@ -573,6 +591,10 @@ bool IsHooked(JNIEnv *env, jobject method) {
 
 [[maybe_unused]]
 bool Deoptimize(JNIEnv *env, jobject method) {
+    if (!env->IsInstanceOf(method, executable)) {
+        LOGE("method is not an executable");
+        return false;
+    }
     auto *art_method = ArtMethod::FromReflectedMethod(env, method);
     if (IsHooked(art_method)) {
         std::shared_lock lk(hooked_methods_lock_);
@@ -590,8 +612,15 @@ bool Deoptimize(JNIEnv *env, jobject method) {
 
 [[maybe_unused]]
 void *GetNativeFunction(JNIEnv *env, jobject method) {
+    if (!env->IsInstanceOf(method, executable)) {
+        LOGE("method is not an executable");
+        return nullptr;
+    }
     auto *art_method = ArtMethod::FromReflectedMethod(env, method);
-    if (!art_method->IsNative()) return nullptr;
+    if (!art_method->IsNative()) {
+        LOGE("method is not native");
+        return nullptr;
+    }
     return art_method->GetData();
 }
 

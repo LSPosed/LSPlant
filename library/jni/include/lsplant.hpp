@@ -73,10 +73,10 @@ bool Init(JNIEnv *env, const InitInfo &info);
 /// conflict.
 /// \param[in] callback_method The callback method to the \p hooker_object is used to replace the
 /// \p target_method. Whenever the \p target_method is invoked, the \p callback_method will be
-/// inked instead of the original \p target_method. The signature of the \p callback_method must
+/// linked instead of the original \p target_method. The signature of the \p callback_method must
 /// be:<br>
 /// \code{.java}
-/// Object callback_method(Object []args)
+/// public Object callback_method(Object []args)
 /// \endcode<br>
 /// That is, the return type must be \p Object and the parameter type must be \b Object[]. Behavior
 /// is undefined if the signature does not match the requirement.
