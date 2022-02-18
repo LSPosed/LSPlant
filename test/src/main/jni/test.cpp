@@ -1,6 +1,8 @@
 #include <dobby.h>
 #include <lsplant.hpp>
 #include <sys/mman.h>
+#include "elf_util.h"
+#include "logging.h"
 
 #define _uintval(p)               reinterpret_cast<uintptr_t>(p)
 #define _ptr(p)                   reinterpret_cast<void *>(p)
@@ -29,10 +31,6 @@ bool InlineUnhooker(void* func) {
     return DobbyDestroy(func) == RT_SUCCESS;
 }
 
-void* ArtSymbolResolver(std::string_view symbol_name) {
-    return DobbySymbolResolver("libart.so", symbol_name.data());
-}
-
 extern "C"
 JNIEXPORT jboolean JNICALL
 Java_org_lsposed_lsplant_LSPTest_initHooker(JNIEnv*, jclass) {
@@ -45,10 +43,14 @@ JNI_OnLoad(JavaVM* vm, void* reserved) {
     if (vm->GetEnv((void**) &env, JNI_VERSION_1_6) != JNI_OK) {
         return JNI_ERR;
     }
+    SandHook::ElfImg art("libart.so");
     lsplant::InitInfo initInfo{
             .inline_hooker = InlineHooker,
             .inline_unhooker = InlineUnhooker,
-            .art_symbol_resolver = ArtSymbolResolver
+            .art_symbol_resolver = [&art](std::string_view symbol) -> void* {
+                auto *out = reinterpret_cast<void*>(art.getSymbAddress(symbol));
+                return out;
+            }
     };
     init_result = lsplant::Init(env, initInfo);
     return JNI_VERSION_1_6;
