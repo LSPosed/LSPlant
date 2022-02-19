@@ -80,7 +80,6 @@ android {
                 )
                 cppFlags("-std=c++20", *flags)
                 cFlags("-std=c18", *flags)
-                arguments += "-DCMAKE_VERBOSE_MAKEFILE=ON"
                 arguments += "-DANDROID_STL=c++_shared"
                 val configFlags = arrayOf(
                     "-Oz",

@@ -23,8 +23,6 @@ set(CFLAGS
 target_compile_options(${PROJECT_NAME} PRIVATE ${CFLAGS})
 target_link_options(${PROJECT_NAME} PRIVATE -flto)
 
-target_compile_options(${PROJECT_NAME}_static PRIVATE ${CFLAGS})
-
 target_link_libraries(${PROJECT_NAME} PUBLIC dex_builder log)
 target_link_libraries(${PROJECT_NAME}_static PRIVATE dex_builder_static)
 target_link_libraries(${PROJECT_NAME}_static PUBLIC log)
