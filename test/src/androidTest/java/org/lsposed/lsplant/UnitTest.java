@@ -71,4 +71,30 @@ public class UnitTest {
         Assert.assertFalse(new LSPTest().field);
         Assert.assertFalse(constructor.newInstance().field);
     }
+
+    @Test
+    public void t04_manyParametersMethod() throws NoSuchMethodException, InvocationTargetException, IllegalAccessException {
+        var manyParametersMethod = LSPTest.class.getDeclaredMethod("manyParametersMethod", String.class, boolean.class, byte.class, short.class, int.class, long.class, float.class, double.class, Integer.class, Long.class);
+        var manyParametersReplacement = Replacement.class.getDeclaredMethod("manyParametersReplacement", Hooker.MethodCallback.class);
+        var a = "test";
+        var b = true;
+        var c = (byte) 114;
+        var d = (short) 514;
+        var e = 19;
+        var f = 19L;
+        var g = 810f;
+        var h = 12345f;
+        var o = a + b + c + d + e + f + g + h + e + f;
+        var r = a + b + c + d + e + f + g + h + e + f + "replace";
+        LSPTest test = new LSPTest();
+        Assert.assertEquals(o, test.manyParametersMethod(a, b, c, d, e, f, g, h, e, f));
+
+        Hooker hooker = Hooker.hook(manyParametersMethod, manyParametersReplacement, new Replacement());
+        Assert.assertNotNull(hooker);
+        Assert.assertEquals(r, test.manyParametersMethod(a, b, c, d, e, f, g, h, e, f));
+        Assert.assertEquals(o, hooker.backup.invoke(test, a, b, c, d, e, f, g, h, e, f));
+
+        Assert.assertTrue(hooker.unhook());
+        Assert.assertEquals(o, test.manyParametersMethod(a, b, c, d, e, f, g, h, e, f));
+    }
 }
