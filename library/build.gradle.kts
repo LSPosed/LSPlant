@@ -55,10 +55,45 @@ android {
     defaultConfig {
         minSdk = androidMinSdkVersion
         targetSdk = androidTargetSdkVersion
-
         externalNativeBuild {
-            ndkBuild {
-                arguments += "-j${Runtime.getRuntime().availableProcessors()}"
+            cmake {
+                abiFilters("arm64-v8a", "armeabi-v7a", "x86", "x86_64")
+                val flags = arrayOf(
+                    "-Wall",
+                    "-Werror",
+                    "-Qunused-arguments",
+                    "-Wno-gnu-string-literal-operator-template",
+                    "-fno-rtti",
+                    "-fvisibility=hidden",
+                    "-fvisibility-inlines-hidden",
+                    "-fno-exceptions",
+                    "-fno-stack-protector",
+                    "-fomit-frame-pointer",
+                    "-Wno-builtin-macro-redefined",
+                    "-Wl,--strip-all",
+                    "-ffunction-sections",
+                    "-fdata-sections",
+                    "-Wno-unused-value",
+                    "-Wl,--gc-sections",
+                    "-D__FILE__=__FILE_NAME__",
+                    "-Wl,--exclude-libs,ALL",
+                )
+                cppFlags("-std=c++20", *flags)
+                cFlags("-std=c18", *flags)
+                arguments += "-DCMAKE_VERBOSE_MAKEFILE=ON"
+                arguments += "-DANDROID_STL=c++_shared"
+                val configFlags = arrayOf(
+                    "-Oz",
+                    "-DNDEBUG"
+                ).joinToString(" ")
+                arguments.addAll(
+                    arrayOf(
+                        "-DCMAKE_CXX_FLAGS_RELEASE=$configFlags",
+                        "-DCMAKE_CXX_FLAGS_RELWITHDEBINFO=$configFlags",
+                        "-DCMAKE_C_FLAGS_RELEASE=$configFlags",
+                        "-DCMAKE_C_FLAGS_RELWITHDEBINFO=$configFlags"
+                    )
+                )
             }
         }
     }
@@ -69,8 +104,8 @@ android {
     }
 
     externalNativeBuild {
-        ndkBuild {
-            path("jni/Android.mk")
+        cmake {
+            path("jni/CMakeLists.txt")
         }
     }
 }
