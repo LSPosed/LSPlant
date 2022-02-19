@@ -2,6 +2,7 @@
 
 #include <concepts>
 
+#include "lsplant.hpp"
 #include "jni_helper.hpp"
 
 #define CONCATENATE(a, b) a##b

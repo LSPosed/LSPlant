@@ -368,6 +368,11 @@ template <ScopeOrClass Class, typename... Args>
     return JNI_SafeInvoke(env, &JNIEnv::NewObject, clazz, std::forward<Args>(args)...);
 }
 
+template <typename... Args>
+[[maybe_unused]] inline auto JNI_NewDirectByteBuffer(JNIEnv *env, Args &&...args) {
+    return JNI_SafeInvoke(env, &JNIEnv::NewDirectByteBuffer, std::forward<Args>(args)...);
+}
+
 template <ScopeOrClass Class>
 [[maybe_unused]] inline auto JNI_RegisterNatives(JNIEnv *env, const Class &clazz,
                                                  const JNINativeMethod *methods, jint size) {

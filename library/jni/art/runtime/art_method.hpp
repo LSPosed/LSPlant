@@ -31,16 +31,39 @@ public:
 
     void SetPrivate() {
         auto access_flags = GetAccessFlags();
-        if (!(access_flags & kAccStatic)) {
-            access_flags |= kAccPrivate;
-            access_flags &= ~kAccProtected;
-            access_flags &= ~kAccPublic;
-            SetAccessFlags(access_flags);
-        }
+        access_flags |= kAccPrivate;
+        access_flags &= ~kAccProtected;
+        access_flags &= ~kAccPublic;
+        SetAccessFlags(access_flags);
     }
 
-    bool IsStatic() { return GetAccessFlags() & kAccStatic; }
+    void SetPublic() {
+        auto access_flags = GetAccessFlags();
+        access_flags |= kAccPublic;
+        access_flags &= ~kAccProtected;
+        access_flags &= ~kAccPrivate;
+        SetAccessFlags(access_flags);
+    }
 
+    void SetProtected() {
+        auto access_flags = GetAccessFlags();
+        access_flags |= kAccProtected;
+        access_flags &= ~kAccProtected;
+        access_flags &= ~kAccPublic;
+        SetAccessFlags(access_flags);
+    }
+
+    void SetNonFinal() {
+        auto access_flags = GetAccessFlags();
+        access_flags &= ~kAccFinal;
+        SetAccessFlags(access_flags);
+    }
+
+    bool IsPrivate() { return GetAccessFlags() & kAccPrivate; }
+    bool IsProtected() { return GetAccessFlags() & kAccProtected; }
+    bool IsPublic() { return GetAccessFlags() & kAccPublic; }
+    bool IsFinal() { return GetAccessFlags() & kAccFinal; }
+    bool IsStatic() { return GetAccessFlags() & kAccStatic; }
     bool IsNative() { return GetAccessFlags() & kAccNative; }
 
     void CopyFrom(const ArtMethod *other) { memcpy(this, other, art_method_size); }
@@ -164,6 +187,7 @@ public:
     constexpr static uint32_t kAccProtected = 0x0004;  // field, method, ic
     constexpr static uint32_t kAccStatic = 0x0008;     // field, method, ic
     constexpr static uint32_t kAccNative = 0x0100;     // method
+    constexpr static uint32_t kAccFinal = 0x0010;      // class, field, method, ic
 
 private:
     inline static jfieldID art_method_field = nullptr;

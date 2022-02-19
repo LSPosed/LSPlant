@@ -143,5 +143,13 @@ struct InitInfo {
 /// registered or it is not a native method, null is returned instead.
 [[nodiscard]] [[maybe_unused]] [[gnu::visibility("default")]] void *GetNativeFunction(
     JNIEnv *env, jobject method);
+
+/// \brief Make a class inheritable. It will make the class non-final and make all its private
+/// constructors protected.
+/// \param[in] env The Java environment.
+/// \param[in] target The target class that is to make inheritable.
+/// \return Indicate whether the operation has succeed.
+[[nodiscard]] [[maybe_unused]] [[gnu::visibility("default")]] bool MakeClassInheritable(
+    JNIEnv *env, jclass target);
 }  // namespace v1
 }  // namespace lsplant

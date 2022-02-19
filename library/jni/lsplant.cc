@@ -70,7 +70,8 @@ jmethodID method_get_name = nullptr;
 jmethodID method_get_declaring_class = nullptr;
 jmethodID class_get_name = nullptr;
 jmethodID class_get_class_loader = nullptr;
-jmethodID class_is_proxy = nullptr;
+jmethodID class_get_declared_constructors = nullptr;
+jfieldID class_access_flags = nullptr;
 jclass in_memory_class_loader = nullptr;
 jmethodID in_memory_class_loader_init = nullptr;
 jmethodID load_class = nullptr;
@@ -133,14 +134,21 @@ bool InitJNI(JNIEnv *env) {
         return false;
     }
 
+    if (class_get_declared_constructors = JNI_GetMethodID(env, clazz, "getDeclaredConstructors",
+                                                          "()[Ljava/lang/reflect/Constructor;");
+        !class_get_declared_constructors) {
+        LOGE("Failed to find getDeclaredConstructors");
+        return false;
+    }
+
     if (class_get_name = JNI_GetMethodID(env, clazz, "getName", "()Ljava/lang/String;");
         !class_get_name) {
         LOGE("Failed to find getName");
         return false;
     }
 
-    if (class_is_proxy = JNI_GetMethodID(env, clazz, "isProxy", "()Z"); !class_is_proxy) {
-        LOGE("Failed to find Class.isProxy");
+    if (class_access_flags = JNI_GetFieldID(env, clazz, "accessFlags", "I"); !class_access_flags) {
+        LOGE("Failed to find Class.accessFlags");
         return false;
     }
 
@@ -306,11 +314,10 @@ std::tuple<jclass, jfieldID, jmethodID, jmethodID> BuildDex(JNIEnv *env, jobject
 
     slicer::MemView image{dex_file.CreateImage()};
 
-    auto *dex_buffer = env->NewDirectByteBuffer(const_cast<void *>(image.ptr()), image.size());
+    auto dex_buffer = JNI_NewDirectByteBuffer(env, const_cast<void *>(image.ptr()),
+                                              static_cast<jlong>(image.size()));
     auto my_cl = JNI_NewObject(env, in_memory_class_loader, in_memory_class_loader_init, dex_buffer,
                                class_loader);
-    env->DeleteLocalRef(dex_buffer);
-
     if (my_cl) {
         auto *target_class =
             JNI_Cast<jclass>(
@@ -416,7 +423,7 @@ bool DoHook(ArtMethod *target, ArtMethod *hook, ArtMethod *backup) {
 
         target->SetEntryPoint(trampoline);
 
-        backup->SetPrivate();
+        if (!backup->IsStatic()) backup->SetPrivate();
 
         LOGV("Done hook: target(%p:0x%x) -> %p; backup(%p:0x%x) -> %p; hook(%p:0x%x) -> %p", target,
              target->GetAccessFlags(), target->GetEntryPoint(), backup, backup->GetAccessFlags(),
@@ -460,11 +467,11 @@ using ::lsplant::IsHooked;
 
 [[maybe_unused]] jobject Hook(JNIEnv *env, jobject target_method, jobject hooker_object,
                               jobject callback_method) {
-    if (!env->IsInstanceOf(target_method, executable)) {
+    if (!target_method || !env->IsInstanceOf(target_method, executable)) {
         LOGE("target method is not an executable");
         return nullptr;
     }
-    if (!env->IsInstanceOf(callback_method, executable)) {
+    if (!callback_method || !env->IsInstanceOf(callback_method, executable)) {
         LOGE("callback method is not an executable");
         return nullptr;
     }
@@ -475,7 +482,8 @@ using ::lsplant::IsHooked;
 
     auto target_class =
         JNI_Cast<jclass>(JNI_CallObjectMethod(env, target_method, method_get_declaring_class));
-    bool is_proxy = JNI_CallBooleanMethod(env, target_class, class_is_proxy);
+    constexpr static uint32_t kAccClassIsProxy = 0x00040000;
+    bool is_proxy = JNI_GetIntField(env, target_class, class_access_flags) & kAccClassIsProxy;
     auto *target = ArtMethod::FromReflectedMethod(env, target_method);
     bool is_static = target->IsStatic();
 
@@ -538,8 +546,9 @@ using ::lsplant::IsHooked;
     if (DoHook(target, hook, backup)) {
         jobject global_backup = JNI_NewGlobalRef(env, reflected_backup);
         RecordHooked(target, global_backup);
-        if (!is_proxy) [[likely]]
+        if (!is_proxy) [[likely]] {
             RecordJitMovement(target, backup);
+        }
         return global_backup;
     }
 
@@ -547,7 +556,7 @@ using ::lsplant::IsHooked;
 }
 
 [[maybe_unused]] bool UnHook(JNIEnv *env, jobject target_method) {
-    if (!env->IsInstanceOf(target_method, executable)) {
+    if (!target_method || !env->IsInstanceOf(target_method, executable)) {
         LOGE("target method is not an executable");
         return false;
     }
@@ -577,7 +586,7 @@ using ::lsplant::IsHooked;
 }
 
 [[maybe_unused]] bool IsHooked(JNIEnv *env, jobject method) {
-    if (!env->IsInstanceOf(method, executable)) {
+    if (!method || !env->IsInstanceOf(method, executable)) {
         LOGE("method is not an executable");
         return false;
     }
@@ -593,7 +602,7 @@ using ::lsplant::IsHooked;
 }
 
 [[maybe_unused]] bool Deoptimize(JNIEnv *env, jobject method) {
-    if (!env->IsInstanceOf(method, executable)) {
+    if (!method || !env->IsInstanceOf(method, executable)) {
         LOGE("method is not an executable");
         return false;
     }
@@ -613,7 +622,7 @@ using ::lsplant::IsHooked;
 }
 
 [[maybe_unused]] void *GetNativeFunction(JNIEnv *env, jobject method) {
-    if (!env->IsInstanceOf(method, executable)) {
+    if (!method || !env->IsInstanceOf(method, executable)) {
         LOGE("method is not an executable");
         return nullptr;
     }
@@ -624,7 +633,25 @@ using ::lsplant::IsHooked;
     }
     return art_method->GetData();
 }
-
+[[maybe_unused]] bool MakeClassInheritable(JNIEnv *env, jclass target) {
+    if (!target) {
+        LOGE("target class is null");
+        return false;
+    }
+    auto constructors =
+        JNI_Cast<jobjectArray>(JNI_CallObjectMethod(env, target, class_get_declared_constructors));
+    uint8_t access_flags = env->GetIntField(target, class_access_flags);
+    constexpr static uint32_t kAccFinal = 0x0010;
+    env->SetIntField(target, class_access_flags, static_cast<jint>(access_flags & ~kAccFinal));
+    auto len = constructors ? JNI_GetArrayLength(env, constructors) : 0;
+    for (auto i = 0; i < len; ++i) {
+        auto constructor = JNI_GetObjectArrayElement(env, constructors, i);
+        auto *method = ArtMethod::FromReflectedMethod(env, constructor.get());
+        if (method && (!method->IsPublic() || !method->IsProtected())) method->SetProtected();
+        if (method && method->IsFinal()) method->SetNonFinal();
+    }
+    return true;
+}
 }  // namespace v1
 
 }  // namespace lsplant
