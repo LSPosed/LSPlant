@@ -643,9 +643,7 @@ using ::lsplant::IsHooked;
     uint8_t access_flags = JNI_GetIntField(env, target, class_access_flags);
     constexpr static uint32_t kAccFinal = 0x0010;
     JNI_SetIntField(env, target, class_access_flags, static_cast<jint>(access_flags & ~kAccFinal));
-    auto len = constructors ? JNI_GetArrayLength(env, constructors) : 0;
-    for (auto i = 0; i < len; ++i) {
-        auto constructor = JNI_GetObjectArrayElement(env, constructors, i);
+    for (auto &constructor : constructors) {
         auto *method = ArtMethod::FromReflectedMethod(env, constructor.get());
         if (method && (!method->IsPublic() || !method->IsProtected())) method->SetProtected();
         if (method && method->IsFinal()) method->SetNonFinal();

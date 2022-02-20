@@ -1,6 +1,3 @@
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wunknown-pragmas"
-#pragma ide diagnostic ignored "OCUnusedGlobalDeclarationInspection"
 #pragma once
 
 #include <android/log.h>
@@ -8,6 +5,11 @@
 
 #include <string>
 #include <string_view>
+
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Winvalid-partial-specialization"
+#pragma clang diagnostic ignored "-Wunknown-pragmas"
+#pragma ide diagnostic ignored "OCUnusedGlobalDeclarationInspection"
 
 #define DISALLOW_COPY_AND_ASSIGN(TypeName)                                                         \
     TypeName(const TypeName &) = delete;                                                           \
@@ -31,14 +33,14 @@ class ScopedLocalRef {
 public:
     using BaseType [[maybe_unused]] = T;
 
-    ScopedLocalRef(JNIEnv *env, T localRef) : env_(env), local_ref_(localRef) {}
+    ScopedLocalRef(JNIEnv *env, T local_ref) : env_(env), local_ref_(nullptr) { reset(local_ref); }
 
-    ScopedLocalRef(ScopedLocalRef &&s) noexcept : env_(s.env_), local_ref_(s.release()) {}
+    ScopedLocalRef(ScopedLocalRef &&s) noexcept : ScopedLocalRef(s.env_, s.release()) {}
 
     template <JObject U>
-    ScopedLocalRef(ScopedLocalRef<U> &&s) noexcept : env_(s.env_), local_ref_((T)s.release()) {}
+    ScopedLocalRef(ScopedLocalRef<U> &&s) noexcept : ScopedLocalRef(s.env_, (T)s.release()) {}
 
-    explicit ScopedLocalRef(JNIEnv *env) noexcept : env_(env), local_ref_(nullptr) {}
+    explicit ScopedLocalRef(JNIEnv *env) noexcept : ScopedLocalRef(env, T{nullptr}) {}
 
     ~ScopedLocalRef() { reset(); }
 
@@ -84,6 +86,12 @@ private:
     T local_ref_;
     DISALLOW_COPY_AND_ASSIGN(ScopedLocalRef);
 };
+
+template <typename T>
+concept JArray = std::is_base_of_v<std::remove_pointer_t<_jarray>, std::remove_pointer_t<T>>;
+
+template <JArray T>
+class ScopedLocalRef<T>;
 
 class JNIScopeFrame {
     JNIEnv *env_;
@@ -727,6 +735,307 @@ template <ScopeOrObject Object, ScopeOrClass Class, typename... Args>
                           std::forward<Class>(clazz), method, std::forward<Args>(args)...);
 }
 
+template <ScopeOrClass Class, typename... Args>
+[[maybe_unused]] inline auto JNI_NewObject(JNIEnv *env, Class &&clazz, jmethodID method,
+                                           Args &&...args) {
+    return JNI_SafeInvoke(env, &JNIEnv::NewObject, std::forward<Class>(clazz), method,
+                          std::forward<Args>(args)...);
+}
+
+template <typename... Args>
+[[maybe_unused]] inline auto JNI_NewDirectByteBuffer(JNIEnv *env, Args &&...args) {
+    return JNI_SafeInvoke(env, &JNIEnv::NewDirectByteBuffer, std::forward<Args>(args)...);
+}
+
+template <ScopeOrClass Class>
+[[maybe_unused]] inline auto JNI_RegisterNatives(JNIEnv *env, Class &&clazz,
+                                                 const JNINativeMethod *methods, jint size) {
+    return JNI_SafeInvoke(env, &JNIEnv::RegisterNatives, std::forward<Class>(clazz), methods, size);
+}
+
+template <ScopeOrObject Object, ScopeOrClass Class>
+[[maybe_unused]] inline auto JNI_IsInstanceOf(JNIEnv *env, Object &&obj, Class &&clazz) {
+    return JNI_SafeInvoke(env, &JNIEnv::IsInstanceOf, std::forward<Object>(obj),
+                          std::forward<Class>(clazz));
+}
+
+template <ScopeOrObject Object>
+[[maybe_unused]] inline auto JNI_NewGlobalRef(JNIEnv *env, Object &&x) {
+    return (decltype(UnwrapScope(std::forward<Object>(x))))env->NewGlobalRef(
+        UnwrapScope(std::forward<Object>(x)));
+}
+
+template <typename U, typename T>
+[[maybe_unused]] inline auto JNI_Cast(ScopedLocalRef<T> &&x) requires(
+    std::is_convertible_v<T, _jobject *>) {
+    return ScopedLocalRef<U>(std::move(x));
+}
+
+[[maybe_unused]] inline auto JNI_NewDirectByteBuffer(JNIEnv *env, void *address, jlong capacity) {
+    return JNI_SafeInvoke(env, &JNIEnv::NewDirectByteBuffer, address, capacity);
+}
+
+template <JArray T>
+struct JArrayUnderlyingTypeHelper;
+
+template <>
+struct JArrayUnderlyingTypeHelper<jobjectArray> {
+    using Type = ScopedLocalRef<jobject>;
+};
+
+template <>
+struct JArrayUnderlyingTypeHelper<jbooleanArray> {
+    using Type = jboolean;
+};
+
+template <>
+struct JArrayUnderlyingTypeHelper<jbyteArray> {
+    using Type = jbyte;
+};
+
+template <>
+struct JArrayUnderlyingTypeHelper<jcharArray> {
+    using Type = jchar;
+};
+
+template <>
+struct JArrayUnderlyingTypeHelper<jshortArray> {
+    using Type = jshort;
+};
+
+template <>
+struct JArrayUnderlyingTypeHelper<jintArray> {
+    using Type = jint;
+};
+
+template <>
+struct JArrayUnderlyingTypeHelper<jlongArray> {
+    using Type = jlong;
+};
+
+template <>
+struct JArrayUnderlyingTypeHelper<jfloatArray> {
+    using Type = jfloat;
+};
+
+template <>
+struct JArrayUnderlyingTypeHelper<jdoubleArray> {
+    using Type = jdouble;
+};
+
+template <JArray T>
+using JArrayUnderlyingType = typename JArrayUnderlyingTypeHelper<T>::Type;
+
+template <JArray T>
+class ScopedLocalRef<T> {
+    ScopedLocalRef(JNIEnv *env, T local_ref, size_t size, JArrayUnderlyingType<T> *elements,
+                   bool modified) noexcept
+        : env_(env), local_ref_(local_ref), size_(size), elements_(elements), modified_(modified) {}
+
+public:
+    class Iterator {
+        friend class ScopedLocalRef<T>;
+        Iterator(JArrayUnderlyingType<T> *e) : e_(e) {}
+        JArrayUnderlyingType<T> *e_;
+
+    public:
+        auto &operator*() { return *e_; }
+        auto *operator->() { return e_; }
+        Iterator &operator++() { return ++e_, *this; }
+        Iterator &operator--() { return --e_, *this; }
+        Iterator operator++(int) { return Iterator(e_++); }
+        Iterator operator--(int) { return Iterator(e_--); }
+        bool operator==(const Iterator &other) const { return other.e_ == e_; }
+        bool operator!=(const Iterator &other) const { return other.e_ == e_; }
+    };
+
+    class ConstIterator {
+        friend class ScopedLocalRef<T>;
+        ConstIterator(const JArrayUnderlyingType<T> *e) : e_(e) {}
+        const JArrayUnderlyingType<T> *e_;
+
+    public:
+        const auto &operator*() { return *e_; }
+        const auto *operator->() { return e_; }
+        ConstIterator &operator++() { return ++e_, *this; }
+        ConstIterator &operator--() { return --e_, *this; }
+        ConstIterator operator++(int) { return ConstIterator(e_++); }
+        ConstIterator operator--(int) { return ConstIterator(e_--); }
+        bool operator==(const ConstIterator &other) const { return other.e_ == e_; }
+        bool operator!=(const ConstIterator &other) const { return other.e_ == e_; }
+    };
+
+    auto begin() {
+        modified_ = true;
+        return Iterator(elements_);
+    }
+
+    auto end() {
+        modified_ = true;
+        return Iterator(elements_ + size_);
+    }
+
+    const auto begin() const { return ConstIterator(elements_); }
+
+    auto end() const { return ConstIterator(elements_ + size_); }
+
+    const auto cbegin() const { return ConstIterator(elements_); }
+
+    auto cend() const { return ConstIterator(elements_ + size_); }
+
+    using BaseType [[maybe_unused]] = T;
+
+    ScopedLocalRef(JNIEnv *env, T local_ref) noexcept : env_(env), local_ref_(nullptr) {
+        reset(local_ref);
+    }
+
+    ScopedLocalRef(ScopedLocalRef &&s) noexcept
+        : ScopedLocalRef(s.env_, s.local_ref_, s.size_, s.elements_, s.modified_) {
+        s.local_ref_ = nullptr;
+        s.size_ = 0;
+        s.elements_ = nullptr;
+        s.modified_ = false;
+    }
+
+    template <JObject U>
+    ScopedLocalRef(ScopedLocalRef<U> &&s) noexcept : ScopedLocalRef(s.env_, (T)s.release()) {}
+
+    explicit ScopedLocalRef(JNIEnv *env) noexcept : ScopedLocalRef(env, T{nullptr}) {}
+
+    ~ScopedLocalRef() { release(); }
+
+    void reset(T ptr = nullptr) {
+        if (ptr != local_ref_) {
+            if (local_ref_ != nullptr) {
+                ReleaseElements(modified_ ? 0 : JNI_ABORT);
+                env_->DeleteLocalRef(local_ref_);
+                if constexpr (std::is_same_v<T, jobjectArray>) {
+                    for (size_t i = 0; i < size_; ++i) {
+                        elements_[i].~ScopedLocalRef<jobject>();
+                    }
+                    operator delete[](elements_);
+                }
+                elements_ = nullptr;
+            }
+            local_ref_ = ptr;
+            size_ = local_ref_ ? env_->GetArrayLength(local_ref_) : 0;
+            if (!local_ref_) return;
+            if constexpr (std::is_same_v<T, jobjectArray>) {
+                elements_ = static_cast<ScopedLocalRef<jobject> *>(operator new[](
+                    sizeof(ScopedLocalRef<jobject>) * size_));
+                for (size_t i = 0; i < size_; ++i) {
+                    new (&elements_[i]) ScopedLocalRef<jobject>(
+                        JNI_SafeInvoke(env_, &JNIEnv::GetObjectArrayElement, local_ref_, i));
+                }
+            } else if constexpr (std::is_same_v<T, jbooleanArray>) {
+                elements_ = env_->GetBooleanArrayElements(local_ref_, nullptr);
+            } else if constexpr (std::is_same_v<T, jbyteArray>) {
+                elements_ = env_->GetByteArrayElements(local_ref_, nullptr);
+            } else if constexpr (std::is_same_v<T, jcharArray>) {
+                elements_ = env_->GetCharArrayElements(local_ref_, nullptr);
+            } else if constexpr (std::is_same_v<T, jshortArray>) {
+                elements_ = env_->GetShortArrayElements(local_ref_, nullptr);
+            } else if constexpr (std::is_same_v<T, jintArray>) {
+                elements_ = env_->GetIntArrayElements(local_ref_, nullptr);
+            } else if constexpr (std::is_same_v<T, jlongArray>) {
+                elements_ = env_->GetLongArrayElements(local_ref_, nullptr);
+            } else if constexpr (std::is_same_v<T, jfloatArray>) {
+                elements_ = env_->GetFloatArrayElements(local_ref_, nullptr);
+            } else if constexpr (std::is_same_v<T, jdoubleArray>) {
+                elements_ = env_->GetDoubleArrayElements(local_ref_, nullptr);
+            }
+        }
+    }
+
+    [[nodiscard]] T release() {
+        T localRef = local_ref_;
+        size_ = 0;
+        local_ref_ = nullptr;
+        ReleaseElements(modified_ ? 0 : JNI_ABORT);
+        if constexpr (std::is_same_v<T, jobjectArray>) {
+            for (size_t i = 0; i < size_; ++i) {
+                elements_[i].~ScopedLocalRef<jobject>();
+            }
+            operator delete[](elements_);
+        }
+        elements_ = nullptr;
+        return localRef;
+    }
+
+    T get() const { return local_ref_; }
+
+    explicit operator T() const { return local_ref_; }
+
+    JArrayUnderlyingType<T> &operator[](size_t index) {
+        modified_ = true;
+        return elements_[index];
+    }
+
+    const JArrayUnderlyingType<T> &operator[](size_t index) const { return elements_[index]; }
+
+    void commit() { ReleaseElements(JNI_COMMIT); }
+
+    // We do not expose an empty constructor as it can easily lead to errors
+    // using common idioms, e.g.:
+    //   ScopedLocalRef<...> ref;
+    //   ref.reset(...);
+    // Move assignment operator.
+    ScopedLocalRef &operator=(ScopedLocalRef &&s) noexcept {
+        env_ = s.env_;
+        local_ref_ = s.local_ref_;
+        size_ = s.size_;
+        elements_ = s.elements_;
+        modified_ = s.modified_;
+        s.elements_ = nullptr;
+        s.size_ = 0;
+        s.modified_ = false;
+        s.local_ref_ = nullptr;
+        return *this;
+    }
+
+    size_t size() const { return size_; }
+
+    operator bool() const { return local_ref_; }
+
+    template <JObject U>
+    friend class ScopedLocalRef;
+
+    friend class JUTFString;
+
+private:
+    void ReleaseElements(jint mode) {
+        if (!local_ref_ || !elements_) return;
+        if constexpr (std::is_same_v<T, jobjectArray>) {
+            for (size_t i = 0; i < size_; ++i) {
+                JNI_SafeInvoke(env_, &JNIEnv::SetObjectArrayElement, local_ref_, i, elements_[i]);
+            }
+        } else if constexpr (std::is_same_v<T, jbooleanArray>) {
+            env_->ReleaseBooleanArrayElements(local_ref_, elements_, mode);
+        } else if constexpr (std::is_same_v<T, jbyteArray>) {
+            env_->ReleaseByteArrayElements(local_ref_, elements_, mode);
+        } else if constexpr (std::is_same_v<T, jcharArray>) {
+            env_->ReleaseCharArrayElements(local_ref_, elements_, mode);
+        } else if constexpr (std::is_same_v<T, jshortArray>) {
+            env_->ReleaseShortArrayElements(local_ref_, elements_, mode);
+        } else if constexpr (std::is_same_v<T, jintArray>) {
+            env_->ReleaseIntArrayElements(local_ref_, elements_, mode);
+        } else if constexpr (std::is_same_v<T, jlongArray>) {
+            env_->ReleaseLongArrayElements(local_ref_, elements_, mode);
+        } else if constexpr (std::is_same_v<T, jfloatArray>) {
+            env_->ReleaseFloatArrayElements(local_ref_, elements_, mode);
+        } else if constexpr (std::is_same_v<T, jdoubleArray>) {
+            env_->ReleaseDoubleArrayElements(local_ref_, elements_, mode);
+        }
+    }
+
+    JNIEnv *env_;
+    T local_ref_;
+    size_t size_;
+    JArrayUnderlyingType<T> *elements_{nullptr};
+    bool modified_ = false;
+    DISALLOW_COPY_AND_ASSIGN(ScopedLocalRef);
+};
+
 // functions to array
 
 template <ScopeOrRaw<jarray> Array>
@@ -773,55 +1082,6 @@ template <ScopeOrClass Class, ScopeOrObject Object>
 [[maybe_unused]] inline auto JNI_NewDoubleArray(JNIEnv *env, jsize len) {
     return JNI_SafeInvoke(env, &JNIEnv::NewDoubleArray, len);
 }
-
-template <ScopeOrRaw<jobjectArray> Array>
-[[maybe_unused]] inline auto JNI_GetObjectArrayElement(JNIEnv *env, const Array &array,
-                                                       jsize index) {
-    return JNI_SafeInvoke(env, &JNIEnv::GetObjectArrayElement, array, index);
-}
-
-template <ScopeOrRaw<jobjectArray> Array, ScopeOrObject Object>
-[[maybe_unused]] inline auto JNI_SetObjectArrayElement(JNIEnv *env, const Array &array, jsize index,
-                                                       Object &&obj) {
-    return JNI_SafeInvoke(env, &JNIEnv::SetObjectArrayElement, array, index, obj);
-}
-
-template <ScopeOrClass Class, typename... Args>
-[[maybe_unused]] inline auto JNI_NewObject(JNIEnv *env, Class &&clazz, jmethodID method,
-                                           Args &&...args) {
-    return JNI_SafeInvoke(env, &JNIEnv::NewObject, std::forward<Class>(clazz), method,
-                          std::forward<Args>(args)...);
-}
-
-template <typename... Args>
-[[maybe_unused]] inline auto JNI_NewDirectByteBuffer(JNIEnv *env, void *address, jlong capacity) {
-    return JNI_SafeInvoke(env, &JNIEnv::NewDirectByteBuffer, address, capacity);
-}
-
-template <ScopeOrClass Class>
-[[maybe_unused]] inline auto JNI_RegisterNatives(JNIEnv *env, Class &&clazz,
-                                                 const JNINativeMethod *methods, jint size) {
-    return JNI_SafeInvoke(env, &JNIEnv::RegisterNatives, std::forward<Class>(clazz), methods, size);
-}
-
-template <ScopeOrObject Object, ScopeOrClass Class>
-[[maybe_unused]] inline auto JNI_IsInstanceOf(JNIEnv *env, Object &&obj, Class &&clazz) {
-    return JNI_SafeInvoke(env, &JNIEnv::IsInstanceOf, std::forward<Object>(obj),
-                          std::forward<Class>(clazz));
-}
-
-template <ScopeOrObject Object>
-[[maybe_unused]] inline auto JNI_NewGlobalRef(JNIEnv *env, Object &&x) {
-    return (decltype(UnwrapScope(std::forward<Object>(x))))env->NewGlobalRef(
-        UnwrapScope(std::forward<Object>(x)));
-}
-
-template <typename U, typename T>
-[[maybe_unused]] inline auto JNI_Cast(ScopedLocalRef<T> &&x) requires(
-    std::is_convertible_v<T, _jobject *>) {
-    return ScopedLocalRef<U>(std::move(x));
-}
-
 }  // namespace lsplant
 
 #undef DISALLOW_COPY_AND_ASSIGN

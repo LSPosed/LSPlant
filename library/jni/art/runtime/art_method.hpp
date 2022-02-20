@@ -140,15 +140,14 @@ public:
         static_assert(std::is_same_v<decltype(clazz)::BaseType, jclass>);
         jmethodID get_declared_constructors = JNI_GetMethodID(env, clazz, "getDeclaredConstructors",
                                                               "()[Ljava/lang/reflect/Constructor;");
-        auto constructors =
+        const auto constructors =
             JNI_Cast<jobjectArray>(JNI_CallObjectMethod(env, throwable, get_declared_constructors));
-        auto length = JNI_GetArrayLength(env, constructors);
-        if (length < 2) {
+        if (constructors.size() < 2) {
             LOGE("Throwable has less than 2 constructors");
             return false;
         }
-        auto first_ctor = JNI_GetObjectArrayElement(env, constructors, 0);
-        auto second_ctor = JNI_GetObjectArrayElement(env, constructors, 1);
+        auto &first_ctor = constructors[0];
+        auto &second_ctor = constructors[1];
         auto *first = FromReflectedMethod(env, first_ctor.get());
         auto *second = FromReflectedMethod(env, second_ctor.get());
         art_method_size = reinterpret_cast<uintptr_t>(second) - reinterpret_cast<uintptr_t>(first);
