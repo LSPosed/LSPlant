@@ -6,5 +6,5 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 add_library(test SHARED test.cpp elf_util.cpp)
 find_package(dobby REQUIRED CONFIG)
-find_package(library REQUIRED CONFIG)
-target_link_libraries(test log dobby::dobby library::lsplant library::dex_builder)
+find_package(lsplant REQUIRED CONFIG)
+target_link_libraries(test log dobby::dobby lsplant::lsplant)

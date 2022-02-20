@@ -40,6 +40,7 @@ add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
         ${DEBUG_SYMBOLS_PATH}/${ANDROID_ABI}/${PROJECT_NAME}
         COMMAND ${CMAKE_STRIP} --strip-all $<TARGET_FILE:${PROJECT_NAME}>)
 
-target_link_libraries(${PROJECT_NAME} PUBLIC dex_builder log)
+target_link_libraries(${PROJECT_NAME} PRIVATE dex_builder_static)
+target_link_libraries(${PROJECT_NAME} PUBLIC log)
 target_link_libraries(${PROJECT_NAME}_static PRIVATE dex_builder_static)
 target_link_libraries(${PROJECT_NAME}_static PUBLIC log)

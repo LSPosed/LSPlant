@@ -1,4 +1,4 @@
-[submodule "library/jni/external/dex_builder"]
-	path = library/jni/external/dex_builder
+[submodule "dex_builder"]
+	path = lsplant/src/main/jni/external/dex_builder
 	url = https://github.com/LSPosed/DexBuilder.git
 	branch = master

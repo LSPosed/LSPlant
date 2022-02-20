@@ -6,12 +6,12 @@ val androidTargetSdkVersion: Int by rootProject.extra
 val androidMinSdkVersion: Int by rootProject.extra
 val androidBuildToolsVersion: String by rootProject.extra
 val androidCompileSdkVersion: Int by rootProject.extra
-val androidCompileNdkVersion: String by rootProject.extra
+val androidNdkVersion: String by rootProject.extra
+val androidCmakeVersion: String by rootProject.extra
 
 android {
-    namespace = "org.lsposed.lsplant.test"
     compileSdk = androidCompileSdkVersion
-    ndkVersion = androidCompileNdkVersion
+    ndkVersion = androidNdkVersion
     buildToolsVersion = androidBuildToolsVersion
 
     buildFeatures {
@@ -19,13 +19,12 @@ android {
     }
 
     defaultConfig {
-        applicationId = "org.lsposed.lsplant.test"
+        applicationId = "org.lsposed.lsplant"
         minSdk = androidMinSdkVersion
         targetSdk = androidTargetSdkVersion
         versionCode = 1
         versionName = "1.0"
-
-        testInstrumentationRunner = "android.support.test.runner.AndroidJUnitRunner"
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         externalNativeBuild {
             cmake {
                 arguments += "-DANDROID_STL=c++_shared"
@@ -35,14 +34,8 @@ android {
 
     externalNativeBuild {
         cmake {
-            path("src/main/jni/CMakeLists.txt")
-        }
-    }
-
-    buildTypes {
-        release {
-            isMinifyEnabled = true
-            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            path = file("src/main/jni/CMakeLists.txt")
+            version = androidCmakeVersion
         }
     }
 
@@ -53,10 +46,10 @@ android {
 }
 
 dependencies {
-    implementation(project(":library"))
+    implementation(project(":lsplant"))
     implementation("io.github.vvb2060.ndk:dobby:1.2")
 
-    testImplementation("junit:junit:4.13.2")
-    androidTestImplementation("com.android.support.test:runner:1.0.2")
-    androidTestImplementation("com.android.support.test.espresso:espresso-core:3.0.2")
+    androidTestImplementation("androidx.test.ext:junit:1.1.3")
+    androidTestImplementation("androidx.test:runner:1.4.0")
+    androidTestImplementation("androidx.test.espresso:espresso-core:3.4.0")
 }
