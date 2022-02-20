@@ -3,11 +3,11 @@
 #pragma ide diagnostic ignored "OCUnusedGlobalDeclarationInspection"
 #pragma once
 
+#include <android/log.h>
 #include <jni.h>
 
 #include <string>
 #include <string_view>
-#include <android/log.h>
 
 #define DISALLOW_COPY_AND_ASSIGN(TypeName)                                                         \
     TypeName(const TypeName &) = delete;                                                           \
@@ -235,6 +235,8 @@ requires(std::is_function_v<Func>)
         (env->*f)(UnwrapScope(std::forward<Args>(args))...);
 }
 
+// functions to class
+
 [[maybe_unused]] inline auto JNI_FindClass(JNIEnv *env, std::string_view name) {
     return JNI_SafeInvoke(env, &JNIEnv::FindClass, name);
 }
@@ -244,139 +246,568 @@ template <ScopeOrObject Object>
     return JNI_SafeInvoke(env, &JNIEnv::GetObjectClass, obj);
 }
 
+// functions to field
+
 template <ScopeOrClass Class>
-[[maybe_unused]] inline auto JNI_GetFieldID(JNIEnv *env, const Class &clazz, std::string_view name,
+[[maybe_unused]] inline auto JNI_GetFieldID(JNIEnv *env, Class &&clazz, std::string_view name,
                                             std::string_view sig) {
-    return JNI_SafeInvoke(env, &JNIEnv::GetFieldID, clazz, name, sig);
+    return JNI_SafeInvoke(env, &JNIEnv::GetFieldID, std::forward<Class>(clazz), name, sig);
 }
 
-template <ScopeOrClass Class>
-[[maybe_unused]] inline auto JNI_ToReflectedMethod(JNIEnv *env, const Class &clazz,
-                                                   jmethodID method, jboolean isStatic) {
-    return JNI_SafeInvoke(env, &JNIEnv::ToReflectedMethod, clazz, method, isStatic);
+// getters
+
+template <ScopeOrObject Object>
+[[maybe_unused]] inline auto JNI_GetObjectField(JNIEnv *env, Object &&obj, jfieldID fieldId) {
+    return JNI_SafeInvoke(env, &JNIEnv::GetObjectField, std::forward<Object>(obj), fieldId);
 }
 
 template <ScopeOrObject Object>
-[[maybe_unused]] inline auto JNI_GetObjectField(JNIEnv *env, const Object &obj, jfieldID fieldId) {
-    return JNI_SafeInvoke(env, &JNIEnv::GetObjectField, obj, fieldId);
+[[maybe_unused]] inline auto JNI_GetBooleanField(JNIEnv *env, Object &&obj, jfieldID fieldId) {
+    return JNI_SafeInvoke(env, &JNIEnv::GetBooleanField, std::forward<Object>(obj), fieldId);
 }
 
 template <ScopeOrObject Object>
-[[maybe_unused]] inline auto JNI_GetLongField(JNIEnv *env, const Object &obj, jfieldID fieldId) {
-    return JNI_SafeInvoke(env, &JNIEnv::GetLongField, obj, fieldId);
+[[maybe_unused]] inline auto JNI_GetByteField(JNIEnv *env, Object &&obj, jfieldID fieldId) {
+    return JNI_SafeInvoke(env, &JNIEnv::GetByteField, std::forward<Object>(obj), fieldId);
 }
 
 template <ScopeOrObject Object>
-[[maybe_unused]] inline auto JNI_GetIntField(JNIEnv *env, const Object &obj, jfieldID fieldId) {
-    return JNI_SafeInvoke(env, &JNIEnv::GetIntField, obj, fieldId);
+[[maybe_unused]] inline auto JNI_GetCharField(JNIEnv *env, Object &&obj, jfieldID fieldId) {
+    return JNI_SafeInvoke(env, &JNIEnv::GetCharField, std::forward<Object>(obj), fieldId);
 }
+
+template <ScopeOrObject Object>
+[[maybe_unused]] inline auto JNI_GetShortField(JNIEnv *env, Object &&obj, jfieldID fieldId) {
+    return JNI_SafeInvoke(env, &JNIEnv::GetShortField, std::forward<Object>(obj), fieldId);
+}
+
+template <ScopeOrObject Object>
+[[maybe_unused]] inline auto JNI_GetIntField(JNIEnv *env, Object &&obj, jfieldID fieldId) {
+    return JNI_SafeInvoke(env, &JNIEnv::GetIntField, std::forward<Object>(obj), fieldId);
+}
+
+template <ScopeOrObject Object>
+[[maybe_unused]] inline auto JNI_GetLongField(JNIEnv *env, Object &&obj, jfieldID fieldId) {
+    return JNI_SafeInvoke(env, &JNIEnv::GetLongField, std::forward<Object>(obj), fieldId);
+}
+
+template <ScopeOrObject Object>
+[[maybe_unused]] inline auto JNI_GetFloatField(JNIEnv *env, Object &&obj, jfieldID fieldId) {
+    return JNI_SafeInvoke(env, &JNIEnv::GetFloatField, std::forward<Object>(obj), fieldId);
+}
+
+template <ScopeOrObject Object>
+[[maybe_unused]] inline auto JNI_GetDoubleField(JNIEnv *env, Object &&obj, jfieldID fieldId) {
+    return JNI_SafeInvoke(env, &JNIEnv::GetDoubleField, std::forward<Object>(obj), fieldId);
+}
+
+// setters
+
+template <ScopeOrObject Object>
+[[maybe_unused]] inline auto JNI_SetObjectField(JNIEnv *env, Object &&obj, jfieldID fieldId,
+                                                const Object &value) {
+    return JNI_SafeInvoke(env, &JNIEnv::SetObjectField, std::forward<Object>(obj), fieldId, value);
+}
+
+template <ScopeOrObject Object>
+[[maybe_unused]] inline auto JNI_SetBooleanField(JNIEnv *env, Object &&obj, jfieldID fieldId,
+                                                 jboolean value) {
+    return JNI_SafeInvoke(env, &JNIEnv::SetBooleanField, std::forward<Object>(obj), fieldId, value);
+}
+
+template <ScopeOrObject Object>
+[[maybe_unused]] inline auto JNI_SetByteField(JNIEnv *env, Object &&obj, jfieldID fieldId,
+                                              jbyte value) {
+    return JNI_SafeInvoke(env, &JNIEnv::SetByteField, std::forward<Object>(obj), fieldId, value);
+}
+
+template <ScopeOrObject Object>
+[[maybe_unused]] inline auto JNI_SetCharField(JNIEnv *env, Object &&obj, jfieldID fieldId,
+                                              jchar value) {
+    return JNI_SafeInvoke(env, &JNIEnv::SetCharField, std::forward<Object>(obj), fieldId, value);
+}
+
+template <ScopeOrObject Object>
+[[maybe_unused]] inline auto JNI_SetShortField(JNIEnv *env, Object &&obj, jfieldID fieldId,
+                                               jshort value) {
+    return JNI_SafeInvoke(env, &JNIEnv::SetShortField, std::forward<Object>(obj), fieldId, value);
+}
+
+template <ScopeOrObject Object>
+[[maybe_unused]] inline auto JNI_SetIntField(JNIEnv *env, Object &&obj, jfieldID fieldId,
+                                             jint value) {
+    return JNI_SafeInvoke(env, &JNIEnv::SetIntField, std::forward<Object>(obj), fieldId, value);
+}
+
+template <ScopeOrObject Object>
+[[maybe_unused]] inline auto JNI_SetLongField(JNIEnv *env, Object &&obj, jfieldID fieldId,
+                                              jlong value) {
+    return JNI_SafeInvoke(env, &JNIEnv::SetLongField, std::forward<Object>(obj), fieldId, value);
+}
+
+template <ScopeOrObject Object>
+[[maybe_unused]] inline auto JNI_SetFloatField(JNIEnv *env, Object &&obj, jfieldID fieldId,
+                                               jfloat value) {
+    return JNI_SafeInvoke(env, &JNIEnv::SetFloatField, std::forward<Object>(obj), fieldId, value);
+}
+
+template <ScopeOrObject Object>
+[[maybe_unused]] inline auto JNI_SetDoubleField(JNIEnv *env, Object &&obj, jfieldID fieldId,
+                                                jdouble value) {
+    return JNI_SafeInvoke(env, &JNIEnv::SetDoubleField, std::forward<Object>(obj), fieldId, value);
+}
+
+// functions to static field
 
 template <ScopeOrClass Class>
-[[maybe_unused]] inline auto JNI_GetMethodID(JNIEnv *env, const Class &clazz, std::string_view name,
-                                             std::string_view sig) {
-    return JNI_SafeInvoke(env, &JNIEnv::GetMethodID, clazz, name, sig);
+[[maybe_unused]] inline auto JNI_GetStaticFieldID(JNIEnv *env, Class &&clazz, std::string_view name,
+                                                  std::string_view sig) {
+    return JNI_SafeInvoke(env, &JNIEnv::GetStaticFieldID, std::forward<Class>(clazz), name, sig);
 }
 
-template <ScopeOrObject Object, typename... Args>
-[[maybe_unused]] inline auto JNI_CallObjectMethod(JNIEnv *env, const Object &obj, jmethodID method,
-                                                  Args &&...args) {
-    return JNI_SafeInvoke(env, &JNIEnv::CallObjectMethod, obj, method, std::forward<Args>(args)...);
-}
-
-template <ScopeOrObject Object, typename... Args>
-[[maybe_unused]] inline auto JNI_CallIntMethod(JNIEnv *env, const Object &obj, jmethodID method,
-                                               Args &&...args) {
-    return JNI_SafeInvoke(env, &JNIEnv::CallIntMethod, obj, method, std::forward<Args>(args)...);
-}
-
-template <ScopeOrObject Object, typename... Args>
-[[maybe_unused]] inline auto JNI_CallLongMethod(JNIEnv *env, const Object &obj, Args &&...args) {
-    return JNI_SafeInvoke(env, &JNIEnv::CallLongMethod, obj, std::forward<Args>(args)...);
-}
-
-template <ScopeOrObject Object, typename... Args>
-[[maybe_unused]] inline auto JNI_CallVoidMethod(JNIEnv *env, const Object &obj, Args &&...args) {
-    return JNI_SafeInvoke(env, &JNIEnv::CallVoidMethod, obj, std::forward<Args>(args)...);
-}
-
-template <ScopeOrObject Object, typename... Args>
-[[maybe_unused]] inline auto JNI_CallBooleanMethod(JNIEnv *env, const Object &obj, Args &&...args) {
-    return JNI_SafeInvoke(env, &JNIEnv::CallBooleanMethod, obj, std::forward<Args>(args)...);
-}
+// getters
 
 template <ScopeOrClass Class>
-[[maybe_unused]] inline auto JNI_GetStaticFieldID(JNIEnv *env, const Class &clazz,
-                                                  std::string_view name, std::string_view sig) {
-    return JNI_SafeInvoke(env, &JNIEnv::GetStaticFieldID, clazz, name, sig);
-}
-
-template <ScopeOrClass Class>
-[[maybe_unused]] inline auto JNI_GetStaticObjectField(JNIEnv *env, const Class &clazz,
+[[maybe_unused]] inline auto JNI_GetStaticObjectField(JNIEnv *env, Class &&clazz,
                                                       jfieldID fieldId) {
-    return JNI_SafeInvoke(env, &JNIEnv::GetStaticObjectField, clazz, fieldId);
+    return JNI_SafeInvoke(env, &JNIEnv::GetStaticObjectField, std::forward<Class>(clazz), fieldId);
 }
 
 template <ScopeOrClass Class>
-[[maybe_unused]] inline auto JNI_GetStaticIntField(JNIEnv *env, const Class &clazz,
-                                                   jfieldID fieldId) {
-    return JNI_SafeInvoke(env, &JNIEnv::GetStaticIntField, clazz, fieldId);
+[[maybe_unused]] inline auto JNI_GetStaticBooleanField(JNIEnv *env, Class &&clazz,
+                                                       jfieldID fieldId) {
+    return JNI_SafeInvoke(env, &JNIEnv::GetStaticBooleanField, std::forward<Class>(clazz), fieldId);
 }
 
 template <ScopeOrClass Class>
-[[maybe_unused]] inline auto JNI_GetStaticMethodID(JNIEnv *env, const Class &clazz,
-                                                   std::string_view name, std::string_view sig) {
-    return JNI_SafeInvoke(env, &JNIEnv::GetStaticMethodID, clazz, name, sig);
+[[maybe_unused]] inline auto JNI_GetStaticByteField(JNIEnv *env, Class &&clazz, jfieldID fieldId) {
+    return JNI_SafeInvoke(env, &JNIEnv::GetStaticByteField, std::forward<Class>(clazz), fieldId);
 }
 
-template <ScopeOrClass Class, typename... Args>
-[[maybe_unused]] inline auto JNI_CallStaticVoidMethod(JNIEnv *env, const Class &clazz,
-                                                      Args &&...args) {
-    return JNI_SafeInvoke(env, &JNIEnv::CallStaticVoidMethod, clazz, std::forward<Args>(args)...);
+template <ScopeOrClass Class>
+[[maybe_unused]] inline auto JNI_GetStaticCharField(JNIEnv *env, Class &&clazz, jfieldID fieldId) {
+    return JNI_SafeInvoke(env, &JNIEnv::GetStaticCharField, std::forward<Class>(clazz), fieldId);
 }
 
-template <ScopeOrClass Class, typename... Args>
-[[maybe_unused]] inline auto JNI_CallStaticObjectMethod(JNIEnv *env, const Class &clazz,
-                                                        Args &&...args) {
-    return JNI_SafeInvoke(env, &JNIEnv::CallStaticObjectMethod, clazz, std::forward<Args>(args)...);
+template <ScopeOrClass Class>
+[[maybe_unused]] inline auto JNI_GetStaticShortField(JNIEnv *env, Class &&clazz, jfieldID fieldId) {
+    return JNI_SafeInvoke(env, &JNIEnv::GetStaticShortField, std::forward<Class>(clazz), fieldId);
 }
 
-template <ScopeOrClass Class, typename... Args>
-[[maybe_unused]] inline auto JNI_CallStaticIntMethod(JNIEnv *env, const Class &clazz,
-                                                     Args &&...args) {
-    return JNI_SafeInvoke(env, &JNIEnv::CallStaticIntMethod, clazz, std::forward<Args>(args)...);
+template <ScopeOrClass Class>
+[[maybe_unused]] inline auto JNI_GetStaticIntField(JNIEnv *env, Class &&clazz, jfieldID fieldId) {
+    return JNI_SafeInvoke(env, &JNIEnv::GetStaticIntField, std::forward<Class>(clazz), fieldId);
 }
 
-template <ScopeOrClass Class, typename... Args>
-[[maybe_unused]] inline auto JNI_CallStaticBooleanMethod(JNIEnv *env, const Class &clazz,
-                                                         Args &&...args) {
-    return JNI_SafeInvoke(env, &JNIEnv::CallStaticBooleanMethod, clazz,
+template <ScopeOrClass Class>
+[[maybe_unused]] inline auto JNI_GetStaticLongField(JNIEnv *env, Class &&clazz, jfieldID fieldId) {
+    return JNI_SafeInvoke(env, &JNIEnv::GetStaticLongField, std::forward<Class>(clazz), fieldId);
+}
+
+template <ScopeOrClass Class>
+[[maybe_unused]] inline auto JNI_GetStaticFloatField(JNIEnv *env, Class &&clazz, jfieldID fieldId) {
+    return JNI_SafeInvoke(env, &JNIEnv::GetStaticFloatField, std::forward<Class>(clazz), fieldId);
+}
+
+template <ScopeOrClass Class>
+[[maybe_unused]] inline auto JNI_GetStaticDoubleField(JNIEnv *env, Class &&clazz,
+                                                      jfieldID fieldId) {
+    return JNI_SafeInvoke(env, &JNIEnv::GetStaticDoubleField, std::forward<Class>(clazz), fieldId);
+}
+
+// setters
+
+template <ScopeOrClass Class, ScopeOrObject Object>
+[[maybe_unused]] inline auto JNI_SetStaticObjectField(JNIEnv *env, Class &&clazz, jfieldID fieldId,
+                                                      const Object &value) {
+    return JNI_SafeInvoke(env, &JNIEnv::SetStaticObjectField, std::forward<Class>(clazz), fieldId,
+                          value);
+}
+
+template <ScopeOrClass Class>
+[[maybe_unused]] inline auto JNI_SetStaticBooleanField(JNIEnv *env, Class &&clazz, jfieldID fieldId,
+                                                       jboolean value) {
+    return JNI_SafeInvoke(env, &JNIEnv::SetStaticBooleanField, std::forward<Class>(clazz), fieldId,
+                          value);
+}
+
+template <ScopeOrClass Class>
+[[maybe_unused]] inline auto JNI_SetStaticByteField(JNIEnv *env, Class &&clazz, jfieldID fieldId,
+                                                    jbyte value) {
+    return JNI_SafeInvoke(env, &JNIEnv::SetStaticByteField, std::forward<Class>(clazz), fieldId,
+                          value);
+}
+
+template <ScopeOrClass Class>
+[[maybe_unused]] inline auto JNI_SetStaticCharField(JNIEnv *env, Class &&clazz, jfieldID fieldId,
+                                                    jchar value) {
+    return JNI_SafeInvoke(env, &JNIEnv::SetStaticCharField, std::forward<Class>(clazz), fieldId,
+                          value);
+}
+
+template <ScopeOrClass Class>
+[[maybe_unused]] inline auto JNI_SetStaticShortField(JNIEnv *env, Class &&clazz, jfieldID fieldId,
+                                                     jshort value) {
+    return JNI_SafeInvoke(env, &JNIEnv::SetStaticShortField, std::forward<Class>(clazz), fieldId,
+                          value);
+}
+
+template <ScopeOrClass Class>
+[[maybe_unused]] inline auto JNI_SetStaticIntField(JNIEnv *env, Class &&clazz, jfieldID fieldId,
+                                                   jint value) {
+    return JNI_SafeInvoke(env, &JNIEnv::SetStaticIntField, std::forward<Class>(clazz), fieldId,
+                          value);
+}
+
+template <ScopeOrClass Class>
+[[maybe_unused]] inline auto JNI_SetStaticLongField(JNIEnv *env, Class &&clazz, jfieldID fieldId,
+                                                    jlong value) {
+    return JNI_SafeInvoke(env, &JNIEnv::SetStaticLongField, std::forward<Class>(clazz), fieldId,
+                          value);
+}
+
+template <ScopeOrClass Class>
+[[maybe_unused]] inline auto JNI_SetStaticFloatField(JNIEnv *env, Class &&clazz, jfieldID fieldId,
+                                                     jfloat value) {
+    return JNI_SafeInvoke(env, &JNIEnv::SetStaticFloatField, std::forward<Class>(clazz), fieldId,
+                          value);
+}
+
+template <ScopeOrClass Class>
+[[maybe_unused]] inline auto JNI_SetStaticDoubleField(JNIEnv *env, Class &&clazz, jfieldID fieldId,
+                                                      jdouble value) {
+    return JNI_SafeInvoke(env, &JNIEnv::SetStaticDoubleField, std::forward<Class>(clazz), fieldId,
+                          value);
+}
+
+template <ScopeOrClass Class>
+[[maybe_unused]] inline auto JNI_ToReflectedMethod(JNIEnv *env, Class &&clazz, jmethodID method,
+                                                   jboolean isStatic = JNI_FALSE) {
+    return JNI_SafeInvoke(env, &JNIEnv::ToReflectedMethod, std::forward<Class>(clazz), method,
+                          isStatic);
+}
+
+// functions to method
+
+// virtual methods
+
+template <ScopeOrClass Class>
+[[maybe_unused]] inline auto JNI_GetMethodID(JNIEnv *env, Class &&clazz, std::string_view name,
+                                             std::string_view sig) {
+    return JNI_SafeInvoke(env, &JNIEnv::GetMethodID, std::forward<Class>(clazz), name, sig);
+}
+
+template <ScopeOrObject Object, typename... Args>
+[[maybe_unused]] inline auto JNI_CallVoidMethod(JNIEnv *env, Object &&obj, jmethodID method,
+                                                Args &&...args) {
+    return JNI_SafeInvoke(env, &JNIEnv::CallVoidMethod, std::forward<Object>(obj), method,
                           std::forward<Args>(args)...);
 }
+
+template <ScopeOrObject Object, typename... Args>
+[[maybe_unused]] inline auto JNI_CallObjectMethod(JNIEnv *env, Object &&obj, jmethodID method,
+                                                  Args &&...args) {
+    return JNI_SafeInvoke(env, &JNIEnv::CallObjectMethod, std::forward<Object>(obj), method,
+                          std::forward<Args>(args)...);
+}
+
+template <ScopeOrObject Object, typename... Args>
+[[maybe_unused]] inline auto JNI_CallBooleanMethod(JNIEnv *env, Object &&obj, jmethodID method,
+                                                   Args &&...args) {
+    return JNI_SafeInvoke(env, &JNIEnv::CallBooleanMethod, std::forward<Object>(obj), method,
+                          std::forward<Args>(args)...);
+}
+
+template <ScopeOrObject Object, typename... Args>
+[[maybe_unused]] inline auto JNI_CallByteMethod(JNIEnv *env, Object &&obj, jmethodID method,
+                                                Args &&...args) {
+    return JNI_SafeInvoke(env, &JNIEnv::CallByteMethod, std::forward<Object>(obj), method,
+                          std::forward<Args>(args)...);
+}
+
+template <ScopeOrObject Object, typename... Args>
+[[maybe_unused]] inline auto JNI_CallCharMethod(JNIEnv *env, Object &&obj, jmethodID method,
+                                                Args &&...args) {
+    return JNI_SafeInvoke(env, &JNIEnv::CallCharMethod, std::forward<Object>(obj), method,
+                          std::forward<Args>(args)...);
+}
+
+template <ScopeOrObject Object, typename... Args>
+[[maybe_unused]] inline auto JNI_CallShortMethod(JNIEnv *env, Object &&obj, jmethodID method,
+                                                 Args &&...args) {
+    return JNI_SafeInvoke(env, &JNIEnv::CallShortMethod, std::forward<Object>(obj), method,
+                          std::forward<Args>(args)...);
+}
+
+template <ScopeOrObject Object, typename... Args>
+[[maybe_unused]] inline auto JNI_CallIntMethod(JNIEnv *env, Object &&obj, jmethodID method,
+                                               Args &&...args) {
+    return JNI_SafeInvoke(env, &JNIEnv::CallIntMethod, std::forward<Object>(obj), method,
+                          std::forward<Args>(args)...);
+}
+
+template <ScopeOrObject Object, typename... Args>
+[[maybe_unused]] inline auto JNI_CallLongMethod(JNIEnv *env, Object &&obj, jmethodID method,
+                                                Args &&...args) {
+    return JNI_SafeInvoke(env, &JNIEnv::CallLongMethod, std::forward<Object>(obj), method,
+                          std::forward<Args>(args)...);
+}
+
+template <ScopeOrObject Object, typename... Args>
+[[maybe_unused]] inline auto JNI_CallFloatMethod(JNIEnv *env, Object &&obj, jmethodID method,
+                                                 Args &&...args) {
+    return JNI_SafeInvoke(env, &JNIEnv::CallFloatMethod, std::forward<Object>(obj), method,
+                          std::forward<Args>(args)...);
+}
+
+template <ScopeOrObject Object, typename... Args>
+[[maybe_unused]] inline auto JNI_CallDoubleMethod(JNIEnv *env, Object &&obj, jmethodID method,
+                                                  Args &&...args) {
+    return JNI_SafeInvoke(env, &JNIEnv::CallDoubleMethod, std::forward<Object>(obj), method,
+                          std::forward<Args>(args)...);
+}
+
+// static methods
+
+template <ScopeOrClass Class>
+[[maybe_unused]] inline auto JNI_GetStaticMethodID(JNIEnv *env, Class &&clazz,
+                                                   std::string_view name, std::string_view sig) {
+    return JNI_SafeInvoke(env, &JNIEnv::GetStaticMethodID, std::forward<Class>(clazz), name, sig);
+}
+
+template <ScopeOrClass Class, typename... Args>
+[[maybe_unused]] inline auto JNI_CallStaticVoidMethod(JNIEnv *env, Class &&clazz, jmethodID method,
+                                                      Args &&...args) {
+    return JNI_SafeInvoke(env, &JNIEnv::CallStaticVoidMethod, std::forward<Class>(clazz), method,
+                          std::forward<Args>(args)...);
+}
+
+template <ScopeOrClass Class, typename... Args>
+[[maybe_unused]] inline auto JNI_CallStaticObjectMethod(JNIEnv *env, Class &&clazz,
+                                                        jmethodID method, Args &&...args) {
+    return JNI_SafeInvoke(env, &JNIEnv::CallStaticObjectMethod, std::forward<Class>(clazz), method,
+                          std::forward<Args>(args)...);
+}
+
+template <ScopeOrClass Class, typename... Args>
+[[maybe_unused]] inline auto JNI_CallStaticBooleanMethod(JNIEnv *env, Class &&clazz,
+                                                         jmethodID method, Args &&...args) {
+    return JNI_SafeInvoke(env, &JNIEnv::CallStaticBooleanMethod, std::forward<Class>(clazz), method,
+                          std::forward<Args>(args)...);
+}
+
+template <ScopeOrClass Class, typename... Args>
+[[maybe_unused]] inline auto JNI_CallStaticByteMethod(JNIEnv *env, Class &&clazz, jmethodID method,
+                                                      Args &&...args) {
+    return JNI_SafeInvoke(env, &JNIEnv::CallStaticByteMethod, std::forward<Class>(clazz), method,
+                          std::forward<Args>(args)...);
+}
+
+template <ScopeOrClass Class, typename... Args>
+[[maybe_unused]] inline auto JNI_CallStaticCharMethod(JNIEnv *env, Class &&clazz, jmethodID method,
+                                                      Args &&...args) {
+    return JNI_SafeInvoke(env, &JNIEnv::CallStaticCharMethod, std::forward<Class>(clazz), method,
+                          std::forward<Args>(args)...);
+}
+
+template <ScopeOrClass Class, typename... Args>
+[[maybe_unused]] inline auto JNI_CallStaticShortMethod(JNIEnv *env, Class &&clazz, jmethodID method,
+                                                       Args &&...args) {
+    return JNI_SafeInvoke(env, &JNIEnv::CallStaticShortMethod, std::forward<Class>(clazz), method,
+                          std::forward<Args>(args)...);
+}
+
+template <ScopeOrClass Class, typename... Args>
+[[maybe_unused]] inline auto JNI_CallStaticIntMethod(JNIEnv *env, Class &&clazz, jmethodID method,
+                                                     Args &&...args) {
+    return JNI_SafeInvoke(env, &JNIEnv::CallStaticIntMethod, std::forward<Class>(clazz), method,
+                          std::forward<Args>(args)...);
+}
+
+template <ScopeOrClass Class, typename... Args>
+[[maybe_unused]] inline auto JNI_CallStaticLongMethod(JNIEnv *env, Class &&clazz, jmethodID method,
+                                                      Args &&...args) {
+    return JNI_SafeInvoke(env, &JNIEnv::CallStaticLongMethod, std::forward<Class>(clazz), method,
+                          std::forward<Args>(args)...);
+}
+
+template <ScopeOrClass Class, typename... Args>
+[[maybe_unused]] inline auto JNI_CallStaticFloatMethod(JNIEnv *env, Class &&clazz, jmethodID method,
+                                                       Args &&...args) {
+    return JNI_SafeInvoke(env, &JNIEnv::CallStaticFloatMethod, std::forward<Class>(clazz), method,
+                          std::forward<Args>(args)...);
+}
+
+template <ScopeOrClass Class, typename... Args>
+[[maybe_unused]] inline auto JNI_CallStaticDoubleMethod(JNIEnv *env, Class &&clazz,
+                                                        jmethodID method, Args &&...args) {
+    return JNI_SafeInvoke(env, &JNIEnv::CallStaticDoubleMethod, std::forward<Class>(clazz), method,
+                          std::forward<Args>(args)...);
+}
+
+// non-vritual methods
+
+template <ScopeOrObject Object, ScopeOrClass Class, typename... Args>
+[[maybe_unused]] inline auto JNI_CallCallNonvirtualVoidMethod(JNIEnv *env, Object &&obj,
+                                                              Class &&clazz, jmethodID method,
+                                                              Args &&...args) {
+    return JNI_SafeInvoke(env, &JNIEnv::CallNonvirtualVoidMethod, std::forward<Object>(obj),
+                          std::forward<Class>(clazz), method, std::forward<Args>(args)...);
+}
+
+template <ScopeOrObject Object, ScopeOrClass Class, typename... Args>
+[[maybe_unused]] inline auto JNI_CallCallNonvirtualObjectMethod(JNIEnv *env, Object &&obj,
+                                                                Class &&clazz, jmethodID method,
+                                                                Args &&...args) {
+    return JNI_SafeInvoke(env, &JNIEnv::CallNonvirtualObjectMethod, std::forward<Object>(obj),
+                          std::forward<Class>(clazz), method, std::forward<Args>(args)...);
+}
+
+template <ScopeOrObject Object, ScopeOrClass Class, typename... Args>
+[[maybe_unused]] inline auto JNI_CallCallNonvirtualBooleanMethod(JNIEnv *env, Object &&obj,
+                                                                 Class &&clazz, jmethodID method,
+                                                                 Args &&...args) {
+    return JNI_SafeInvoke(env, &JNIEnv::CallNonvirtualBooleanMethod, std::forward<Object>(obj),
+                          std::forward<Class>(clazz), method, std::forward<Args>(args)...);
+}
+
+template <ScopeOrObject Object, ScopeOrClass Class, typename... Args>
+[[maybe_unused]] inline auto JNI_CallCallNonvirtualByteMethod(JNIEnv *env, Object &&obj,
+                                                              Class &&clazz, jmethodID method,
+                                                              Args &&...args) {
+    return JNI_SafeInvoke(env, &JNIEnv::CallNonvirtualByteMethod, std::forward<Object>(obj),
+                          std::forward<Class>(clazz), method, std::forward<Args>(args)...);
+}
+
+template <ScopeOrObject Object, ScopeOrClass Class, typename... Args>
+[[maybe_unused]] inline auto JNI_CallCallNonvirtualCharMethod(JNIEnv *env, Object &&obj,
+                                                              Class &&clazz, jmethodID method,
+                                                              Args &&...args) {
+    return JNI_SafeInvoke(env, &JNIEnv::CallNonvirtualCharMethod, std::forward<Object>(obj),
+                          std::forward<Class>(clazz), method, std::forward<Args>(args)...);
+}
+
+template <ScopeOrObject Object, ScopeOrClass Class, typename... Args>
+[[maybe_unused]] inline auto JNI_CallCallNonvirtualShortMethod(JNIEnv *env, Object &&obj,
+                                                               Class &&clazz, jmethodID method,
+                                                               Args &&...args) {
+    return JNI_SafeInvoke(env, &JNIEnv::CallNonvirtualShortMethod, std::forward<Object>(obj),
+                          std::forward<Class>(clazz), method, std::forward<Args>(args)...);
+}
+
+template <ScopeOrObject Object, ScopeOrClass Class, typename... Args>
+[[maybe_unused]] inline auto JNI_CallCallNonvirtualIntMethod(JNIEnv *env, Object &&obj,
+                                                             Class &&clazz, jmethodID method,
+                                                             Args &&...args) {
+    return JNI_SafeInvoke(env, &JNIEnv::CallNonvirtualIntMethod, std::forward<Object>(obj),
+                          std::forward<Class>(clazz), method, std::forward<Args>(args)...);
+}
+
+template <ScopeOrObject Object, ScopeOrClass Class, typename... Args>
+[[maybe_unused]] inline auto JNI_CallCallNonvirtualLongMethod(JNIEnv *env, Object &&obj,
+                                                              Class &&clazz, jmethodID method,
+                                                              Args &&...args) {
+    return JNI_SafeInvoke(env, &JNIEnv::CallNonvirtualLongMethod, std::forward<Object>(obj),
+                          std::forward<Class>(clazz), method, std::forward<Args>(args)...);
+}
+
+template <ScopeOrObject Object, ScopeOrClass Class, typename... Args>
+[[maybe_unused]] inline auto JNI_CallCallNonvirtualFloatMethod(JNIEnv *env, Object &&obj,
+                                                               Class &&clazz, jmethodID method,
+                                                               Args &&...args) {
+    return JNI_SafeInvoke(env, &JNIEnv::CallNonvirtualFloatMethod, std::forward<Object>(obj),
+                          std::forward<Class>(clazz), method, std::forward<Args>(args)...);
+}
+
+template <ScopeOrObject Object, ScopeOrClass Class, typename... Args>
+[[maybe_unused]] inline auto JNI_CallCallNonvirtualDoubleMethod(JNIEnv *env, Object &&obj,
+                                                                Class &&clazz, jmethodID method,
+                                                                Args &&...args) {
+    return JNI_SafeInvoke(env, &JNIEnv::CallNonvirtualDoubleMethod, std::forward<Object>(obj),
+                          std::forward<Class>(clazz), method, std::forward<Args>(args)...);
+}
+
+// functions to array
 
 template <ScopeOrRaw<jarray> Array>
 [[maybe_unused]] inline auto JNI_GetArrayLength(JNIEnv *env, const Array &array) {
     return JNI_SafeInvoke(env, &JNIEnv::GetArrayLength, array);
 }
 
+// newers
+
+template <ScopeOrClass Class, ScopeOrObject Object>
+[[maybe_unused]] inline auto JNI_NewObjectArray(JNIEnv *env, jsize len, Class &&clazz,
+                                                const Object &init) {
+    return JNI_SafeInvoke(env, &JNIEnv::NewObjectArray, len, std::forward<Class>(clazz), init);
+}
+
+[[maybe_unused]] inline auto JNI_NewBooleanArray(JNIEnv *env, jsize len) {
+    return JNI_SafeInvoke(env, &JNIEnv::NewBooleanArray, len);
+}
+
+[[maybe_unused]] inline auto JNI_NewByteArray(JNIEnv *env, jsize len) {
+    return JNI_SafeInvoke(env, &JNIEnv::NewByteArray, len);
+}
+
+[[maybe_unused]] inline auto JNI_NewCharArray(JNIEnv *env, jsize len) {
+    return JNI_SafeInvoke(env, &JNIEnv::NewCharArray, len);
+}
+
+[[maybe_unused]] inline auto JNI_NewShortArray(JNIEnv *env, jsize len) {
+    return JNI_SafeInvoke(env, &JNIEnv::NewShortArray, len);
+}
+
+[[maybe_unused]] inline auto JNI_NewIntArray(JNIEnv *env, jsize len) {
+    return JNI_SafeInvoke(env, &JNIEnv::NewIntArray, len);
+}
+
+[[maybe_unused]] inline auto JNI_NewLongArray(JNIEnv *env, jsize len) {
+    return JNI_SafeInvoke(env, &JNIEnv::NewLongArray, len);
+}
+
+[[maybe_unused]] inline auto JNI_NewFloatArray(JNIEnv *env, jsize len) {
+    return JNI_SafeInvoke(env, &JNIEnv::NewFloatArray, len);
+}
+
+[[maybe_unused]] inline auto JNI_NewDoubleArray(JNIEnv *env, jsize len) {
+    return JNI_SafeInvoke(env, &JNIEnv::NewDoubleArray, len);
+}
+
 template <ScopeOrRaw<jobjectArray> Array>
-[[maybe_unused]] inline auto JNI_GetObjectArrayElement(JNIEnv *env, const Array &array, jsize idx) {
-    return JNI_SafeInvoke(env, &JNIEnv::GetObjectArrayElement, array, idx);
+[[maybe_unused]] inline auto JNI_GetObjectArrayElement(JNIEnv *env, const Array &array,
+                                                       jsize index) {
+    return JNI_SafeInvoke(env, &JNIEnv::GetObjectArrayElement, array, index);
+}
+
+template <ScopeOrRaw<jobjectArray> Array, ScopeOrObject Object>
+[[maybe_unused]] inline auto JNI_SetObjectArrayElement(JNIEnv *env, const Array &array, jsize index,
+                                                       Object &&obj) {
+    return JNI_SafeInvoke(env, &JNIEnv::SetObjectArrayElement, array, index, obj);
 }
 
 template <ScopeOrClass Class, typename... Args>
-[[maybe_unused]] inline auto JNI_NewObject(JNIEnv *env, const Class &clazz, Args &&...args) {
-    return JNI_SafeInvoke(env, &JNIEnv::NewObject, clazz, std::forward<Args>(args)...);
+[[maybe_unused]] inline auto JNI_NewObject(JNIEnv *env, Class &&clazz, jmethodID method,
+                                           Args &&...args) {
+    return JNI_SafeInvoke(env, &JNIEnv::NewObject, std::forward<Class>(clazz), method,
+                          std::forward<Args>(args)...);
 }
 
 template <typename... Args>
-[[maybe_unused]] inline auto JNI_NewDirectByteBuffer(JNIEnv *env, Args &&...args) {
-    return JNI_SafeInvoke(env, &JNIEnv::NewDirectByteBuffer, std::forward<Args>(args)...);
+[[maybe_unused]] inline auto JNI_NewDirectByteBuffer(JNIEnv *env, void *address, jlong capacity) {
+    return JNI_SafeInvoke(env, &JNIEnv::NewDirectByteBuffer, address, capacity);
 }
 
 template <ScopeOrClass Class>
-[[maybe_unused]] inline auto JNI_RegisterNatives(JNIEnv *env, const Class &clazz,
+[[maybe_unused]] inline auto JNI_RegisterNatives(JNIEnv *env, Class &&clazz,
                                                  const JNINativeMethod *methods, jint size) {
-    return JNI_SafeInvoke(env, &JNIEnv::RegisterNatives, clazz, methods, size);
+    return JNI_SafeInvoke(env, &JNIEnv::RegisterNatives, std::forward<Class>(clazz), methods, size);
+}
+
+template <ScopeOrObject Object, ScopeOrClass Class>
+[[maybe_unused]] inline auto JNI_IsInstanceOf(JNIEnv *env, Object &&obj, Class &&clazz) {
+    return JNI_SafeInvoke(env, &JNIEnv::IsInstanceOf, std::forward<Object>(obj),
+                          std::forward<Class>(clazz));
 }
 
 template <ScopeOrObject Object>

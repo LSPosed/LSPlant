@@ -204,14 +204,14 @@ public:
                 return false;
             }
             auto abstract_method = FromReflectedMethod(
-                env, env->ToReflectedMethod(executable, executable_get_name, false));
+                env, JNI_ToReflectedMethod(env, executable, executable_get_name, false));
             uint32_t access_flags = abstract_method->GetAccessFlags();
             abstract_method->SetAccessFlags(access_flags | kAccDefaultConflict);
             abstract_method->ThrowInvocationTimeError();
             abstract_method->SetAccessFlags(access_flags);
             if (auto exception = env->ExceptionOccurred();
                 env->ExceptionClear(),
-                (!exception || env->IsInstanceOf(exception, abstract_method_error))) {
+                (!exception || JNI_IsInstanceOf(env, exception, abstract_method_error))) {
                 kAccCompileDontBother = kAccDefaultConflict;
             }
         }

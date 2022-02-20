@@ -467,11 +467,11 @@ using ::lsplant::IsHooked;
 
 [[maybe_unused]] jobject Hook(JNIEnv *env, jobject target_method, jobject hooker_object,
                               jobject callback_method) {
-    if (!target_method || !env->IsInstanceOf(target_method, executable)) {
+    if (!target_method || !JNI_IsInstanceOf(env, target_method, executable)) {
         LOGE("target method is not an executable");
         return nullptr;
     }
-    if (!callback_method || !env->IsInstanceOf(callback_method, executable)) {
+    if (!callback_method || !JNI_IsInstanceOf(env, callback_method, executable)) {
         LOGE("callback method is not an executable");
         return nullptr;
     }
@@ -504,7 +504,7 @@ using ::lsplant::IsHooked;
         auto callback_class_name =
             JNI_Cast<jstring>(JNI_CallObjectMethod(env, callback_class, class_get_name));
         JUTFString class_name(callback_class_name);
-        if (!env->IsInstanceOf(hooker_object, callback_class)) {
+        if (!JNI_IsInstanceOf(env, hooker_object, callback_class)) {
             LOGE("callback_method is not a method of hooker_object");
             return nullptr;
         }
@@ -526,7 +526,7 @@ using ::lsplant::IsHooked;
     auto *hook = ArtMethod::FromReflectedMethod(env, reflected_hook);
     auto *backup = ArtMethod::FromReflectedMethod(env, reflected_backup);
 
-    env->SetStaticObjectField(built_class.get(), hooker_field, hooker_object);
+    JNI_SetStaticObjectField(env, built_class, hooker_field, hooker_object);
 
     if (is_static && !Class::IsInitialized(env, target_class.get())) {
         auto *miror_class = Class::FromReflectedClass(env, target_class);
@@ -556,7 +556,7 @@ using ::lsplant::IsHooked;
 }
 
 [[maybe_unused]] bool UnHook(JNIEnv *env, jobject target_method) {
-    if (!target_method || !env->IsInstanceOf(target_method, executable)) {
+    if (!target_method || !JNI_IsInstanceOf(env, target_method, executable)) {
         LOGE("target method is not an executable");
         return false;
     }
@@ -586,7 +586,7 @@ using ::lsplant::IsHooked;
 }
 
 [[maybe_unused]] bool IsHooked(JNIEnv *env, jobject method) {
-    if (!method || !env->IsInstanceOf(method, executable)) {
+    if (!method || !JNI_IsInstanceOf(env, method, executable)) {
         LOGE("method is not an executable");
         return false;
     }
@@ -602,7 +602,7 @@ using ::lsplant::IsHooked;
 }
 
 [[maybe_unused]] bool Deoptimize(JNIEnv *env, jobject method) {
-    if (!method || !env->IsInstanceOf(method, executable)) {
+    if (!method || !JNI_IsInstanceOf(env, method, executable)) {
         LOGE("method is not an executable");
         return false;
     }
@@ -622,7 +622,7 @@ using ::lsplant::IsHooked;
 }
 
 [[maybe_unused]] void *GetNativeFunction(JNIEnv *env, jobject method) {
-    if (!method || !env->IsInstanceOf(method, executable)) {
+    if (!method || !JNI_IsInstanceOf(env, method, executable)) {
         LOGE("method is not an executable");
         return nullptr;
     }
@@ -640,9 +640,9 @@ using ::lsplant::IsHooked;
     }
     auto constructors =
         JNI_Cast<jobjectArray>(JNI_CallObjectMethod(env, target, class_get_declared_constructors));
-    uint8_t access_flags = env->GetIntField(target, class_access_flags);
+    uint8_t access_flags = JNI_GetIntField(env, target, class_access_flags);
     constexpr static uint32_t kAccFinal = 0x0010;
-    env->SetIntField(target, class_access_flags, static_cast<jint>(access_flags & ~kAccFinal));
+    JNI_SetIntField(env, target, class_access_flags, static_cast<jint>(access_flags & ~kAccFinal));
     auto len = constructors ? JNI_GetArrayLength(env, constructors) : 0;
     for (auto i = 0; i < len; ++i) {
         auto constructor = JNI_GetObjectArrayElement(env, constructors, i);
