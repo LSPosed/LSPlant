@@ -15,6 +15,7 @@ android {
     buildToolsVersion = androidBuildToolsVersion
 
     buildFeatures {
+        buildConfig = false
         prefab = true
     }
 

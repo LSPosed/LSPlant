@@ -1,5 +1,7 @@
 plugins {
     id("com.android.library")
+    id("maven-publish")
+    id("signing")
 }
 
 val androidTargetSdkVersion: Int by rootProject.extra
@@ -15,6 +17,7 @@ android {
     buildToolsVersion = androidBuildToolsVersion
 
     buildFeatures {
+        buildConfig = false
         prefabPublishing = true
     }
 
@@ -89,4 +92,61 @@ android {
             version = androidCmakeVersion
         }
     }
+
+    publishing {
+        singleVariant("release") {
+            withSourcesJar()
+            withJavadocJar()
+        }
+    }
+}
+
+publishing {
+    publications {
+        register<MavenPublication>("lsplant") {
+            group = "org.lsposed.lsplant"
+            artifactId = "lsplant"
+            version = "1.0"
+            afterEvaluate {
+                from(components.getByName("release"))
+            }
+            pom {
+                name.set("LSPlant")
+                description.set("A hook framework for Android Runtime (ART)")
+                url.set("https://github.com/LSPosed/LSPlant")
+                licenses {
+                    license {
+                        name.set("GNU Lesser General Public License v3.0")
+                        url.set("https://github.com/LSPosed/LSPlant/blob/master/LICENSE")
+                    }
+                }
+                developers {
+                    developer {
+                        name.set("Lsposed")
+                        url.set("https://lsposed.org")
+                    }
+                }
+                scm {
+                    connection.set("scm:git:https://github.com/LSPosed/LSPlant.git")
+                    url.set("https://github.com/LSPosed/LSPlant")
+                }
+            }
+        }
+    }
+    repositories {
+        maven {
+            name = "ossrh"
+            url = uri("https://s01.oss.sonatype.org/service/local/staging/deploy/maven2/")
+            credentials(PasswordCredentials::class)
+        }
+    }
+}
+
+signing {
+    val signingKey = findProperty("signingKey") as String?
+    val signingPassword = findProperty("signingPassword") as String?
+    if (signingKey != null && signingPassword != null) {
+        useInMemoryPgpKeys(signingKey, signingPassword)
+    }
+    sign(publishing.publications)
 }
