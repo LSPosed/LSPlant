@@ -26,6 +26,8 @@ class ArtMethod {
         return nullptr;
     }
 
+    inline void ThrowInvocationTimeError() { ThrowInvocationTimeError(this); }
+
 public:
     inline static const char *GetMethodShorty(JNIEnv *env, jobject method) {
         return GetMethodShorty(env, env->FromReflectedMethod(method));
@@ -63,7 +65,7 @@ public:
     void SetProtected() {
         auto access_flags = GetAccessFlags();
         access_flags |= kAccProtected;
-        access_flags &= ~kAccProtected;
+        access_flags &= ~kAccPrivate;
         access_flags &= ~kAccPublic;
         SetAccessFlags(access_flags);
     }
@@ -189,6 +191,31 @@ public:
             return false;
         }
 
+        if (sdk_int == __ANDROID_API_O__) [[unlikely]] {
+            auto abstract_method_error = JNI_FindClass(env, "java/lang/AbstractMethodError");
+            if (!abstract_method_error) {
+                LOGE("Failed to find AbstractMethodError");
+                return false;
+            }
+            auto executable_get_name =
+                JNI_GetMethodID(env, executable, "getName", "()Ljava/lang/String;");
+            if (!executable_get_name) {
+                LOGE("Failed to find Executable.getName");
+                return false;
+            }
+            auto abstract_method = FromReflectedMethod(
+                env, env->ToReflectedMethod(executable, executable_get_name, false));
+            uint32_t access_flags = abstract_method->GetAccessFlags();
+            abstract_method->SetAccessFlags(access_flags | kAccDefaultConflict);
+            abstract_method->ThrowInvocationTimeError();
+            abstract_method->SetAccessFlags(access_flags);
+            if (auto exception = env->ExceptionOccurred();
+                env->ExceptionClear(),
+                (!exception || env->IsInstanceOf(exception, abstract_method_error))) {
+                kAccCompileDontBother = kAccDefaultConflict;
+            }
+        }
+
         return true;
     }
 
@@ -210,6 +237,7 @@ private:
     inline static uint32_t kAccFastInterpreterToInterpreterInvoke = 0x40000000;
     inline static uint32_t kAccPreCompiled = 0x00200000;
     inline static uint32_t kAccCompileDontBother = 0x02000000;
+    inline static uint32_t kAccDefaultConflict = 0x01000000;
 };
 
 }  // namespace lsplant::art
