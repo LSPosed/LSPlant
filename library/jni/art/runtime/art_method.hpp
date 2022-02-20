@@ -15,7 +15,22 @@ class ArtMethod {
             return "null sym";
     }
 
+    CREATE_MEM_FUNC_SYMBOL_ENTRY(void, ThrowInvocationTimeError, ArtMethod *thiz) {
+        if (thiz && ThrowInvocationTimeErrorSym) [[likely]]
+            return ThrowInvocationTimeErrorSym(thiz);
+    }
+
+    CREATE_FUNC_SYMBOL_ENTRY(const char *, GetMethodShorty, JNIEnv *env, jmethodID mid) {
+        if (GetMethodShortySym) [[likely]]
+            return GetMethodShortySym(env, mid);
+        return nullptr;
+    }
+
 public:
+    inline static const char *GetMethodShorty(JNIEnv *env, jobject method) {
+        return GetMethodShorty(env, env->FromReflectedMethod(method));
+    }
+
     void SetNonCompilable() {
         auto access_flags = GetAccessFlags();
         access_flags |= kAccCompileDontBother;
@@ -101,7 +116,7 @@ public:
         return reinterpret_cast<art::ArtMethod *>(JNI_GetLongField(env, method, art_method_field));
     }
 
-    static bool Init(JNIEnv *env, const lsplant::InitInfo info) {
+    static bool Init(JNIEnv *env, const HookHandler handler) {
         auto executable = JNI_FindClass(env, "java/lang/reflect/Executable");
         if (!executable) {
             LOGE("Failed to found Executable");
@@ -168,16 +183,13 @@ public:
         if (sdk_int < __ANDROID_API_R__) kAccPreCompiled = 0;
         if (sdk_int < __ANDROID_API_Q__) kAccFastInterpreterToInterpreterInvoke = 0;
 
-        get_method_shorty_symbol = GetArtSymbol<decltype(get_method_shorty_symbol)>(
-            info.art_symbol_resolver, "_ZN3artL15GetMethodShortyEP7_JNIEnvP10_jmethodID");
-        if (!get_method_shorty_symbol) return false;
-        return true;
-    }
+        if (!RETRIEVE_FUNC_SYMBOL(GetMethodShorty,
+                                  "_ZN3artL15GetMethodShortyEP7_JNIEnvP10_jmethodID")) {
+            LOGE("Failed to find GetMethodShorty");
+            return false;
+        }
 
-    static const char *GetMethodShorty(_JNIEnv *env, _jmethodID *method) {
-        if (get_method_shorty_symbol) [[likely]]
-            return get_method_shorty_symbol(env, method);
-        return nullptr;
+        return true;
     }
 
     static size_t GetEntryPointOffset() { return entry_point_offset; }
@@ -198,9 +210,6 @@ private:
     inline static uint32_t kAccFastInterpreterToInterpreterInvoke = 0x40000000;
     inline static uint32_t kAccPreCompiled = 0x00200000;
     inline static uint32_t kAccCompileDontBother = 0x02000000;
-
-    inline static const char *(*get_method_shorty_symbol)(_JNIEnv *env,
-                                                          _jmethodID *method) = nullptr;
 };
 
 }  // namespace lsplant::art

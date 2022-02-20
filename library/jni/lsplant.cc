@@ -508,10 +508,10 @@ using ::lsplant::IsHooked;
             LOGE("callback_method is not a method of hooker_object");
             return nullptr;
         }
-        std::tie(built_class, hooker_field, hook_method, backup_method) = WrapScope(
-            env, BuildDex(env, callback_class_loader,
-                          ArtMethod::GetMethodShorty(env, env->FromReflectedMethod(target_method)),
-                          is_static, method_name.get(), class_name.get(), method_name.get()));
+        std::tie(built_class, hooker_field, hook_method, backup_method) =
+            WrapScope(env, BuildDex(env, callback_class_loader,
+                                    ArtMethod::GetMethodShorty(env, target_method), is_static,
+                                    method_name.get(), class_name.get(), method_name.get()));
         if (!built_class || !hooker_field || !hook_method || !backup_method) {
             LOGE("Failed to generate hooker");
             return nullptr;
