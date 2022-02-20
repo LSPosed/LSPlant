@@ -33,8 +33,13 @@ android {
     buildToolsVersion = androidBuildToolsVersion
 
     buildFeatures {
-        prefab = true
         prefabPublishing = true
+    }
+
+    packagingOptions {
+        jniLibs {
+            excludes += "**.so"
+        }
     }
 
     prefab {
@@ -70,7 +75,6 @@ android {
                     "-fno-stack-protector",
                     "-fomit-frame-pointer",
                     "-Wno-builtin-macro-redefined",
-                    "-Wl,--strip-all",
                     "-ffunction-sections",
                     "-fdata-sections",
                     "-Wno-unused-value",
@@ -94,6 +98,12 @@ android {
                     )
                 )
             }
+        }
+    }
+
+    buildTypes {
+        all {
+            externalNativeBuild.cmake.arguments += "-DDEBUG_SYMBOLS_PATH=${project.buildDir.absolutePath}/symbols/$name"
         }
     }
 
