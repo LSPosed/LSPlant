@@ -311,9 +311,9 @@ template <ScopeOrObject Object>
 
 // setters
 
-template <ScopeOrObject Object>
+template <ScopeOrObject Object, ScopeOrObject Value>
 [[maybe_unused]] inline auto JNI_SetObjectField(JNIEnv *env, Object &&obj, jfieldID fieldId,
-                                                const Object &value) {
+                                                const Value &value) {
     return JNI_SafeInvoke(env, &JNIEnv::SetObjectField, std::forward<Object>(obj), fieldId, value);
 }
 
@@ -973,7 +973,10 @@ public:
 
     const JArrayUnderlyingType<T> &operator[](size_t index) const { return elements_[index]; }
 
-    void commit() { ReleaseElements(JNI_COMMIT); }
+    void commit() {
+        ReleaseElements(JNI_COMMIT);
+        modified_ = false;
+    }
 
     // We do not expose an empty constructor as it can easily lead to errors
     // using common idioms, e.g.:

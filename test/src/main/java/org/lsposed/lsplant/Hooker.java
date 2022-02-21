@@ -1,7 +1,7 @@
 package org.lsposed.lsplant;
 
-import java.lang.reflect.Executable;
 import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Member;
 import java.lang.reflect.Method;
 
 public class Hooker {
@@ -18,16 +18,16 @@ public class Hooker {
 
     public Method backup;
 
-    private Executable target;
+    private Member target;
     private Method replacement;
     private Object owner = null;
 
     private Hooker() {
     }
 
-    private native Method doHook(Executable original, Method callback);
+    private native Method doHook(Member original, Method callback);
 
-    private native boolean doUnhook(Executable target);
+    private native boolean doUnhook(Member target);
 
     public Object callback(Object[] args) throws InvocationTargetException, IllegalAccessException {
         var methodCallback = new MethodCallback(backup, args);
@@ -38,7 +38,7 @@ public class Hooker {
         return doUnhook(target);
     }
 
-    public static Hooker hook(Executable target, Method replacement, Object owner) {
+    public static Hooker hook(Member target, Method replacement, Object owner) {
         Hooker hooker = new Hooker();
         try {
             var callbackMethod = Hooker.class.getDeclaredMethod("callback", Object[].class);

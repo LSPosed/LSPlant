@@ -82,6 +82,7 @@ public:
     bool IsFinal() { return GetAccessFlags() & kAccFinal; }
     bool IsStatic() { return GetAccessFlags() & kAccStatic; }
     bool IsNative() { return GetAccessFlags() & kAccNative; }
+    bool IsConstructor() { return GetAccessFlags() & kAccConstructor; }
 
     void CopyFrom(const ArtMethod *other) { memcpy(this, other, art_method_size); }
 
@@ -96,6 +97,10 @@ public:
 
     void *GetData() {
         return *reinterpret_cast<void **>(reinterpret_cast<uintptr_t>(this) + data_offset);
+    }
+
+    void SetData(void *data) {
+        *reinterpret_cast<void **>(reinterpret_cast<uintptr_t>(this) + data_offset) = data;
     }
 
     uint32_t GetAccessFlags() {
@@ -119,9 +124,16 @@ public:
     }
 
     static bool Init(JNIEnv *env, const HookHandler handler) {
-        auto executable = JNI_FindClass(env, "java/lang/reflect/Executable");
+        auto sdk_int = GetAndroidApiLevel();
+        jclass executable = nullptr;
+        if (sdk_int >= __ANDROID_API_O__) {
+            executable = JNI_NewGlobalRef(env, JNI_FindClass(env, "java/lang/reflect/Executable"));
+        } else {
+            executable =
+                JNI_NewGlobalRef(env, JNI_FindClass(env, "java/lang/reflect/AbstractMethod"));
+        }
         if (!executable) {
-            LOGE("Failed to found Executable");
+            LOGE("Failed to found Executable/AbstractMethod");
             return false;
         }
 
@@ -153,7 +165,7 @@ public:
         art_method_size = reinterpret_cast<uintptr_t>(second) - reinterpret_cast<uintptr_t>(first);
         LOGD("ArtMethod size: %zu", art_method_size);
 
-        if (RoundUpTo(4 * 4 + 2 * 2, kPointerSize) + kPointerSize * 3 < art_method_size) {
+        if (RoundUpTo(4 * 9, kPointerSize) + kPointerSize * 3 < art_method_size) {
             LOGW("ArtMethod size exceeds maximum assume. There may be something wrong.");
         }
 
@@ -179,10 +191,12 @@ public:
             LOGW("Failed to find accessFlags field. Fallback to 4.");
             access_flags_offset = 4U;
         }
-        auto sdk_int = GetAndroidApiLevel();
 
-        if (sdk_int < __ANDROID_API_R__) kAccPreCompiled = 0;
-        else if (sdk_int >= __ANDROID_API_S__) kAccPreCompiled = 0x00800000;
+        if (sdk_int < __ANDROID_API_R__) {
+            kAccPreCompiled = 0;
+        } else if (sdk_int >= __ANDROID_API_S__) {
+            kAccPreCompiled = 0x00800000;
+        }
         if (sdk_int < __ANDROID_API_Q__) kAccFastInterpreterToInterpreterInvoke = 0;
 
         if (!RETRIEVE_FUNC_SYMBOL(GetMethodShorty,
@@ -191,29 +205,35 @@ public:
             return false;
         }
 
-        if (sdk_int == __ANDROID_API_O__) [[unlikely]] {
+        if (sdk_int <= __ANDROID_API_O__) [[unlikely]] {
             auto abstract_method_error = JNI_FindClass(env, "java/lang/AbstractMethodError");
             if (!abstract_method_error) {
                 LOGE("Failed to find AbstractMethodError");
                 return false;
             }
-            auto executable_get_name =
-                JNI_GetMethodID(env, executable, "getName", "()Ljava/lang/String;");
-            if (!executable_get_name) {
-                LOGE("Failed to find Executable.getName");
-                return false;
+            if (sdk_int == __ANDROID_API_O__) [[unlikely]] {
+                auto executable_get_name =
+                    JNI_GetMethodID(env, executable, "getName", "()Ljava/lang/String;");
+                if (!executable_get_name) {
+                    LOGE("Failed to find Executable.getName");
+                    return false;
+                }
+                auto abstract_method = FromReflectedMethod(
+                    env, JNI_ToReflectedMethod(env, executable, executable_get_name, false));
+                uint32_t access_flags = abstract_method->GetAccessFlags();
+                abstract_method->SetAccessFlags(access_flags | kAccDefaultConflict);
+                abstract_method->ThrowInvocationTimeError();
+                abstract_method->SetAccessFlags(access_flags);
             }
-            auto abstract_method = FromReflectedMethod(
-                env, JNI_ToReflectedMethod(env, executable, executable_get_name, false));
-            uint32_t access_flags = abstract_method->GetAccessFlags();
-            abstract_method->SetAccessFlags(access_flags | kAccDefaultConflict);
-            abstract_method->ThrowInvocationTimeError();
-            abstract_method->SetAccessFlags(access_flags);
             if (auto exception = env->ExceptionOccurred();
                 env->ExceptionClear(),
-                (!exception || JNI_IsInstanceOf(env, exception, abstract_method_error))) {
+                (!exception || JNI_IsInstanceOf(env, exception, abstract_method_error)))
+                [[likely]] {
                 kAccCompileDontBother = kAccDefaultConflict;
             }
+        }
+        if (sdk_int <= __ANDROID_API_N__) {
+            kAccCompileDontBother = 0;
         }
 
         return true;
@@ -227,6 +247,7 @@ public:
     constexpr static uint32_t kAccStatic = 0x0008;     // field, method, ic
     constexpr static uint32_t kAccNative = 0x0100;     // method
     constexpr static uint32_t kAccFinal = 0x0010;      // class, field, method, ic
+    constexpr static uint32_t kAccConstructor = 0x00010000;
 
 private:
     inline static jfieldID art_method_field = nullptr;
