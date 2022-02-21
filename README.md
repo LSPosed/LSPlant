@@ -3,6 +3,8 @@
 ![](https://img.shields.io/badge/license-LGPL--3.0-orange.svg)
 ![](https://img.shields.io/badge/Android-8.0%20--%2013-blue.svg)
 ![](https://img.shields.io/badge/arch-armeabi--v7a%20%7C%20arm64--v8a%20%7C%20x86%20%7C%20x86--64-brightgreen.svg)
+![](https://github.com/LSPosed/LSPlant/actions/workflows/build.yml/badge.svg?branch=master&event=push)
+![](https://img.shields.io/maven-central/v/org.lsposed.lsplant/lsplant)
 
 LSPlant is an Android ART hook library, providing Java method hook/unhook and inline deoptimization.
 
@@ -19,6 +21,22 @@ This project is part of LSPosed framework under GNU Lesser General Public Licens
 https://lsposed.org/LSPlant/namespacelsplant.html
 
 ## Quick Start
+
+```gradle
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    implementation "org.lsposed.lsplant:lsplant:1.0"
+}
+
+android {
+    buildFeatures {
+        prefab true
+    }
+}
+```
 
 ### 1. Init LSPlant within JNI_OnLoad
 
