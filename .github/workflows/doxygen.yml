@@ -8,6 +8,7 @@ on:
     paths:
       - lsplant/src/main/jni/include/**
       - README.md
+      - docs/**
 
 jobs:
   build:
