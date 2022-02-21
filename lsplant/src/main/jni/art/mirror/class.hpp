@@ -51,7 +51,11 @@ public:
         int sdk_int = GetAndroidApiLevel();
 
         if (sdk_int >= __ANDROID_API_P__) {
-            is_unsigned = true;
+            initialized_status = -14;
+        } else if (sdk_int == __ANDROID_API_O_MR1__) {
+            initialized_status = 11;
+        } else {
+            initialized_status = 10;
         }
 
         return true;
@@ -76,11 +80,12 @@ public:
 
     static int GetStatus(JNIEnv *env, jclass clazz) {
         int status = JNI_GetIntField(env, clazz, class_status);
-        return is_unsigned ? static_cast<uint32_t>(status) >> (32 - 4) : status;
+        return initialized_status < 0 ? static_cast<uint32_t>(status) >> (32 - 4) : status;
     }
 
     static bool IsInitialized(JNIEnv *env, jclass clazz) {
-        return is_unsigned ? GetStatus(env, clazz) >= 14 : GetStatus(env, clazz) == 11;
+        return initialized_status < 0 ? GetStatus(env, clazz) >= -initialized_status
+                                      : GetStatus(env, clazz) == initialized_status;
     }
 
     static Class *FromReflectedClass(JNIEnv *, jclass clazz) {
@@ -89,7 +94,7 @@ public:
 
 private:
     inline static jfieldID class_status = nullptr;
-    inline static bool is_unsigned = false;
+    inline static int initialized_status = 0;
 };
 
 }  // namespace mirror
