@@ -2,6 +2,7 @@ name: Build
 
 on: [ push, pull_request ]
 
+
 jobs:
   build:
     name: Build on ${{ matrix.os }}
@@ -33,12 +34,48 @@ jobs:
 
   test:
     needs: build
-    name: Test on API ${{ matrix.api-level }}
+    name: Test on API ${{ matrix.api-level }} ${{ matrix.arch }}
     runs-on: macos-latest
     strategy:
       fail-fast: false
       matrix:
-        api-level: [ 26, 27, 28, 29, 30, 31, 32 ]
+        include:
+          - api-level: 26
+            target: default
+            arch: x86_64
+          - api-level: 26
+            target: default
+            arch: x86
+          - api-level: 27
+            target: default
+            arch: x86_64
+          - api-level: 27
+            target: default
+            arch: x86
+          - api-level: 28
+            target: default
+            arch: x86_64
+          - api-level: 28
+            target: default
+            arch: x86
+          - api-level: 29
+            target: default
+            arch: x86_64
+          - api-level: 29
+            target: default
+            arch: x86
+          - api-level: 30
+            target: default
+            arch: x86_64
+          - api-level: 30
+            target: google_apis
+            arch: x86
+          - api-level: 31
+            target: google_apis
+            arch: x86_64
+          - api-level: 32
+            target: google_apis
+            arch: x86_64
     steps:
       - name: checkout
         uses: actions/checkout@v2
@@ -55,14 +92,14 @@ jobs:
           path: |
             ~/.android/avd/*
             ~/.android/adb*
-          key: avd-${{ matrix.api-level }}
+          key: avd-${{ matrix.api-level }}-${{ matrix.arch }}
       - name: create AVD and generate snapshot for caching
         if: steps.avd-cache.outputs.cache-hit != 'true'
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: ${{ matrix.api-level }}
-          arch: x86_64
-          target: google_apis
+          arch: ${{ matrix.arch }}
+          target: ${{ matrix.target }}
           script: echo "Generated AVD snapshot for caching."
           force-avd-creation: false
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
@@ -71,13 +108,14 @@ jobs:
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: ${{ matrix.api-level }}
-          arch: x86_64
-          target: google_apis
-          script: ./gradlew :test:connectedCheck; ./gradlew :test:connectedCheck
+          arch: ${{ matrix.arch }}
+          target: ${{ matrix.target }}
+          script: ./gradlew :lsplant:prefabDebugConfigurePackage; ./gradlew :test:connectedCheck
           force-avd-creation: false
           emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           disable-animations: true
       - name: Upload outputs
+        if: always()
         uses: actions/upload-artifact@v2
         with:
           name: test-outputs
