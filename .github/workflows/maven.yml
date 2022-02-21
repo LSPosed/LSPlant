@@ -18,12 +18,12 @@ jobs:
           java-version: '11'
       - name: Build with Gradle
         run: |
-          sed -i '/withSourcesJar()/d' library/build.gradle
+          sed -i '/withSourcesJar()/d' lsplant/build.gradle.kts
           ./gradlew :lsplant:publishToMavenLocal
           git reset --hard HEAD
           ./gradlew :lsplant:publish
         env:
           ORG_GRADLE_PROJECT_signingKey: ${{ secrets.maven_pgp_signingKey }}
           ORG_GRADLE_PROJECT_signingPassword: ${{ secrets.maven_pgp_signingPassword }}
-          ORG_GRADLE_PROJECT_ossrhUsername: ${{ secrets.ossrhUsername }}
-          ORG_GRADLE_PROJECT_ossrhPassword: ${{ secrets.ossrhPassword }}
+          ORG_GRADLE_PROJECT_ossrhUsername: ${{ secrets.maven_ossrhUsername }}
+          ORG_GRADLE_PROJECT_ossrhPassword: ${{ secrets.maven_ossrhPassword }}
