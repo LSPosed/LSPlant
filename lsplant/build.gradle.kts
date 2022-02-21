@@ -19,6 +19,7 @@ android {
     buildFeatures {
         buildConfig = false
         prefabPublishing = true
+        androidResources = false
     }
 
     packagingOptions {
@@ -101,6 +102,12 @@ android {
     }
 }
 
+val symbolsTask = tasks.register<Jar>("generateReleaseSymbolsJar") {
+    from("${project.buildDir.absolutePath}/symbols/release")
+    exclude("**/dex_builder")
+    archiveClassifier.set("symbols")
+}
+
 publishing {
     publications {
         register<MavenPublication>("lsplant") {
@@ -109,6 +116,7 @@ publishing {
             version = "1.0"
             afterEvaluate {
                 from(components.getByName("release"))
+                artifact(symbolsTask)
             }
             pom {
                 name.set("LSPlant")
