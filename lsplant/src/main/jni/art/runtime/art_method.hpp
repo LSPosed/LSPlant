@@ -182,6 +182,7 @@ public:
         auto sdk_int = GetAndroidApiLevel();
 
         if (sdk_int < __ANDROID_API_R__) kAccPreCompiled = 0;
+        else if (sdk_int >= __ANDROID_API_S__) kAccPreCompiled = 0x00800000;
         if (sdk_int < __ANDROID_API_Q__) kAccFastInterpreterToInterpreterInvoke = 0;
 
         if (!RETRIEVE_FUNC_SYMBOL(GetMethodShorty,
