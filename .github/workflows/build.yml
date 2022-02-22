@@ -25,8 +25,17 @@ jobs:
         uses: actions/setup-java@v1
         with:
           java-version: '11'
+      - name: Gradle cache
+        uses: actions/cache@v2
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-${{ runner.os }}-${{ hashFiles('**/*.gradle*') }}-${{ hashFiles('**/gradle/wrapper/gradle-wrapper.properties') }}-${{ hashFiles('**/buildSrc/**/*.kt') }}
       - name: Build with Gradle
-        run: ./gradlew :lsplant:publishToMavenLocal
+        run: |
+          echo 'android.native.buildOutput=verbose' >> gradle.properties
+          ./gradlew :lsplant:publishToMavenLocal
         env:
           ORG_GRADLE_PROJECT_signingKey: ${{ secrets.maven_pgp_signingKey }}
           ORG_GRADLE_PROJECT_signingPassword: ${{ secrets.maven_pgp_signingPassword }}
@@ -90,11 +99,14 @@ jobs:
             target: default
             arch: x86_64
           - api-level: 30
-            target: default
+            target: google_apis
             arch: x86
           - api-level: 31
             target: default
             arch: x86_64
+          - api-level: 31
+            target: android-tv
+            arch: x86
           - api-level: 32
             target: google_apis
             arch: x86_64
@@ -117,7 +129,15 @@ jobs:
           path: |
             ~/.android/avd/*
             ~/.android/adb*
-          key: avd-${{ matrix.api-level }}-${{ matrix.arch }}
+          key: avd-${{ matrix.api-level }}-${{ matrix.arch }}-${{ matrix.target }}
+      - name: Gradle cache
+        uses: actions/cache@v2
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-${{ runner.os }}-${{ matrix.api-level }}-${{ matrix.arch }}-${{ matrix.target }}-${{ hashFiles('**/*.gradle*') }}-${{ hashFiles('**/gradle/wrapper/gradle-wrapper.properties') }}-${{ hashFiles('**/buildSrc/**/*.kt') }}
+          restore-keys: gradle-${{ runner.os }}-
       - name: create AVD and generate snapshot for caching
         if: steps.avd-cache.outputs.cache-hit != 'true'
         uses: yujincheng08/android-emulator-runner@release/v2
