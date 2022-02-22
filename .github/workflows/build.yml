@@ -90,12 +90,15 @@ jobs:
             target: default
             arch: x86_64
           - api-level: 30
-            target: google_apis
+            target: default
             arch: x86
           - api-level: 31
-            target: google_apis
+            target: default
             arch: x86_64
           - api-level: 32
+            target: google_apis
+            arch: x86_64
+          - api-level: Tiramisu
             target: google_apis
             arch: x86_64
     steps:
@@ -117,7 +120,7 @@ jobs:
           key: avd-${{ matrix.api-level }}-${{ matrix.arch }}
       - name: create AVD and generate snapshot for caching
         if: steps.avd-cache.outputs.cache-hit != 'true'
-        uses: reactivecircus/android-emulator-runner@v2
+        uses: yujincheng08/android-emulator-runner@release/v2
         with:
           api-level: ${{ matrix.api-level }}
           arch: ${{ matrix.arch }}
@@ -127,7 +130,7 @@ jobs:
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           disable-animations: false
       - name: run tests
-        uses: reactivecircus/android-emulator-runner@v2
+        uses: yujincheng08/android-emulator-runner@release/v2
         with:
           api-level: ${{ matrix.api-level }}
           arch: ${{ matrix.arch }}

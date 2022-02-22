@@ -81,12 +81,6 @@ public:
     static bool Init(const HookHandler &handler) {
         int sdk_int = GetAndroidApiLevel();
 
-        if (!RETRIEVE_MEM_FUNC_SYMBOL(
-                SetEntryPointsToInterpreter,
-                "_ZNK3art11ClassLinker27SetEntryPointsToInterpreterEPNS_9ArtMethodE")) {
-            return false;
-        }
-
         if (sdk_int >= __ANDROID_API_N__) {
             if (!HookSyms(handler, ShouldUseInterpreterEntrypoint, ShouldStayInSwitchInterpreter))
                 [[unlikely]] {
@@ -110,21 +104,20 @@ public:
             }
         }
 
-        // MakeInitializedClassesVisiblyInitialized will cause deadlock
-        // IsQuickToInterpreterBridge is inlined
-        // So we use GetSavedEntryPointOfPreCompiledMethod instead
-
-        if (!RETRIEVE_FUNC_SYMBOL(art_quick_to_interpreter_bridge,
-                                  "art_quick_to_interpreter_bridge")) {
-            return false;
+        if (!RETRIEVE_MEM_FUNC_SYMBOL(
+                SetEntryPointsToInterpreter,
+                "_ZNK3art11ClassLinker27SetEntryPointsToInterpreterEPNS_9ArtMethodE")) {
+            if (!RETRIEVE_FUNC_SYMBOL(art_quick_to_interpreter_bridge,
+                                      "art_quick_to_interpreter_bridge")) {
+                return false;
+            }
+            if (!RETRIEVE_FUNC_SYMBOL(art_quick_generic_jni_trampoline,
+                                      "art_quick_generic_jni_trampoline")) {
+                return false;
+            }
+            LOGD("art_quick_to_interpreter_bridge = %p", art_quick_to_interpreter_bridgeSym);
+            LOGD("art_quick_generic_jni_trampoline = %p", art_quick_generic_jni_trampolineSym);
         }
-        if (!RETRIEVE_FUNC_SYMBOL(art_quick_generic_jni_trampoline,
-                                  "art_quick_generic_jni_trampoline")) {
-            return false;
-        }
-
-        LOGD("art_quick_to_interpreter_bridge = %p", art_quick_to_interpreter_bridgeSym);
-        LOGD("art_quick_generic_jni_trampoline = %p", art_quick_generic_jni_trampolineSym);
         return true;
     }
 
