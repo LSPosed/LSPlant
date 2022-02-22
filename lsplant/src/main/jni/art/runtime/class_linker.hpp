@@ -31,6 +31,13 @@ private:
             MaybeDelayHook(clazz);
         });
 
+    CREATE_MEM_HOOK_STUB_ENTRY("_ZN3art11ClassLinker22FixupStaticTrampolinesEPNS_6mirror5ClassE",
+                               void, FixupStaticTrampolinesRaw,
+                               (ClassLinker * thiz, mirror::Class *clazz), {
+                                   backup(thiz, clazz);
+                                   MaybeDelayHook(clazz);
+                               });
+
     CREATE_MEM_HOOK_STUB_ENTRY(
         "_ZN3art11ClassLinker22FixupStaticTrampolinesEPNS_6ThreadENS_6ObjPtrINS_6mirror5ClassEEE",
         void, FixupStaticTrampolinesWithThread,
@@ -72,7 +79,7 @@ private:
 
 public:
     static bool Init(const HookHandler &handler) {
-        int api_level = GetAndroidApiLevel();
+        int sdk_int = GetAndroidApiLevel();
 
         if (!RETRIEVE_MEM_FUNC_SYMBOL(
                 SetEntryPointsToInterpreter,
@@ -80,11 +87,14 @@ public:
             return false;
         }
 
-        if (!HookSyms(handler, ShouldUseInterpreterEntrypoint, ShouldStayInSwitchInterpreter)) {
-            return false;
+        if (sdk_int >= __ANDROID_API_N__) {
+            if (!HookSyms(handler, ShouldUseInterpreterEntrypoint, ShouldStayInSwitchInterpreter))
+                [[unlikely]] {
+                return false;
+            }
         }
 
-        if (api_level >= __ANDROID_API_R__) {
+        if (sdk_int >= __ANDROID_API_R__) {
             // In android R, FixupStaticTrampolines won't be called unless it's marking it as
             // visiblyInitialized.
             // So we miss some calls between initialized and visiblyInitialized.
@@ -95,7 +105,7 @@ public:
                 return false;
             }
         } else {
-            if (!HookSyms(handler, FixupStaticTrampolines)) {
+            if (!HookSyms(handler, FixupStaticTrampolines, FixupStaticTrampolinesRaw)) {
                 return false;
             }
         }
@@ -119,6 +129,11 @@ public:
     }
 
     [[gnu::always_inline]] static bool SetEntryPointsToInterpreter(ArtMethod *art_method) {
+        if (SetEntryPointsToInterpreterSym) [[likely]] {
+            SetEntryPointsToInterpreter(nullptr, art_method);
+            return true;
+        }
+        // Android 13
         if (art_quick_to_interpreter_bridgeSym && art_quick_generic_jni_trampolineSym) [[likely]] {
             if (art_method->GetAccessFlags() & ArtMethod::kAccNative) [[unlikely]] {
                 art_method->SetEntryPoint(
@@ -127,10 +142,6 @@ public:
                 art_method->SetEntryPoint(
                     reinterpret_cast<void *>(art_quick_to_interpreter_bridgeSym));
             }
-            return true;
-        }
-        if (SetEntryPointsToInterpreterSym) [[likely]] {
-            SetEntryPointsToInterpreter(nullptr, art_method);
             return true;
         }
         return false;

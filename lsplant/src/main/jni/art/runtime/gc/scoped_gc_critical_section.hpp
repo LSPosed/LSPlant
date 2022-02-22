@@ -37,13 +37,18 @@ public:
     ~ScopedGCCriticalSection() { destructor(this); }
 
     static bool Init(const HookHandler &handler) {
-        if (!RETRIEVE_MEM_FUNC_SYMBOL(constructor,
-                                      "_ZN3art2gc23ScopedGCCriticalSectionC2EPNS_6ThreadENS0_"
-                                      "7GcCauseENS0_13CollectorTypeE")) {
-            return false;
-        }
-        if (!RETRIEVE_MEM_FUNC_SYMBOL(destructor, "_ZN3art2gc23ScopedGCCriticalSectionD2Ev")) {
-            return false;
+        // for Android M, it's safe to not found since we have suspendVM & resumeVM
+        auto sdk_int = GetAndroidApiLevel();
+        if (sdk_int >= __ANDROID_API_N__) {
+            if (!RETRIEVE_MEM_FUNC_SYMBOL(constructor,
+                                          "_ZN3art2gc23ScopedGCCriticalSectionC2EPNS_6ThreadENS0_"
+                                          "7GcCauseENS0_13CollectorTypeE")) [[unlikely]] {
+                return false;
+            }
+            if (!RETRIEVE_MEM_FUNC_SYMBOL(destructor, "_ZN3art2gc23ScopedGCCriticalSectionD2Ev"))
+                [[unlikely]] {
+                return false;
+            }
         }
         return true;
     }

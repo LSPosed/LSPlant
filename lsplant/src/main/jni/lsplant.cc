@@ -10,6 +10,7 @@
 #include "art/instrumentation.hpp"
 #include "art/runtime/art_method.hpp"
 #include "art/runtime/class_linker.hpp"
+#include "art/runtime/dex_file.hpp"
 #include "art/runtime/gc/scoped_gc_critical_section.hpp"
 #include "art/runtime/jit/jit_code_cache.hpp"
 #include "art/thread.hpp"
@@ -27,6 +28,7 @@ namespace lsplant {
 
 using art::ArtMethod;
 using art::ClassLinker;
+using art::DexFile;
 using art::Instrumentation;
 using art::Thread;
 using art::gc::ScopedGCCriticalSection;
@@ -78,6 +80,10 @@ jmethodID load_class = nullptr;
 jmethodID set_accessible = nullptr;
 jclass executable = nullptr;
 
+// for old platform
+jclass path_class_loader = nullptr;
+jmethodID path_class_loader_init = nullptr;
+
 std::string generated_class_name;
 std::string generated_source_name;
 std::string generated_field_name;
@@ -104,9 +110,14 @@ bool InitConfig(const InitInfo &info) {
 }
 
 bool InitJNI(JNIEnv *env) {
-    executable = JNI_NewGlobalRef(env, JNI_FindClass(env, "java/lang/reflect/Executable"));
+    int sdk_int = GetAndroidApiLevel();
+    if (sdk_int >= __ANDROID_API_O__) {
+        executable = JNI_NewGlobalRef(env, JNI_FindClass(env, "java/lang/reflect/Executable"));
+    } else {
+        executable = JNI_NewGlobalRef(env, JNI_FindClass(env, "java/lang/reflect/AbstractMethod"));
+    }
     if (!executable) {
-        LOGE("Failed to found Executable");
+        LOGE("Failed to found Executable/AbstractMethod");
         return false;
     }
 
@@ -151,17 +162,34 @@ bool InitJNI(JNIEnv *env) {
         LOGE("Failed to find Class.accessFlags");
         return false;
     }
-
-    in_memory_class_loader =
-        JNI_NewGlobalRef(env, JNI_FindClass(env, "dalvik/system/InMemoryDexClassLoader"));
-    in_memory_class_loader_init = JNI_GetMethodID(
-        env, in_memory_class_loader, "<init>", "(Ljava/nio/ByteBuffer;Ljava/lang/ClassLoader;)V");
-
-    load_class = JNI_GetMethodID(env, in_memory_class_loader, "loadClass",
-                                 "(Ljava/lang/String;)Ljava/lang/Class;");
-    if (!load_class) {
-        load_class = JNI_GetMethodID(env, in_memory_class_loader, "findClass",
+    if (sdk_int >= __ANDROID_API_O__ &&
+        (in_memory_class_loader = JNI_NewGlobalRef(
+             env, JNI_FindClass(env, "dalvik/system/InMemoryDexClassLoader")))) [[likely]] {
+        in_memory_class_loader_init =
+            JNI_GetMethodID(env, in_memory_class_loader, "<init>",
+                            "(Ljava/nio/ByteBuffer;Ljava/lang/ClassLoader;)V");
+        load_class = JNI_GetMethodID(env, in_memory_class_loader, "loadClass",
                                      "(Ljava/lang/String;)Ljava/lang/Class;");
+        if (!load_class) {
+            load_class = JNI_GetMethodID(env, in_memory_class_loader, "findClass",
+                                         "(Ljava/lang/String;)Ljava/lang/Class;");
+        }
+    } else if (auto dex_file = JNI_FindClass(env, "dalvik/system/DexFile");
+               dex_file && (path_class_loader = JNI_NewGlobalRef(
+                                env, JNI_FindClass(env, "dalvik/system/PathClassLoader")))) {
+        path_class_loader_init = JNI_GetMethodID(env, path_class_loader, "<init>",
+                                                 "(Ljava/lang/String;Ljava/lang/ClassLoader;)V");
+        if (!path_class_loader_init) {
+            LOGE("Failed to find PathClassLoader.<init>");
+            return false;
+        }
+        load_class =
+            JNI_GetMethodID(env, dex_file, "loadClass",
+                            "(Ljava/lang/String;Ljava/lang/ClassLoader;)Ljava/lang/Class;");
+    }
+    if (!load_class) {
+        LOGE("Failed to find a suitable way to load class");
+        return false;
     }
     auto accessible_object = JNI_FindClass(env, "java/lang/reflect/AccessibleObject");
     if (!accessible_object) {
@@ -217,6 +245,10 @@ bool InitNative(JNIEnv *env, const HookHandler &handler) {
     }
     if (!JitCodeCache::Init(handler)) {
         LOGE("failed to init jit code cache");
+        return false;
+    }
+    if (!DexFile::Init(env, handler)) {
+        LOGE("Failed to init dex file");
         return false;
     }
     return true;
@@ -314,27 +346,50 @@ std::tuple<jclass, jfieldID, jmethodID, jmethodID> BuildDex(JNIEnv *env, jobject
 
     slicer::MemView image{dex_file.CreateImage()};
 
-    auto dex_buffer = JNI_NewDirectByteBuffer(env, const_cast<void *>(image.ptr()),
-                                              static_cast<jlong>(image.size()));
-    auto my_cl = JNI_NewObject(env, in_memory_class_loader, in_memory_class_loader_init, dex_buffer,
-                               class_loader);
-    if (my_cl) {
-        auto *target_class =
-            JNI_Cast<jclass>(
-                JNI_CallObjectMethod(env, my_cl, load_class,
-                                     JNI_NewStringUTF(env, generated_class_name.data())))
-                .release();
-        if (target_class) {
-            return {
-                target_class,
-                JNI_GetStaticFieldID(env, target_class, hooker_field->decl->name->c_str(),
-                                     hooker_field->decl->type->descriptor->c_str()),
-                JNI_GetStaticMethodID(env, target_class, hook_method->decl->name->c_str(),
-                                      hook_method->decl->prototype->Signature().data()),
-                JNI_GetStaticMethodID(env, target_class, backup_method->decl->name->c_str(),
-                                      backup_method->decl->prototype->Signature().data()),
-            };
+    jclass target_class = nullptr;
+
+    if (in_memory_class_loader_init) [[unlikely]] {
+        auto dex_buffer = JNI_NewDirectByteBuffer(env, const_cast<void *>(image.ptr()),
+                                                  static_cast<jlong>(image.size()));
+        auto my_cl = JNI_NewObject(env, in_memory_class_loader, in_memory_class_loader_init,
+                                   dex_buffer, class_loader);
+        if (my_cl) {
+            target_class = JNI_Cast<jclass>(JNI_CallObjectMethod(
+                                                env, my_cl, load_class,
+                                                JNI_NewStringUTF(env, generated_class_name.data())))
+                               .release();
         }
+    } else {
+        void *target =
+            mmap(nullptr, image.size(), PROT_WRITE | PROT_READ, MAP_ANONYMOUS | MAP_PRIVATE, -1, 0);
+        memcpy(target, image.ptr(), image.size());
+        mprotect(target, image.size(), PROT_READ);
+        std::string err_msg;
+        auto *dex = DexFile::OpenMemory(
+                        target, image.size(),
+                        generated_source_name.empty() ? "lsplant" : generated_source_name, &err_msg)
+                        .release();
+        auto java_dex_file = WrapScope(env, dex->ToJavaDexFile(env));
+        if (java_dex_file) {
+            auto p = JNI_NewObject(env, path_class_loader, path_class_loader_init,
+                                   JNI_NewStringUTF(env, ""), class_loader);
+            target_class = JNI_Cast<jclass>(JNI_CallObjectMethod(
+                                                env, java_dex_file, load_class,
+                                                env->NewStringUTF(generated_class_name.data()), p))
+                               .release();
+        }
+    }
+
+    if (target_class) {
+        return {
+            target_class,
+            JNI_GetStaticFieldID(env, target_class, hooker_field->decl->name->c_str(),
+                                 hooker_field->decl->type->descriptor->c_str()),
+            JNI_GetStaticMethodID(env, target_class, hook_method->decl->name->c_str(),
+                                  hook_method->decl->prototype->Signature().data()),
+            JNI_GetStaticMethodID(env, target_class, backup_method->decl->name->c_str(),
+                                  backup_method->decl->prototype->Signature().data()),
+        };
     }
     return {nullptr, nullptr, nullptr, nullptr};
 }
@@ -496,7 +551,10 @@ using ::lsplant::IsHooked;
     {
         auto callback_name =
             JNI_Cast<jstring>(JNI_CallObjectMethod(env, callback_method, method_get_name));
-        JUTFString method_name(callback_name);
+        JUTFString callback_method_name(callback_name);
+        auto target_name =
+            JNI_Cast<jstring>(JNI_CallObjectMethod(env, target_method, method_get_name));
+        JUTFString target_method_name(target_name);
         auto callback_class = JNI_Cast<jclass>(
             JNI_CallObjectMethod(env, callback_method, method_get_declaring_class));
         auto callback_class_loader =
@@ -508,10 +566,11 @@ using ::lsplant::IsHooked;
             LOGE("callback_method is not a method of hooker_object");
             return nullptr;
         }
-        std::tie(built_class, hooker_field, hook_method, backup_method) =
-            WrapScope(env, BuildDex(env, callback_class_loader,
-                                    ArtMethod::GetMethodShorty(env, target_method), is_static,
-                                    method_name.get(), class_name.get(), method_name.get()));
+        std::tie(built_class, hooker_field, hook_method, backup_method) = WrapScope(
+            env,
+            BuildDex(env, callback_class_loader, ArtMethod::GetMethodShorty(env, target_method),
+                     is_static, target->IsConstructor() ? "constructor" : target_method_name.get(),
+                     class_name.get(), callback_method_name.get()));
         if (!built_class || !hooker_field || !hook_method || !backup_method) {
             LOGE("Failed to generate hooker");
             return nullptr;
