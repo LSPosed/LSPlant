@@ -26,6 +26,8 @@ class ArtMethod {
         return nullptr;
     }
 
+    CREATE_FUNC_SYMBOL_ENTRY(void, art_interpreter_to_compiled_code_bridge) {}
+
     inline void ThrowInvocationTimeError() { ThrowInvocationTimeError(this); }
 
 public:
@@ -89,6 +91,11 @@ public:
     void SetEntryPoint(void *entry_point) {
         *reinterpret_cast<void **>(reinterpret_cast<uintptr_t>(this) + entry_point_offset) =
             entry_point;
+        if (interpreter_entry_point_offset) [[unlikely]] {
+            *reinterpret_cast<void **>(reinterpret_cast<uintptr_t>(this) +
+                                       interpreter_entry_point_offset) =
+                reinterpret_cast<void *>(art_interpreter_to_compiled_code_bridgeSym);
+        }
     }
 
     void *GetEntryPoint() {
@@ -169,10 +176,10 @@ public:
             LOGW("ArtMethod size exceeds maximum assume. There may be something wrong.");
         }
 
-        entry_point_offset = art_method_size - sizeof(void *);
+        entry_point_offset = art_method_size - kPointerSize;
         LOGD("ArtMethod::entrypoint offset: %zu", entry_point_offset);
 
-        data_offset = entry_point_offset - sizeof(void *);
+        data_offset = entry_point_offset - kPointerSize;
         LOGD("ArtMethod::data offset: %zu", data_offset);
 
         if (auto access_flags_field = JNI_GetFieldID(env, executable, "accessFlags", "I");
@@ -235,6 +242,15 @@ public:
         if (sdk_int <= __ANDROID_API_N__) {
             kAccCompileDontBother = 0;
         }
+        if (sdk_int <= __ANDROID_API_M__) {
+            if (!RETRIEVE_FUNC_SYMBOL(art_interpreter_to_compiled_code_bridge,
+                                      "artInterpreterToCompiledCodeBridge")) {
+                return false;
+            }
+            if (sdk_int == __ANDROID_API_M__) [[unlikely]] {
+                interpreter_entry_point_offset = entry_point_offset - 2 * kPointerSize;
+            }
+        }
 
         return true;
     }
@@ -253,6 +269,7 @@ private:
     inline static jfieldID art_method_field = nullptr;
     inline static size_t art_method_size = 0;
     inline static size_t entry_point_offset = 0;
+    inline static size_t interpreter_entry_point_offset = 0;
     inline static size_t data_offset = 0;
     inline static size_t access_flags_offset = 0;
     inline static uint32_t kAccFastInterpreterToInterpreterInvoke = 0x40000000;
