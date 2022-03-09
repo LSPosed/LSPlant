@@ -228,23 +228,23 @@ bool InitNative(JNIEnv *env, const HookHandler &handler) {
         return false;
     }
     if (!Class::Init(env, handler)) {
-        LOGE("failed to init mirror class");
+        LOGE("Failed to init mirror class");
         return false;
     }
     if (!Instrumentation::Init(handler)) {
-        LOGE("failed to init instrumentation");
+        LOGE("Failed to init instrumentation");
         return false;
     }
     if (!ScopedSuspendAll::Init(handler)) {
-        LOGE("failed to init scoped suspend all");
+        LOGE("Failed to init scoped suspend all");
         return false;
     }
     if (!ScopedGCCriticalSection::Init(handler)) {
-        LOGE("failed to init scoped gc critical section");
+        LOGE("Failed to init scoped gc critical section");
         return false;
     }
     if (!JitCodeCache::Init(handler)) {
-        LOGE("failed to init jit code cache");
+        LOGE("Failed to init jit code cache");
         return false;
     }
     if (!DexFile::Init(env, handler)) {
@@ -365,12 +365,14 @@ std::tuple<jclass, jfieldID, jmethodID, jmethodID> BuildDex(JNIEnv *env, jobject
         memcpy(target, image.ptr(), image.size());
         mprotect(target, image.size(), PROT_READ);
         std::string err_msg;
-        auto *dex = DexFile::OpenMemory(
-                        target, image.size(),
-                        generated_source_name.empty() ? "lsplant" : generated_source_name, &err_msg)
-                        .release();
-        auto java_dex_file = WrapScope(env, dex->ToJavaDexFile(env));
-        if (java_dex_file) {
+        const auto *dex = DexFile::OpenMemory(
+            target, image.size(), generated_source_name.empty() ? "lsplant" : generated_source_name,
+            &err_msg);
+        if (!dex) {
+            LOGE("Failed to open memory dex: %s", err_msg.data());
+        }
+        auto java_dex_file = WrapScope(env, dex ? dex->ToJavaDexFile(env) : jobject{nullptr});
+        if (dex && java_dex_file) {
             auto p = JNI_NewObject(env, path_class_loader, path_class_loader_init,
                                    JNI_NewStringUTF(env, ""), class_loader);
             target_class = JNI_Cast<jclass>(JNI_CallObjectMethod(
