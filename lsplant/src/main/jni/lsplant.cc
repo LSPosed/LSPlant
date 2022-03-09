@@ -348,7 +348,7 @@ std::tuple<jclass, jfieldID, jmethodID, jmethodID> BuildDex(JNIEnv *env, jobject
 
     jclass target_class = nullptr;
 
-    if (in_memory_class_loader_init) [[unlikely]] {
+    if (in_memory_class_loader_init) [[likely]] {
         auto dex_buffer = JNI_NewDirectByteBuffer(env, const_cast<void *>(image.ptr()),
                                                   static_cast<jlong>(image.size()));
         auto my_cl = JNI_NewObject(env, in_memory_class_loader, in_memory_class_loader_init,
