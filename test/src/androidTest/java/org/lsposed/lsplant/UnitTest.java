@@ -97,4 +97,23 @@ public class UnitTest {
         Assert.assertTrue(hooker.unhook());
         Assert.assertEquals(o, test.manyParametersMethod(a, b, c, d, e, f, g, h, e, f));
     }
+
+    @Test
+    public void t05_uninitializedStaticMethod() throws NoSuchMethodException, InvocationTargetException, IllegalAccessException, ClassNotFoundException {
+        var uninitializedClass = Class.forName("org.lsposed.lsplant.LSPTest$NeedInitialize", false, LSPTest.class.getClassLoader());
+        var staticMethod = uninitializedClass.getDeclaredMethod("staticMethod");
+        var callStaticMethod = uninitializedClass.getDeclaredMethod("callStaticMethod");
+        var staticMethodReplacement = Replacement.class.getDeclaredMethod("staticMethodReplacement", Hooker.MethodCallback.class);
+
+        Hooker hooker = Hooker.hook(staticMethod, staticMethodReplacement, null);
+        Assert.assertNotNull(hooker);
+        for (int i = 0; i < 1000; ++i) {
+            Assert.assertTrue("Iter " + i, (Boolean) callStaticMethod.invoke(null));
+            Assert.assertFalse("Iter " + i, (boolean) hooker.backup.invoke(null));
+        }
+
+        Assert.assertTrue(hooker.unhook());
+        Assert.assertFalse((Boolean) callStaticMethod.invoke(null));
+    }
+
 }

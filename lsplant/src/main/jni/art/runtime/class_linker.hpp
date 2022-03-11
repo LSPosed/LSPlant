@@ -15,51 +15,10 @@ private:
         }
     }
 
-    [[gnu::always_inline]] static void MaybeDelayHook(mirror::Class *clazz) {
-        const auto *class_def = clazz->GetClassDef();
-        bool should_intercept = class_def && IsPending(class_def);
-        if (should_intercept) [[unlikely]] {
-            LOGD("Pending hook for %p (%s)", clazz, clazz->GetDescriptor().c_str());
-            OnPending(class_def);
-        }
-    }
-
-    CREATE_MEM_HOOK_STUB_ENTRY(
-        "_ZN3art11ClassLinker22FixupStaticTrampolinesENS_6ObjPtrINS_6mirror5ClassEEE", void,
-        FixupStaticTrampolines, (ClassLinker * thiz, mirror::Class *clazz), {
-            backup(thiz, clazz);
-            MaybeDelayHook(clazz);
-        });
-
-    CREATE_MEM_HOOK_STUB_ENTRY("_ZN3art11ClassLinker22FixupStaticTrampolinesEPNS_6mirror5ClassE",
-                               void, FixupStaticTrampolinesRaw,
-                               (ClassLinker * thiz, mirror::Class *clazz), {
-                                   backup(thiz, clazz);
-                                   MaybeDelayHook(clazz);
-                               });
-
-    CREATE_MEM_HOOK_STUB_ENTRY(
-        "_ZN3art11ClassLinker22FixupStaticTrampolinesEPNS_6ThreadENS_6ObjPtrINS_6mirror5ClassEEE",
-        void, FixupStaticTrampolinesWithThread,
-        (ClassLinker * thiz, Thread *self, mirror::Class *clazz), {
-            backup(thiz, self, clazz);
-            MaybeDelayHook(clazz);
-        });
-
-    CREATE_MEM_HOOK_STUB_ENTRY(
-        "_ZN3art11ClassLinker20MarkClassInitializedEPNS_6ThreadENS_6HandleINS_6mirror5ClassEEE",
-        void *, MarkClassInitialized, (ClassLinker * thiz, Thread *self, uint32_t *clazz_ptr), {
-            void *result = backup(thiz, self, clazz_ptr);
-            auto clazz = reinterpret_cast<mirror::Class *>(*clazz_ptr);
-            MaybeDelayHook(clazz);
-            return result;
-        });
-
     CREATE_HOOK_STUB_ENTRY(
         "_ZN3art11ClassLinker30ShouldUseInterpreterEntrypointEPNS_9ArtMethodEPKv", bool,
         ShouldUseInterpreterEntrypoint, (ArtMethod * art_method, const void *quick_code), {
-            if (quick_code != nullptr && (IsHooked(art_method) || IsPending(art_method)))
-                [[unlikely]] {
+            if (quick_code != nullptr && IsHooked(art_method)) [[unlikely]] {
                 return false;
             }
             return backup(art_method, quick_code);
@@ -71,7 +30,7 @@ private:
 
     CREATE_HOOK_STUB_ENTRY("_ZN3art11interpreter29ShouldStayInSwitchInterpreterEPNS_9ArtMethodE",
                            bool, ShouldStayInSwitchInterpreter, (ArtMethod * art_method), {
-                               if (IsHooked(art_method) || IsPending(art_method)) [[unlikely]] {
+                               if (IsHooked(art_method)) [[unlikely]] {
                                    return false;
                                }
                                return backup(art_method);
@@ -84,22 +43,6 @@ public:
         if (sdk_int >= __ANDROID_API_N__) {
             if (!HookSyms(handler, ShouldUseInterpreterEntrypoint, ShouldStayInSwitchInterpreter))
                 [[unlikely]] {
-                return false;
-            }
-        }
-
-        if (sdk_int >= __ANDROID_API_R__) {
-            // In android R, FixupStaticTrampolines won't be called unless it's marking it as
-            // visiblyInitialized.
-            // So we miss some calls between initialized and visiblyInitialized.
-            // Therefore we hook the new introduced MarkClassInitialized instead
-            // This only happens on non-x86 devices
-            if (!HookSyms(handler, MarkClassInitialized) ||
-                !HookSyms(handler, FixupStaticTrampolinesWithThread, FixupStaticTrampolines)) {
-                return false;
-            }
-        } else {
-            if (!HookSyms(handler, FixupStaticTrampolines, FixupStaticTrampolinesRaw)) {
                 return false;
             }
         }

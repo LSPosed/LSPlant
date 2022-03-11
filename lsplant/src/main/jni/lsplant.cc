@@ -459,7 +459,8 @@ bool DoHook(ArtMethod *target, ArtMethod *hook, ArtMethod *backup) {
     ScopedGCCriticalSection section(art::Thread::Current(), art::gc::kGcCauseDebugger,
                                     art::gc::kCollectorTypeDebugger);
     ScopedSuspendAll suspend("LSPlant Hook", false);
-    LOGV("Hooking: target = %p, hook = %p, backup = %p", target, hook, backup);
+    LOGV("Hooking: target = %s(%p), hook = %s(%p), backup = %s(%p)", target->PrettyMethod().c_str(),
+         target, hook->PrettyMethod().c_str(), hook, backup->PrettyMethod().c_str(), backup);
 
     if (auto *trampoline = GenerateTrampolineFor(hook); !trampoline) {
         LOGE("Failed to generate trampoline");
@@ -504,13 +505,6 @@ bool DoUnHook(ArtMethod *target, ArtMethod *backup) {
 
 }  // namespace
 
-void OnPending(art::ArtMethod *target, art::ArtMethod *hook, art::ArtMethod *backup) {
-    LOGD("On pending hook for %p", target);
-    if (!DoHook(target, hook, backup)) {
-        LOGE("Pending hook failed");
-    }
-}
-
 inline namespace v1 {
 
 using ::lsplant::IsHooked;
@@ -542,7 +536,7 @@ using ::lsplant::IsHooked;
     auto *target = ArtMethod::FromReflectedMethod(env, target_method);
     bool is_static = target->IsStatic();
 
-    if (IsHooked(target) || IsPending(target)) {
+    if (IsHooked(target)) {
         LOGW("Skip duplicate hook");
         return nullptr;
     }
@@ -587,24 +581,9 @@ using ::lsplant::IsHooked;
 
     JNI_SetStaticObjectField(env, built_class, hooker_field, hooker_object);
 
-    if (is_static && !Class::IsInitialized(env, target_class.get())) {
-        auto *miror_class = Class::FromReflectedClass(env, target_class);
-        if (!miror_class) {
-            LOGE("Failed to decode target class");
-            return nullptr;
-        }
-        const auto *class_def = miror_class->GetClassDef();
-        if (!class_def) {
-            LOGE("Failed to get target class def");
-            return nullptr;
-        }
-        LOGD("Record pending hook for %p", target);
-        RecordPending(class_def, target, hook, backup);
-        return JNI_NewGlobalRef(env, reflected_backup);
-    }
     if (DoHook(target, hook, backup)) {
         jobject global_backup = JNI_NewGlobalRef(env, reflected_backup);
-        RecordHooked(target, global_backup);
+        RecordHooked(target, global_backup, backup);
         if (!is_proxy) [[likely]] {
             RecordJitMovement(target, backup);
         }
@@ -621,17 +600,11 @@ using ::lsplant::IsHooked;
     }
     auto *target = ArtMethod::FromReflectedMethod(env, target_method);
     jobject reflected_backup = nullptr;
-    {
-        std::unique_lock lk(pending_methods_lock_);
-        if (auto it = pending_methods_.find(target); it != pending_methods_.end()) {
-            pending_methods_.erase(it);
-            return true;
-        }
-    }
+    art::ArtMethod *backup = nullptr;
     {
         std::unique_lock lk(hooked_methods_lock_);
         if (auto it = hooked_methods_.find(target); it != hooked_methods_.end()) {
-            reflected_backup = it->second;
+            std::tie(reflected_backup, backup) = it->second;
             hooked_methods_.erase(it);
         }
     }
@@ -639,7 +612,6 @@ using ::lsplant::IsHooked;
         LOGE("Unable to unhook a method that is not hooked");
         return false;
     }
-    auto *backup = ArtMethod::FromReflectedMethod(env, reflected_backup);
     env->DeleteGlobalRef(reflected_backup);
     return DoUnHook(target, backup);
 }
@@ -652,9 +624,6 @@ using ::lsplant::IsHooked;
     auto *art_method = ArtMethod::FromReflectedMethod(env, method);
 
     if (std::shared_lock lk(hooked_methods_lock_); hooked_methods_.contains(art_method)) {
-        return true;
-    }
-    if (std::shared_lock lk(pending_methods_lock_); pending_methods_.contains(art_method)) {
         return true;
     }
     return false;
@@ -670,8 +639,7 @@ using ::lsplant::IsHooked;
         std::shared_lock lk(hooked_methods_lock_);
         auto it = hooked_methods_.find(art_method);
         if (it != hooked_methods_.end()) {
-            auto *reflected_backup = it->second;
-            art_method = ArtMethod::FromReflectedMethod(env, reflected_backup);
+            art_method = it->second.second;
         }
     }
     if (!art_method) {

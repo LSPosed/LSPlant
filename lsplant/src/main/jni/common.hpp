@@ -75,20 +75,11 @@ namespace art {
 
 namespace {
 // target, backup
-inline std::unordered_map<art::ArtMethod *, jobject> hooked_methods_;
+inline std::unordered_map<art::ArtMethod *, std::pair<jobject, art::ArtMethod *>> hooked_methods_;
 inline std::shared_mutex hooked_methods_lock_;
 
 inline std::list<std::pair<art::ArtMethod *, art::ArtMethod *>> jit_movements_;
 inline std::shared_mutex jit_movements_lock_;
-
-inline std::unordered_map<
-    const art::dex::ClassDef *,
-    std::list<std::tuple<art::ArtMethod *, art::ArtMethod *, art::ArtMethod *>>>
-    pending_classes_;
-inline std::shared_mutex pending_classes_lock_;
-
-inline std::unordered_set<const art::ArtMethod *> pending_methods_;
-inline std::shared_mutex pending_methods_lock_;
 }  // namespace
 
 inline bool IsHooked(art::ArtMethod *art_method) {
@@ -96,24 +87,14 @@ inline bool IsHooked(art::ArtMethod *art_method) {
     return hooked_methods_.contains(art_method);
 }
 
-inline bool IsPending(art::ArtMethod *art_method) {
-    std::shared_lock lk(pending_methods_lock_);
-    return pending_methods_.contains(art_method);
-}
-
-inline bool IsPending(const art::dex::ClassDef *class_def) {
-    std::shared_lock lk(pending_classes_lock_);
-    return pending_classes_.contains(class_def);
-}
-
 inline std::list<std::pair<art::ArtMethod *, art::ArtMethod *>> GetJitMovements() {
     std::unique_lock lk(jit_movements_lock_);
     return std::move(jit_movements_);
 }
 
-inline void RecordHooked(art::ArtMethod *target, jobject backup) {
+inline void RecordHooked(art::ArtMethod *target, jobject reflected_backup, art::ArtMethod* backup) {
     std::unique_lock lk(hooked_methods_lock_);
-    hooked_methods_.emplace(target, backup);
+    hooked_methods_.emplace(target, std::make_pair(reflected_backup, backup));
 }
 
 inline void RecordJitMovement(art::ArtMethod *target, art::ArtMethod *backup) {
@@ -121,37 +102,4 @@ inline void RecordJitMovement(art::ArtMethod *target, art::ArtMethod *backup) {
     jit_movements_.emplace_back(target, backup);
 }
 
-inline void RecordPending(const art::dex::ClassDef *class_def, art::ArtMethod *target,
-                          art::ArtMethod *hook, art::ArtMethod *backup) {
-    {
-        std::unique_lock lk(pending_methods_lock_);
-        pending_methods_.emplace(target);
-    }
-    std::unique_lock lk(pending_classes_lock_);
-    pending_classes_[class_def].emplace_back(std::make_tuple(target, hook, backup));
-}
-
-void OnPending(art::ArtMethod *target, art::ArtMethod *hook, art::ArtMethod *backup);
-
-inline void OnPending(const art::dex::ClassDef *class_def) {
-    {
-        std::shared_lock lk(pending_classes_lock_);
-        if (!pending_classes_.contains(class_def)) return;
-    }
-    typename decltype(pending_classes_)::value_type::second_type set;
-    {
-        std::unique_lock lk(pending_classes_lock_);
-        auto it = pending_classes_.find(class_def);
-        if (it == pending_classes_.end()) return;
-        set = std::move(it->second);
-        pending_classes_.erase(it);
-    }
-    for (auto &[target, hook, backup] : set) {
-        {
-            std::unique_lock mlk(pending_methods_lock_);
-            pending_methods_.erase(target);
-        }
-        OnPending(target, hook, backup);
-    }
-}
 }  // namespace lsplant

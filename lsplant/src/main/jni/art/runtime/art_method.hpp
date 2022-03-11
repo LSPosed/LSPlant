@@ -6,7 +6,7 @@
 namespace lsplant::art {
 
 class ArtMethod {
-    CREATE_MEM_FUNC_SYMBOL_ENTRY(std::string, PrettyMethod, ArtMethod *thiz, bool with_signature) {
+    CREATE_FUNC_SYMBOL_ENTRY(std::string, PrettyMethod, ArtMethod *thiz, bool with_signature) {
         if (thiz == nullptr) [[unlikely]]
             return "null";
         else if (PrettyMethodSym) [[likely]]
@@ -210,6 +210,10 @@ public:
                                   "_ZN3artL15GetMethodShortyEP7_JNIEnvP10_jmethodID")) {
             LOGE("Failed to find GetMethodShorty");
             return false;
+        }
+
+        if (!RETRIEVE_FUNC_SYMBOL(PrettyMethod, "_ZN3art9ArtMethod12PrettyMethodEPS0_b")) {
+            RETRIEVE_FUNC_SYMBOL(PrettyMethod, "_ZN3art12PrettyMethodEPNS_9ArtMethodEb");
         }
 
         if (sdk_int <= __ANDROID_API_O__) [[unlikely]] {
