@@ -242,12 +242,12 @@ public:
         if (sdk_int <= __ANDROID_API_N__) {
             kAccCompileDontBother = 0;
         }
-        if (sdk_int == __ANDROID_API_M__)  [[unlikely]] {
+        if (sdk_int == __ANDROID_API_M__) [[unlikely]] {
             if (!RETRIEVE_FUNC_SYMBOL(art_interpreter_to_compiled_code_bridge,
                                       "artInterpreterToCompiledCodeBridge")) {
                 return false;
             }
-                interpreter_entry_point_offset = entry_point_offset - 2 * kPointerSize;
+            interpreter_entry_point_offset = entry_point_offset - 2 * kPointerSize;
         }
 
         return true;

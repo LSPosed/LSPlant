@@ -8,7 +8,7 @@
 namespace lsplant::art {
 class DexFile {
     struct Header {
-        uint8_t magic_[8];
+        [[maybe_unused]] uint8_t magic_[8];
         uint32_t checksum_;  // See also location_checksum_
     };
     CREATE_FUNC_SYMBOL_ENTRY(std::unique_ptr<DexFile>, OpenMemory, const uint8_t* dex_file,

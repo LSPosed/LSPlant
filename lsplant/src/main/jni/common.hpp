@@ -1,14 +1,16 @@
 #pragma once
 
-#include <string_view>
-#include <shared_mutex>
-#include <unordered_set>
-#include <unordered_map>
-#include <list>
 #include <sys/system_properties.h>
+
+#include <list>
+#include <shared_mutex>
+#include <string_view>
+#include <unordered_map>
+#include <unordered_set>
+
 #include "logging.hpp"
-#include "utils/hook_helper.hpp"
 #include "lsplant.hpp"
+#include "utils/hook_helper.hpp"
 
 namespace lsplant {
 
@@ -18,7 +20,6 @@ enum class Arch {
     kX86,
     kX8664,
 };
-
 
 consteval inline Arch GetArch() {
 #if defined(__i386__)
@@ -30,13 +31,13 @@ consteval inline Arch GetArch() {
 #elif defined(__aarch64__)
     return Arch::kArm64;
 #else
-# error "unsupported architecture"
+#error "unsupported architecture"
 #endif
 }
 
 inline static constexpr auto kArch = GetArch();
 
-template<typename T>
+template <typename T>
 constexpr inline auto RoundUpTo(T v, size_t size) {
     return v + size - 1 - ((v + size - 1) & (size - 1));
 }
@@ -54,7 +55,7 @@ inline auto GetAndroidApiLevel() {
 
 inline static constexpr auto kPointerSize = sizeof(void *);
 
-template<typename T>
+template <typename T>
 inline T GetArtSymbol(const std::function<void *(std::string_view)> &resolver,
                       std::string_view symbol) requires(std::is_pointer_v<T>) {
     if (auto *result = resolver(symbol); result) {
@@ -66,11 +67,11 @@ inline T GetArtSymbol(const std::function<void *(std::string_view)> &resolver,
 }
 
 namespace art {
-class ArtMethod;
-namespace dex {
-class ClassDef;
-}
-}
+    class ArtMethod;
+    namespace dex {
+    class ClassDef;
+    }
+}  // namespace art
 
 namespace {
 // target, backup
@@ -80,12 +81,15 @@ inline std::shared_mutex hooked_methods_lock_;
 inline std::list<std::pair<art::ArtMethod *, art::ArtMethod *>> jit_movements_;
 inline std::shared_mutex jit_movements_lock_;
 
-inline std::unordered_map<const art::dex::ClassDef *, std::list<std::tuple<art::ArtMethod *, art::ArtMethod *, art::ArtMethod *>>> pending_classes_;
+inline std::unordered_map<
+    const art::dex::ClassDef *,
+    std::list<std::tuple<art::ArtMethod *, art::ArtMethod *, art::ArtMethod *>>>
+    pending_classes_;
 inline std::shared_mutex pending_classes_lock_;
 
 inline std::unordered_set<const art::ArtMethod *> pending_methods_;
 inline std::shared_mutex pending_methods_lock_;
-}
+}  // namespace
 
 inline bool IsHooked(art::ArtMethod *art_method) {
     std::shared_lock lk(hooked_methods_lock_);
@@ -117,9 +121,8 @@ inline void RecordJitMovement(art::ArtMethod *target, art::ArtMethod *backup) {
     jit_movements_.emplace_back(target, backup);
 }
 
-inline void
-RecordPending(const art::dex::ClassDef *class_def, art::ArtMethod *target, art::ArtMethod *hook,
-              art::ArtMethod *backup) {
+inline void RecordPending(const art::dex::ClassDef *class_def, art::ArtMethod *target,
+                          art::ArtMethod *hook, art::ArtMethod *backup) {
     {
         std::unique_lock lk(pending_methods_lock_);
         pending_methods_.emplace(target);
@@ -143,7 +146,7 @@ inline void OnPending(const art::dex::ClassDef *class_def) {
         set = std::move(it->second);
         pending_classes_.erase(it);
     }
-    for (auto&[target, hook, backup]: set) {
+    for (auto &[target, hook, backup] : set) {
         {
             std::unique_lock mlk(pending_methods_lock_);
             pending_methods_.erase(target);
@@ -151,4 +154,4 @@ inline void OnPending(const art::dex::ClassDef *class_def) {
         OnPending(target, hook, backup);
     }
 }
-}
+}  // namespace lsplant

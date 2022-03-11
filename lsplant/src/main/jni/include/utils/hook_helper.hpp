@@ -2,13 +2,13 @@
 
 #include <concepts>
 
-#include "lsplant.hpp"
 #include "jni_helper.hpp"
+#include "lsplant.hpp"
 
 #if defined(__LP64__)
-# define LP_SELECT(lp32, lp64) lp64
+#define LP_SELECT(lp32, lp64) lp64
 #else
-# define LP_SELECT(lp32, lp64) lp32
+#define LP_SELECT(lp32, lp64) lp32
 #endif
 
 #define CONCATENATE(a, b) a##b

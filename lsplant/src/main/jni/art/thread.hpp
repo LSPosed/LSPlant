@@ -13,7 +13,7 @@ class Thread {
         if (DecodeJObjectSym)
             return DecodeJObjectSym(thiz, obj);
         else
-            return { .data=nullptr };
+            return {.data = nullptr};
     }
 
     CREATE_FUNC_SYMBOL_ENTRY(Thread *, CurrentFromGdb) {
@@ -24,17 +24,13 @@ class Thread {
     }
 
 public:
-    static Thread *Current() {
-        return CurrentFromGdb();
-    }
+    static Thread *Current() { return CurrentFromGdb(); }
 
     static bool Init(const HookHandler &handler) {
-        if (!RETRIEVE_MEM_FUNC_SYMBOL(DecodeJObject,
-                                      "_ZNK3art6Thread13DecodeJObjectEP8_jobject")) {
+        if (!RETRIEVE_MEM_FUNC_SYMBOL(DecodeJObject, "_ZNK3art6Thread13DecodeJObjectEP8_jobject")) {
             return false;
         }
-        if (!RETRIEVE_FUNC_SYMBOL(CurrentFromGdb,
-                                  "_ZN3art6Thread14CurrentFromGdbEv")) {
+        if (!RETRIEVE_FUNC_SYMBOL(CurrentFromGdb, "_ZN3art6Thread14CurrentFromGdbEv")) {
             return false;
         }
         return true;
@@ -47,4 +43,4 @@ public:
         return nullptr;
     }
 };
-}
+}  // namespace lsplant::art
