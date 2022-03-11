@@ -149,6 +149,7 @@ jobs:
           force-avd-creation: false
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           disable-animations: false
+          avd-name: ${{ matrix.api-level }}_${{ matrix.arch }}
       - name: run tests
         uses: yujincheng08/android-emulator-runner@release/v2
         with:
@@ -159,6 +160,7 @@ jobs:
           force-avd-creation: false
           emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           disable-animations: true
+          avd-name: ${{ matrix.api-level }}_${{ matrix.arch }}
       - name: Upload outputs
         if: always()
         uses: actions/upload-artifact@v2
