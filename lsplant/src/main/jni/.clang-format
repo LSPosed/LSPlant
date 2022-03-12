@@ -13,6 +13,7 @@ Cpp11BracedListStyle: true
 Standard: Latest
 # IndentAccessModifiers: false
 IndentCaseLabels: false
+BreakStringLiterals: false
 IndentExternBlock: false
 AccessModifierOffset: -4
 # EmptyLineBeforeAccessModifier: true

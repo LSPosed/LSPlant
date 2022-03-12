@@ -35,10 +35,25 @@ class Instrumentation {
                 backup(thiz, MaybeUseBackupMethod(art_method, quick_code), quick_code);
             }
         });
+    CREATE_MEM_HOOK_STUB_ENTRY(
+        "_ZN3art15instrumentation15Instrumentation17UpdateMethodsCodeEPNS_6mirror9ArtMethodEPKvS6_b",
+        void, UpdateMethodsCodeWithProtableCode,
+        (Instrumentation * thiz, ArtMethod *art_method, const void *quick_code,
+         const void *portable_code, bool have_portable_code),
+        {
+            backup(thiz, MaybeUseBackupMethod(art_method, quick_code), quick_code, portable_code,
+                   have_portable_code);
+        });
 
 public:
     static bool Init(const HookHandler &handler) {
         int sdk_int = GetAndroidApiLevel();
+        if (sdk_int < __ANDROID_API_M__) [[unlikely]] {
+            if (!HookSyms(handler, UpdateMethodsCodeWithProtableCode)) {
+                return false;
+            }
+            return true;
+        }
         if (!HookSyms(handler, UpdateMethodsCode)) {
             return false;
         }

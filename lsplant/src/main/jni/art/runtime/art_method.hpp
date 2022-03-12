@@ -127,27 +127,35 @@ public:
     }
 
     static art::ArtMethod *FromReflectedMethod(JNIEnv *env, jobject method) {
-        return reinterpret_cast<art::ArtMethod *>(JNI_GetLongField(env, method, art_method_field));
+        if (art_method_field) [[likely]] {
+            return reinterpret_cast<art::ArtMethod *>(
+                JNI_GetLongField(env, method, art_method_field));
+        } else {
+            return reinterpret_cast<art::ArtMethod *>(env->FromReflectedMethod(method));
+        }
     }
 
     static bool Init(JNIEnv *env, const HookHandler handler) {
         auto sdk_int = GetAndroidApiLevel();
-        jclass executable = nullptr;
+        ScopedLocalRef<jclass> executable{env, nullptr};
         if (sdk_int >= __ANDROID_API_O__) {
-            executable = JNI_NewGlobalRef(env, JNI_FindClass(env, "java/lang/reflect/Executable"));
+            executable = JNI_FindClass(env, "java/lang/reflect/Executable");
+        } else if (sdk_int >= __ANDROID_API_M__) {
+            executable = JNI_FindClass(env, "java/lang/reflect/AbstractMethod");
         } else {
-            executable =
-                JNI_NewGlobalRef(env, JNI_FindClass(env, "java/lang/reflect/AbstractMethod"));
+            executable = JNI_FindClass(env, "java/lang/reflect/ArtMethod");
         }
         if (!executable) {
-            LOGE("Failed to found Executable/AbstractMethod");
+            LOGE("Failed to found Executable/AbstractMethod/ArtMethod");
             return false;
         }
 
-        if (art_method_field = JNI_GetFieldID(env, executable, "artMethod", "J");
-            !art_method_field) {
-            LOGE("Failed to find artMethod field");
-            return false;
+        if (sdk_int >= __ANDROID_API_M__) [[likely]] {
+            if (art_method_field = JNI_GetFieldID(env, executable, "artMethod", "J");
+                !art_method_field) {
+                LOGE("Failed to find artMethod field");
+                return false;
+            }
         }
 
         auto throwable = JNI_FindClass(env, "java/lang/Throwable");
@@ -172,32 +180,59 @@ public:
         art_method_size = reinterpret_cast<uintptr_t>(second) - reinterpret_cast<uintptr_t>(first);
         LOGD("ArtMethod size: %zu", art_method_size);
 
-        if (RoundUpTo(4 * 9, kPointerSize) + kPointerSize * 3 < art_method_size) {
-            LOGW("ArtMethod size exceeds maximum assume. There may be something wrong.");
+        if (RoundUpTo(4 * 9, kPointerSize) + kPointerSize * 3 < art_method_size) [[unlikely]] {
+            if (sdk_int >= __ANDROID_API_M__) {
+                LOGW("ArtMethod size exceeds maximum assume. There may be something wrong.");
+            }
         }
 
         entry_point_offset = art_method_size - kPointerSize;
-        LOGD("ArtMethod::entrypoint offset: %zu", entry_point_offset);
-
         data_offset = entry_point_offset - kPointerSize;
-        LOGD("ArtMethod::data offset: %zu", data_offset);
 
-        if (auto access_flags_field = JNI_GetFieldID(env, executable, "accessFlags", "I");
-            access_flags_field) {
-            uint32_t real_flags = JNI_GetIntField(env, first_ctor, access_flags_field);
-            for (size_t i = 0; i < art_method_size; i += sizeof(uint32_t)) {
-                if (*reinterpret_cast<uint32_t *>(reinterpret_cast<uintptr_t>(first) + i) ==
-                    real_flags) {
-                    access_flags_offset = i;
-                    LOGD("ArtMethod::access_flags offset: %zu", access_flags_offset);
-                    break;
+        if (sdk_int >= __ANDROID_API_M__) [[likely]] {
+            if (auto access_flags_field = JNI_GetFieldID(env, executable, "accessFlags", "I");
+                access_flags_field) {
+                uint32_t real_flags = JNI_GetIntField(env, first_ctor, access_flags_field);
+                for (size_t i = 0; i < art_method_size; i += sizeof(uint32_t)) {
+                    if (*reinterpret_cast<uint32_t *>(reinterpret_cast<uintptr_t>(first) + i) ==
+                        real_flags) {
+                        access_flags_offset = i;
+                        break;
+                    }
                 }
             }
+            if (access_flags_offset == 0) {
+                LOGW("Failed to find accessFlags field. Fallback to 4.");
+                access_flags_offset = 4U;
+            }
+        } else {
+            auto art_field = JNI_FindClass(env, "java/lang/reflect/ArtField");
+            auto field = JNI_FindClass(env, "java/lang/reflect/Field");
+            auto art_field_field =
+                JNI_GetFieldID(env, field, "artField", "Ljava/lang/reflect/ArtField;");
+            auto field_offset = JNI_GetFieldID(env, art_field, "offset", "I");
+            auto get_offset_from_art_method = [&](const char *name, const char *sig) {
+                return JNI_GetIntField(
+                    env,
+                    JNI_GetObjectField(
+                        env,
+                        env->ToReflectedField(executable,
+                                              JNI_GetFieldID(env, executable, name, sig), false),
+                        art_field_field),
+                    field_offset);
+            };
+            access_flags_offset = get_offset_from_art_method("accessFlags", "I");
+            if (sdk_int == __ANDROID_API_L__) {
+                entry_point_offset =
+                    get_offset_from_art_method("entryPointFromQuickCompiledCode", "J");
+                interpreter_entry_point_offset =
+                    get_offset_from_art_method("entryPointFromInterpreter", "J");
+                data_offset = get_offset_from_art_method("entryPointFromJni", "J");
+            }
         }
-        if (access_flags_offset == 0) {
-            LOGW("Failed to find accessFlags field. Fallback to 4.");
-            access_flags_offset = 4U;
-        }
+        LOGD("ArtMethod::entrypoint offset: %zu", entry_point_offset);
+        LOGD("ArtMethod::data offset: %zu", data_offset);
+        LOGD("ArtMethod::access_flags offset: %zu", access_flags_offset);
 
         if (sdk_int < __ANDROID_API_R__) {
             kAccPreCompiled = 0;
@@ -207,14 +242,16 @@ public:
         if (sdk_int < __ANDROID_API_Q__) kAccFastInterpreterToInterpreterInvoke = 0;
 
         if (!RETRIEVE_FUNC_SYMBOL(GetMethodShorty,
-                                  "_ZN3artL15GetMethodShortyEP7_JNIEnvP10_jmethodID")) {
+                                  "_ZN3artL15GetMethodShortyEP7_JNIEnvP10_jmethodID") &&
+            !RETRIEVE_FUNC_SYMBOL(GetMethodShorty,
+                                  "_ZN3art15GetMethodShortyEP7_JNIEnvP10_jmethodID")) {
             LOGE("Failed to find GetMethodShorty");
             return false;
         }
 
-        if (!RETRIEVE_FUNC_SYMBOL(PrettyMethod, "_ZN3art9ArtMethod12PrettyMethodEPS0_b")) {
-            RETRIEVE_FUNC_SYMBOL(PrettyMethod, "_ZN3art12PrettyMethodEPNS_9ArtMethodEb");
-        }
+        !RETRIEVE_FUNC_SYMBOL(PrettyMethod, "_ZN3art9ArtMethod12PrettyMethodEPS0_b") &&
+            !RETRIEVE_FUNC_SYMBOL(PrettyMethod, "_ZN3art12PrettyMethodEPNS_9ArtMethodEb") &&
+            !RETRIEVE_FUNC_SYMBOL(PrettyMethod, "_ZN3art12PrettyMethodEPNS_6mirror9ArtMethodEb");
 
         if (sdk_int <= __ANDROID_API_O__) [[unlikely]] {
             auto abstract_method_error = JNI_FindClass(env, "java/lang/AbstractMethodError");
@@ -246,12 +283,14 @@ public:
         if (sdk_int <= __ANDROID_API_N__) {
             kAccCompileDontBother = 0;
         }
-        if (sdk_int == __ANDROID_API_M__) [[unlikely]] {
+        if (sdk_int <= __ANDROID_API_M__) [[unlikely]] {
             if (!RETRIEVE_FUNC_SYMBOL(art_interpreter_to_compiled_code_bridge,
                                       "artInterpreterToCompiledCodeBridge")) {
                 return false;
             }
-            interpreter_entry_point_offset = entry_point_offset - 2 * kPointerSize;
+            if (sdk_int >= __ANDROID_API_L_MR1__) {
+                interpreter_entry_point_offset = entry_point_offset - 2 * kPointerSize;
+            }
         }
 
         return true;

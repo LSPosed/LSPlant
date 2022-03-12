@@ -53,6 +53,18 @@ jobs:
       fail-fast: false
       matrix:
         include:
+          - api-level: 21
+            target: default
+            arch: x86_64
+          - api-level: 21
+            target: default
+            arch: x86
+          - api-level: 22
+            target: default
+            arch: x86_64
+          - api-level: 22
+            target: default
+            arch: x86
           - api-level: 23
             target: default
             arch: x86_64
