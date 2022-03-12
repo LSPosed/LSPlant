@@ -1,6 +1,5 @@
 #pragma once
 
-#include "art/mirror/class.hpp"
 #include "art/runtime/art_method.hpp"
 #include "art/thread.hpp"
 #include "common.hpp"
@@ -40,7 +39,7 @@ public:
     static bool Init(const HookHandler &handler) {
         int sdk_int = GetAndroidApiLevel();
 
-        if (sdk_int >= __ANDROID_API_N__) {
+        if (sdk_int >= __ANDROID_API_N__) [[likely]] {
             if (!HookSyms(handler, ShouldUseInterpreterEntrypoint, ShouldStayInSwitchInterpreter))
                 [[unlikely]] {
                 return false;
@@ -49,13 +48,14 @@ public:
 
         if (!RETRIEVE_MEM_FUNC_SYMBOL(
                 SetEntryPointsToInterpreter,
-                "_ZNK3art11ClassLinker27SetEntryPointsToInterpreterEPNS_9ArtMethodE")) {
+                "_ZNK3art11ClassLinker27SetEntryPointsToInterpreterEPNS_9ArtMethodE"))
+            [[unlikely]] {
             if (!RETRIEVE_FUNC_SYMBOL(art_quick_to_interpreter_bridge,
-                                      "art_quick_to_interpreter_bridge")) {
+                                      "art_quick_to_interpreter_bridge")) [[unlikely]] {
                 return false;
             }
             if (!RETRIEVE_FUNC_SYMBOL(art_quick_generic_jni_trampoline,
-                                      "art_quick_generic_jni_trampoline")) {
+                                      "art_quick_generic_jni_trampoline")) [[unlikely]] {
                 return false;
             }
             LOGD("art_quick_to_interpreter_bridge = %p", art_quick_to_interpreter_bridgeSym);

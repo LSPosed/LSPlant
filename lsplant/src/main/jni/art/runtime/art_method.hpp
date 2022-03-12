@@ -1,6 +1,5 @@
 #pragma once
 
-#include "art/mirror/class.hpp"
 #include "common.hpp"
 
 namespace lsplant::art {

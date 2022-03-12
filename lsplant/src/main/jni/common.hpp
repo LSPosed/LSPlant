@@ -6,7 +6,6 @@
 #include <shared_mutex>
 #include <string_view>
 #include <unordered_map>
-#include <unordered_set>
 
 #include "logging.hpp"
 #include "lsplant.hpp"
@@ -55,22 +54,8 @@ inline auto GetAndroidApiLevel() {
 
 inline static constexpr auto kPointerSize = sizeof(void *);
 
-template <typename T>
-inline T GetArtSymbol(const std::function<void *(std::string_view)> &resolver,
-                      std::string_view symbol) requires(std::is_pointer_v<T>) {
-    if (auto *result = resolver(symbol); result) {
-        return reinterpret_cast<T>(result);
-    } else {
-        LOGW("Failed to find symbol %*s", static_cast<int>(symbol.length()), symbol.data());
-        return nullptr;
-    }
-}
-
 namespace art {
-    class ArtMethod;
-    namespace dex {
-    class ClassDef;
-    }
+class ArtMethod;
 }  // namespace art
 
 namespace {
@@ -92,7 +77,7 @@ inline std::list<std::pair<art::ArtMethod *, art::ArtMethod *>> GetJitMovements(
     return std::move(jit_movements_);
 }
 
-inline void RecordHooked(art::ArtMethod *target, jobject reflected_backup, art::ArtMethod* backup) {
+inline void RecordHooked(art::ArtMethod *target, jobject reflected_backup, art::ArtMethod *backup) {
     std::unique_lock lk(hooked_methods_lock_);
     hooked_methods_.emplace(target, std::make_pair(reflected_backup, backup));
 }

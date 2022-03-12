@@ -45,11 +45,6 @@ class DexFile {
         return nullptr;
     }
 
-    CREATE_MEM_FUNC_SYMBOL_ENTRY(void, push_back, std::vector<const DexFile*>* thiz,
-                                 const DexFile** dex_file) {
-        push_backSym(thiz, dex_file);
-    }
-
 public:
     static const DexFile* OpenMemory(const void* dex_file, size_t size, std::string location,
                                      std::string* error_msg) {
@@ -58,11 +53,11 @@ public:
                               reinterpret_cast<const Header*>(dex_file)->checksum_, nullptr,
                               nullptr, error_msg)
                 .release();
-        } else if (OpenMemoryRawSym) {
+        } else if (OpenMemoryRawSym) [[likely]] {
             return OpenMemoryRaw(reinterpret_cast<const uint8_t*>(dex_file), size, location,
                                  reinterpret_cast<const Header*>(dex_file)->checksum_, nullptr,
                                  nullptr, error_msg);
-        } else if (OpenMemoryWithoutOdexSym) {
+        } else if (OpenMemoryWithoutOdexSym) [[likely]] {
             return OpenMemoryWithoutOdex(reinterpret_cast<const uint8_t*>(dex_file), size, location,
                                          reinterpret_cast<const Header*>(dex_file)->checksum_,
                                          nullptr, error_msg);
@@ -119,26 +114,26 @@ public:
             return false;
         }
         dex_file_class = JNI_NewGlobalRef(env, JNI_FindClass(env, "dalvik/system/DexFile"));
-        if (!dex_file_class) {
+        if (!dex_file_class) [[unlikely]] {
             return false;
         }
-        if (sdk_int >= __ANDROID_API_M__) {
+        if (sdk_int >= __ANDROID_API_M__) [[unlikely]] {
             cookie_field = JNI_GetFieldID(env, dex_file_class, "mCookie", "Ljava/lang/Object;");
         } else {
             cookie_field = JNI_GetFieldID(env, dex_file_class, "mCookie", "J");
             dex_file_start_index = -1;
         }
-        if (!cookie_field) {
+        if (!cookie_field) [[unlikely]] {
             return false;
         }
         file_name_field = JNI_GetFieldID(env, dex_file_class, "mFileName", "Ljava/lang/String;");
-        if (!file_name_field) {
+        if (!file_name_field) [[unlikely]] {
             return false;
         }
-        if (sdk_int >= __ANDROID_API_N__) {
+        if (sdk_int >= __ANDROID_API_N__) [[likely]] {
             internal_cookie_field =
                 JNI_GetFieldID(env, dex_file_class, "mInternalCookie", "Ljava/lang/Object;");
-            if (!internal_cookie_field) {
+            if (!internal_cookie_field) [[unlikely]] {
                 return false;
             }
             dex_file_start_index = 1u;

@@ -10,7 +10,7 @@ class Thread {
     };
 
     CREATE_MEM_FUNC_SYMBOL_ENTRY(ObjPtr, DecodeJObject, Thread *thiz, jobject obj) {
-        if (DecodeJObjectSym)
+        if (DecodeJObjectSym) [[likely]]
             return DecodeJObjectSym(thiz, obj);
         else
             return {.data = nullptr};
@@ -27,10 +27,12 @@ public:
     static Thread *Current() { return CurrentFromGdb(); }
 
     static bool Init(const HookHandler &handler) {
-        if (!RETRIEVE_MEM_FUNC_SYMBOL(DecodeJObject, "_ZNK3art6Thread13DecodeJObjectEP8_jobject")) {
+        if (!RETRIEVE_MEM_FUNC_SYMBOL(DecodeJObject, "_ZNK3art6Thread13DecodeJObjectEP8_jobject"))
+            [[unlikely]] {
             return false;
         }
-        if (!RETRIEVE_FUNC_SYMBOL(CurrentFromGdb, "_ZN3art6Thread14CurrentFromGdbEv")) {
+        if (!RETRIEVE_FUNC_SYMBOL(CurrentFromGdb, "_ZN3art6Thread14CurrentFromGdbEv"))
+            [[unlikely]] {
             return false;
         }
         return true;

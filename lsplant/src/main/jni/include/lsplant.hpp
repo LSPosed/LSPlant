@@ -59,8 +59,8 @@ struct InitInfo {
 /// \return Indicate whether initialization succeed. Behavior is undefined if calling other
 /// LSPlant interfaces before initialization or after a fail initialization.
 /// \see InitInfo.
-[[nodiscard]] [[maybe_unused]] [[gnu::visibility("default")]] bool Init(JNIEnv *env,
-                                                                        const InitInfo &info);
+[[nodiscard, maybe_unused, gnu::visibility("default")]] bool Init(JNIEnv *env,
+                                                                  const InitInfo &info);
 
 /// \brief Hook a Java method by providing the \p target_method together with the context object
 /// \p hooker_object and its callback \p callback_method.
@@ -75,29 +75,32 @@ struct InitInfo {
 /// \param[in] callback_method The callback method to the \p hooker_object is used to replace the
 /// \p target_method. Whenever the \p target_method is invoked, the \p callback_method will be
 /// invoked instead of the original \p target_method. The signature of the \p callback_method must
-/// be:<br>
+/// be:
 /// \code{.java}
 /// public Object callback_method(Object []args)
-/// \endcode<br>
+/// \endcode
 /// That is, the return type must be \p Object and the parameter type must be \b Object[]. Behavior
 /// is undefined if the signature does not match the requirement.
+/// args[0] is the this object for non-static methods and there is NOT null this object placeholder
+/// for static methods.
 /// Extra info can be provided by defining member variables of \p hooker_object.
 /// This method must be a method to \p hooker_object.
-/// \return The backup method. You can invoke it by reflection to invoke the original method. null
-/// if fails.
-/// \note This function will automatically generate a stub class for hook. To help debug, you
-/// can set the generated class name, its field name, its source name and its method name
-/// by setting generated_* in \p InitInfo.
+/// \return The backup method. You can invoke it
+/// by reflection to invoke the original method. null if fails.
+/// \note This function will
+/// automatically generate a stub class for hook. To help debug, you can set the generated class
+/// name, its field name, its source name and its method name by setting generated_* in \ref
+/// InitInfo.
 /// \note This function thread safe (you can call it simultaneously from multiple thread)
-/// but it's not atomic to the same \b target_method. That means \p UnHook or \p IsUnhook does
-/// not guarantee to work properly on the same \p target_method before it returns. Also,
-/// simultaneously call on this function with the same \p target_method does not guarantee only one
-/// will success. If you call this with different \p hooker_object on the same target_method
-/// simultaneously, the behavior is undefined.
-[[nodiscard]] [[maybe_unused]] [[gnu::visibility("default")]] jobject Hook(JNIEnv *env,
-                                                                           jobject target_method,
-                                                                           jobject hooker_object,
-                                                                           jobject callback_method);
+/// but it's not atomic to the same \b target_method. That means #UnHook() or #IsUnhook() does not
+/// guarantee to work properly on the same \p target_method before it returns. Also, simultaneously
+/// call on this function with the same \p target_method does not guarantee only one will success.
+/// If you call this with different \p hooker_object on the same target_method simultaneously, the
+/// behavior is undefined.
+[[nodiscard, maybe_unused, gnu::visibility("default")]] jobject Hook(JNIEnv *env,
+                                                                     jobject target_method,
+                                                                     jobject hooker_object,
+                                                                     jobject callback_method);
 
 /// \brief Unhook a Java function that is previously hooked.
 /// \param[in] env The Java environment.
@@ -106,8 +109,8 @@ struct InitInfo {
 /// \note Calling \p backup (the return method of #Hook()) after unhooking is undefined behavior.
 /// Please read #Hook()'s note for more details.
 /// \see Hook()
-[[nodiscard]] [[maybe_unused]] [[gnu::visibility("default")]] bool UnHook(JNIEnv *env,
-                                                                          jobject target_method);
+[[nodiscard, maybe_unused, gnu::visibility("default")]] bool UnHook(JNIEnv *env,
+                                                                    jobject target_method);
 
 /// \brief Check if a Java function is hooked by LSPlant or not
 /// \param[in] env The Java environment.
@@ -115,8 +118,7 @@ struct InitInfo {
 /// \return If \p method hooked, ture; otherwise, false.
 /// Please read #Hook()'s note for more details.
 /// \see Hook()
-[[nodiscard]] [[maybe_unused]] [[gnu::visibility("default")]] bool IsHooked(JNIEnv *env,
-                                                                            jobject method);
+[[nodiscard, maybe_unused, gnu::visibility("default")]] bool IsHooked(JNIEnv *env, jobject method);
 
 /// \brief Deoptimize a method to avoid hooked callee not being called because of inline
 /// \param[in] env The Java environment.
@@ -125,14 +127,15 @@ struct InitInfo {
 /// A, and you find that your callback to B is not invoked after hooking, then it may mean A has
 /// inlined B inside its method body. To force A to call your hooked B, you can deoptimize A and
 /// then your hook can take effect. Generally, you need to find all the callers of your hooked
-/// callee and that can be hardly achieve. Use this function if you are sure the deoptimized callers
+/// callee and that can be hardly achieve (but you can still search all callers by using DexHelper).
+/// Use this function if you are sure the deoptimized callers
 /// are all you need. Otherwise, it would be better to change the hook point or to deoptimize the
 /// whole app manually (by simple reinstall the app without uninstalled).
 /// \return Indicate whether the deoptimizing succeed or not.
 /// \note It is safe to call deoptimizing on a hooked method because the deoptimization will
 /// perform on the backup method instead.
-[[nodiscard]] [[maybe_unused]] [[gnu::visibility("default")]] bool Deoptimize(JNIEnv *env,
-                                                                              jobject method);
+[[nodiscard, maybe_unused, gnu::visibility("default")]] bool Deoptimize(JNIEnv *env,
+                                                                        jobject method);
 
 /// \brief Get the registered native function pointer of a native function. It helps user to hook
 /// native methods directly by backing up the native function pointer this function returns and
@@ -141,15 +144,15 @@ struct InitInfo {
 /// \param[in] method The native method to get the native function pointer.
 /// \return The native function pointer the \p method previously registered. If it has not been
 /// registered or it is not a native method, null is returned instead.
-[[nodiscard]] [[maybe_unused]] [[gnu::visibility("default")]] void *GetNativeFunction(
-    JNIEnv *env, jobject method);
+[[nodiscard, maybe_unused, gnu::visibility("default")]] void *GetNativeFunction(JNIEnv *env,
+                                                                                jobject method);
 
 /// \brief Make a class inheritable. It will make the class non-final and make all its private
 /// constructors protected.
 /// \param[in] env The Java environment.
 /// \param[in] target The target class that is to make inheritable.
 /// \return Indicate whether the operation has succeed.
-[[nodiscard]] [[maybe_unused]] [[gnu::visibility("default")]] bool MakeClassInheritable(
-    JNIEnv *env, jclass target);
+[[nodiscard, maybe_unused, gnu::visibility("default")]] bool MakeClassInheritable(JNIEnv *env,
+                                                                                  jclass target);
 }  // namespace v1
 }  // namespace lsplant

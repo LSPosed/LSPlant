@@ -36,7 +36,7 @@ public:
             }
         }
         if (sdk_int >= __ANDROID_API_N__) [[likely]] {
-            if (!HookSyms(handler, GarbageCollectCache)) {
+            if (!HookSyms(handler, GarbageCollectCache)) [[unlikely]] {
                 return false;
             }
         }

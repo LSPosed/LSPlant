@@ -16,17 +16,13 @@ private:
 class ScopedGCCriticalSection {
     CREATE_MEM_FUNC_SYMBOL_ENTRY(void, constructor, ScopedGCCriticalSection *thiz, Thread *self,
                                  GcCause cause, CollectorType collector_type) {
-        if (thiz == nullptr) [[unlikely]]
-            return;
-        if (constructorSym) [[likely]]
+        if (thiz && constructorSym) [[likely]]
             return constructorSym(thiz, self, cause, collector_type);
     }
 
     CREATE_MEM_FUNC_SYMBOL_ENTRY(void, destructor, ScopedGCCriticalSection *thiz) {
-        if (thiz == nullptr) [[unlikely]]
-            return;
-        if (destructorSym) [[likely]]
-            return destructorSym(thiz);
+        if (thiz && destructorSym) [[likely]]
+            destructorSym(thiz);
     }
 
 public:
@@ -39,7 +35,7 @@ public:
     static bool Init(const HookHandler &handler) {
         // for Android M, it's safe to not found since we have suspendVM & resumeVM
         auto sdk_int = GetAndroidApiLevel();
-        if (sdk_int >= __ANDROID_API_N__) {
+        if (sdk_int >= __ANDROID_API_N__) [[likely]] {
             if (!RETRIEVE_MEM_FUNC_SYMBOL(constructor,
                                           "_ZN3art2gc23ScopedGCCriticalSectionC2EPNS_6ThreadENS0_"
                                           "7GcCauseENS0_13CollectorTypeE")) [[unlikely]] {

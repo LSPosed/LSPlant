@@ -33,7 +33,6 @@ using art::Instrumentation;
 using art::Thread;
 using art::gc::ScopedGCCriticalSection;
 using art::jit::JitCodeCache;
-using art::mirror::Class;
 using art::thread_list::ScopedSuspendAll;
 
 namespace {
@@ -225,10 +224,6 @@ bool InitNative(JNIEnv *env, const HookHandler &handler) {
     }
     if (!ClassLinker::Init(handler)) {
         LOGE("Failed to init class linker");
-        return false;
-    }
-    if (!Class::Init(env, handler)) {
-        LOGE("Failed to init mirror class");
         return false;
     }
     if (!Instrumentation::Init(handler)) {
