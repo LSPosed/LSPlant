@@ -147,6 +147,14 @@ publishing {
             url = uri("https://s01.oss.sonatype.org/service/local/staging/deploy/maven2/")
             credentials(PasswordCredentials::class)
         }
+        maven {
+            name = "GitHubPackages"
+            url = uri("https://maven.pkg.github.com/LSPosed/LSPlant")
+            credentials {
+                username = System.getenv("GITHUB_ACTOR")
+                password = System.getenv("GITHUB_TOKEN")
+            }
+        }
     }
 }
 
