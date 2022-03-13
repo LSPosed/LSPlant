@@ -6,6 +6,7 @@
 #include <shared_mutex>
 #include <string_view>
 #include <unordered_map>
+#include <unordered_set>
 
 #include "logging.hpp"
 #include "lsplant.hpp"
@@ -56,6 +57,12 @@ inline static constexpr auto kPointerSize = sizeof(void *);
 
 namespace art {
 class ArtMethod;
+namespace dex {
+class ClassDef;
+}
+namespace mirror {
+class Class;
+}
 }  // namespace art
 
 namespace {
@@ -65,6 +72,10 @@ inline std::shared_mutex hooked_methods_lock_;
 
 inline std::list<std::pair<art::ArtMethod *, art::ArtMethod *>> jit_movements_;
 inline std::shared_mutex jit_movements_lock_;
+
+inline std::unordered_map<const art::dex::ClassDef *, std::unordered_set<art::ArtMethod *>>
+    hooked_classes_;
+inline std::shared_mutex hooked_classes_lock_;
 }  // namespace
 
 inline bool IsHooked(art::ArtMethod *art_method) {
@@ -77,9 +88,16 @@ inline std::list<std::pair<art::ArtMethod *, art::ArtMethod *>> GetJitMovements(
     return std::move(jit_movements_);
 }
 
-inline void RecordHooked(art::ArtMethod *target, jobject reflected_backup, art::ArtMethod *backup) {
-    std::unique_lock lk(hooked_methods_lock_);
-    hooked_methods_.emplace(target, std::make_pair(reflected_backup, backup));
+inline void RecordHooked(art::ArtMethod *target, const art::dex::ClassDef *class_def,
+                         jobject reflected_backup, art::ArtMethod *backup) {
+    {
+        std::unique_lock lk(hooked_methods_lock_);
+        hooked_methods_[target] = {reflected_backup, backup};
+    }
+    {
+        std::unique_lock lk(hooked_classes_lock_);
+        hooked_classes_[class_def].emplace(target);
+    }
 }
 
 inline void RecordJitMovement(art::ArtMethod *target, art::ArtMethod *backup) {

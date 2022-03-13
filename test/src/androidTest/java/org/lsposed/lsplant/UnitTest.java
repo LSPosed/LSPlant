@@ -107,7 +107,7 @@ public class UnitTest {
 
         Hooker hooker = Hooker.hook(staticMethod, staticMethodReplacement, null);
         Assert.assertNotNull(hooker);
-        for (int i = 0; i < 1000; ++i) {
+        for (int i = 0; i < 5000; ++i) {
             Assert.assertTrue("Iter " + i, (Boolean) callStaticMethod.invoke(null));
             Assert.assertFalse("Iter " + i, (boolean) hooker.backup.invoke(null));
         }

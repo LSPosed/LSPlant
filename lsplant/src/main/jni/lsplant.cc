@@ -7,7 +7,7 @@
 #include <array>
 #include <atomic>
 
-#include "art/instrumentation.hpp"
+#include "art/mirror/class.hpp"
 #include "art/runtime/art_method.hpp"
 #include "art/runtime/class_linker.hpp"
 #include "art/runtime/dex_file.hpp"
@@ -29,10 +29,10 @@ namespace lsplant {
 using art::ArtMethod;
 using art::ClassLinker;
 using art::DexFile;
-using art::Instrumentation;
 using art::Thread;
 using art::gc::ScopedGCCriticalSection;
 using art::jit::JitCodeCache;
+using art::mirror::Class;
 using art::thread_list::ScopedSuspendAll;
 
 namespace {
@@ -226,8 +226,8 @@ bool InitNative(JNIEnv *env, const HookHandler &handler) {
         LOGE("Failed to init class linker");
         return false;
     }
-    if (!Instrumentation::Init(handler)) {
-        LOGE("Failed to init instrumentation");
+    if (!Class::Init(handler)) {
+        LOGE("Failed to init mirror class");
         return false;
     }
     if (!ScopedSuspendAll::Init(handler)) {
@@ -580,7 +580,7 @@ using ::lsplant::IsHooked;
 
     if (DoHook(target, hook, backup)) {
         jobject global_backup = JNI_NewGlobalRef(env, reflected_backup);
-        RecordHooked(target, global_backup, backup);
+        RecordHooked(target, target->GetDeclaringClass()->GetClassDef(), global_backup, backup);
         if (!is_proxy) [[likely]] {
             RecordJitMovement(target, backup);
         }
@@ -605,6 +605,16 @@ using ::lsplant::IsHooked;
             hooked_methods_.erase(it);
         }
     }
+    {
+        std::unique_lock lk(hooked_classes_lock_);
+        if (auto it = hooked_classes_.find(target->GetDeclaringClass()->GetClassDef());
+            it != hooked_classes_.end()) {
+            it->second.erase(target);
+            if (it->second.empty()) {
+                hooked_classes_.erase(it);
+            }
+        }
+    }
     if (reflected_backup == nullptr) {
         LOGE("Unable to unhook a method that is not hooked");
         return false;
@@ -619,11 +629,8 @@ using ::lsplant::IsHooked;
         return false;
     }
     auto *art_method = ArtMethod::FromReflectedMethod(env, method);
-
-    if (std::shared_lock lk(hooked_methods_lock_); hooked_methods_.contains(art_method)) {
-        return true;
-    }
-    return false;
+    std::shared_lock lk(hooked_methods_lock_);
+    return hooked_methods_.contains(art_method);
 }
 
 [[maybe_unused]] bool Deoptimize(JNIEnv *env, jobject method) {
