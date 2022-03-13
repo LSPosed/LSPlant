@@ -1,5 +1,6 @@
 #pragma once
 
+#include "art/mirror/class.hpp"
 #include "common.hpp"
 
 namespace lsplant::art {
@@ -125,6 +126,11 @@ public:
         return PrettyMethod(this, with_signature);
     }
 
+    mirror::Class *GetDeclaringClass() {
+        return reinterpret_cast<mirror::Class *>(*reinterpret_cast<uint32_t *>(
+            reinterpret_cast<uintptr_t>(this) + declaring_class_offset));
+    }
+
     static art::ArtMethod *FromReflectedMethod(JNIEnv *env, jobject method) {
         if (art_method_field) [[likely]] {
             return reinterpret_cast<art::ArtMethod *>(
@@ -221,6 +227,8 @@ public:
                     field_offset);
             };
             access_flags_offset = get_offset_from_art_method("accessFlags", "I");
+            declaring_class_offset =
+                get_offset_from_art_method("declaringClass", "Ljava/lang/Class;");
             if (sdk_int == __ANDROID_API_L__) {
                 entry_point_offset =
                     get_offset_from_art_method("entryPointFromQuickCompiledCode", "J");
@@ -229,6 +237,7 @@ public:
                 data_offset = get_offset_from_art_method("entryPointFromJni", "J");
             }
         }
+        LOGD("ArtMethod::declaring_class offset: %zu", declaring_class_offset);
         LOGD("ArtMethod::entrypoint offset: %zu", entry_point_offset);
         LOGD("ArtMethod::data offset: %zu", data_offset);
         LOGD("ArtMethod::access_flags offset: %zu", access_flags_offset);
@@ -279,7 +288,7 @@ public:
                 kAccCompileDontBother = kAccDefaultConflict;
             }
         }
-        if (sdk_int <= __ANDROID_API_N__) {
+        if (sdk_int < __ANDROID_API_N__) {
             kAccCompileDontBother = 0;
         }
         if (sdk_int <= __ANDROID_API_M__) [[unlikely]] {
@@ -312,6 +321,7 @@ private:
     inline static size_t interpreter_entry_point_offset = 0;
     inline static size_t data_offset = 0;
     inline static size_t access_flags_offset = 0;
+    inline static size_t declaring_class_offset = 0;
     inline static uint32_t kAccFastInterpreterToInterpreterInvoke = 0x40000000;
     inline static uint32_t kAccPreCompiled = 0x00200000;
     inline static uint32_t kAccCompileDontBother = 0x02000000;
