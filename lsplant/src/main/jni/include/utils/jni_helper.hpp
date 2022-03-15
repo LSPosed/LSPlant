@@ -96,10 +96,22 @@ class ScopedLocalRef<T>;
 class JNIScopeFrame {
     JNIEnv *env_;
 
+    DISALLOW_COPY_AND_ASSIGN(JNIScopeFrame);
 public:
     JNIScopeFrame(JNIEnv *env, jint size) : env_(env) { env_->PushLocalFrame(size); }
 
     ~JNIScopeFrame() { env_->PopLocalFrame(nullptr); }
+};
+
+class JNIMonitor {
+    JNIEnv *env_;
+    jobject obj_;
+
+    DISALLOW_COPY_AND_ASSIGN(JNIMonitor);
+public:
+    JNIMonitor(JNIEnv *env, jobject obj) : env_(env), obj_(obj) { env_->MonitorEnter(obj_); }
+
+    ~JNIMonitor() { env_->MonitorExit(obj_); }
 };
 
 template <typename T, typename U>
@@ -902,7 +914,7 @@ public:
 
     explicit ScopedLocalRef(JNIEnv *env) noexcept : ScopedLocalRef(env, T{nullptr}) {}
 
-    ~ScopedLocalRef() { release(); }
+    ~ScopedLocalRef() { env_->DeleteLocalRef(release()); }
 
     void reset(T ptr = nullptr) {
         if (ptr != local_ref_) {
