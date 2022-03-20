@@ -92,7 +92,7 @@ struct InitInfo {
 /// name, its field name, its source name and its method name by setting generated_* in \ref
 /// InitInfo.
 /// \note This function thread safe (you can call it simultaneously from multiple thread)
-/// but it's not atomic to the same \b target_method. That means #UnHook() or #IsUnhook() does not
+/// but it's not atomic to the same \b target_method. That means #UnHook() or #Ishook() does not
 /// guarantee to work properly on the same \p target_method before it returns. Also, simultaneously
 /// call on this function with the same \p target_method does not guarantee only one will success.
 /// If you call this with different \p hooker_object on the same target_method simultaneously, the

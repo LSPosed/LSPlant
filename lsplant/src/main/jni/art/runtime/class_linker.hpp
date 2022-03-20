@@ -36,12 +36,60 @@ private:
                                return backup(art_method);
                            });
 
+    inline static art::ArtMethod *MayGetBackup(art::ArtMethod *method) {
+        std::shared_lock lk(hooked_methods_lock_);
+        if (auto found = hooked_methods_.find(method); found != hooked_methods_.end())
+            [[unlikely]] {
+            method = found->second.second;
+            LOGV("propagate native method: %s", method->PrettyMethod(true).data());
+        }
+        return method;
+    }
+
+    CREATE_MEM_HOOK_STUB_ENTRY(
+        "_ZN3art6mirror9ArtMethod14RegisterNativeEPNS_6ThreadEPKvb", void, RegisterNativeThread,
+        (art::ArtMethod * method, art::Thread *thread, const void *native_method, bool is_fast),
+        { return backup(MayGetBackup(method), thread, native_method, is_fast); });
+
+    CREATE_MEM_HOOK_STUB_ENTRY("_ZN3art6mirror9ArtMethod16UnregisterNativeEPNS_6ThreadE", void,
+                               UnregisterNativeThread,
+                               (art::ArtMethod * method, art::Thread *thread),
+                               { return backup(MayGetBackup(method), thread); });
+
+    CREATE_MEM_HOOK_STUB_ENTRY("_ZN3art9ArtMethod14RegisterNativeEPKvb", void, RegisterNativeFast,
+                               (art::ArtMethod * method, const void *native_method, bool is_fast),
+                               { return backup(MayGetBackup(method), native_method, is_fast); });
+
+    CREATE_MEM_HOOK_STUB_ENTRY("_ZN3art9ArtMethod16UnregisterNativeEv", void, UnregisterNativeFast,
+                               (art::ArtMethod * method), { return backup(MayGetBackup(method)); });
+
+    CREATE_MEM_HOOK_STUB_ENTRY("_ZN3art9ArtMethod14RegisterNativeEPKv", const void *,
+                               RegisterNative, (art::ArtMethod * method, const void *native_method),
+                               { return backup(MayGetBackup(method), native_method); });
+
+    CREATE_MEM_HOOK_STUB_ENTRY("_ZN3art9ArtMethod16UnregisterNativeEv", const void *,
+                               UnregisterNative, (art::ArtMethod * method),
+                               { return backup(MayGetBackup(method)); });
+
+    CREATE_MEM_HOOK_STUB_ENTRY(
+        "_ZN3art11ClassLinker14RegisterNativeEPNS_6ThreadEPNS_9ArtMethodEPKv", const void *,
+        RegisterNativeClassLinker,
+        (art::ClassLinker * thiz, art::Thread *self, art::ArtMethod *method,
+         const void *native_method),
+        { return backup(thiz, self, MayGetBackup(method), native_method); });
+
+    CREATE_MEM_HOOK_STUB_ENTRY("_ZN3art11ClassLinker16UnregisterNativeEPNS_6ThreadEPNS_9ArtMethodE",
+                               const void *, UnregisterNativeClassLinker,
+                               (art::ClassLinker * thiz, art::Thread *self, art::ArtMethod *method),
+                               { return backup(thiz, self, MayGetBackup(method)); });
+
     static auto GetBackupMethods(mirror::Class *mirror_class) {
         std::list<std::tuple<art::ArtMethod *, void *>> out;
         auto class_def = mirror_class->GetClassDef();
         if (!class_def) return out;
         std::shared_lock lk(hooked_classes_lock_);
-        if (auto found = hooked_classes_.find(class_def); found != hooked_classes_.end()) {
+        if (auto found = hooked_classes_.find(class_def); found != hooked_classes_.end())
+            [[unlikely]] {
             LOGD("Before fixup %s, backup hooked methods' trampoline",
                  mirror_class->GetDescriptor().c_str());
             for (auto method : found->second) {
@@ -54,10 +102,13 @@ private:
     static void FixTrampoline(const std::list<std::tuple<art::ArtMethod *, void *>> &methods) {
         std::shared_lock lk(hooked_methods_lock_);
         for (const auto &[art_method, old_trampoline] : methods) {
-            if (auto found = hooked_methods_.find(art_method); found != hooked_methods_.end()) {
+            if (auto found = hooked_methods_.find(art_method); found != hooked_methods_.end())
+                [[likely]] {
+                auto &backup_method = found->second.second;
                 if (auto new_trampoline = art_method->GetEntryPoint();
-                    new_trampoline != old_trampoline) {
-                    found->second.second->SetEntryPoint(new_trampoline);
+                    new_trampoline != old_trampoline) [[unlikely]] {
+                    LOGV("propagate entrypoint for %s", backup_method->PrettyMethod(true).data());
+                    backup_method->SetEntryPoint(new_trampoline);
                     art_method->SetEntryPoint(old_trampoline);
                 }
             }
@@ -102,6 +153,13 @@ public:
 
         if (!HookSyms(handler, FixupStaticTrampolinesWithThread, FixupStaticTrampolines,
                       FixupStaticTrampolinesRaw)) {
+            return false;
+        }
+
+        if (!HookSyms(handler, RegisterNativeClassLinker, RegisterNative, RegisterNativeFast,
+                      RegisterNativeThread) ||
+            !HookSyms(handler, UnregisterNativeClassLinker, UnregisterNative, UnregisterNativeFast,
+                      UnregisterNativeThread)) {
             return false;
         }
 
