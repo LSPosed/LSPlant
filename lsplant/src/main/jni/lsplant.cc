@@ -669,14 +669,14 @@ using ::lsplant::IsHooked;
         LOGE("target class is null");
         return false;
     }
-    auto constructors =
+    const auto constructors =
         JNI_Cast<jobjectArray>(JNI_CallObjectMethod(env, target, class_get_declared_constructors));
     uint8_t access_flags = JNI_GetIntField(env, target, class_access_flags);
     constexpr static uint32_t kAccFinal = 0x0010;
     JNI_SetIntField(env, target, class_access_flags, static_cast<jint>(access_flags & ~kAccFinal));
     for (auto &constructor : constructors) {
         auto *method = ArtMethod::FromReflectedMethod(env, constructor.get());
-        if (method && (!method->IsPublic() || !method->IsProtected())) method->SetProtected();
+        if (method && !method->IsPublic() && !method->IsProtected()) method->SetProtected();
         if (method && method->IsFinal()) method->SetNonFinal();
     }
     return true;

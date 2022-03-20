@@ -858,7 +858,7 @@ public:
         Iterator operator++(int) { return Iterator(e_++); }
         Iterator operator--(int) { return Iterator(e_--); }
         bool operator==(const Iterator &other) const { return other.e_ == e_; }
-        bool operator!=(const Iterator &other) const { return other.e_ == e_; }
+        bool operator!=(const Iterator &other) const { return other.e_ != e_; }
     };
 
     class ConstIterator {
@@ -874,7 +874,7 @@ public:
         ConstIterator operator++(int) { return ConstIterator(e_++); }
         ConstIterator operator--(int) { return ConstIterator(e_--); }
         bool operator==(const ConstIterator &other) const { return other.e_ == e_; }
-        bool operator!=(const ConstIterator &other) const { return other.e_ == e_; }
+        bool operator!=(const ConstIterator &other) const { return other.e_ != e_; }
     };
 
     auto begin() {
