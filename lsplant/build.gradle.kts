@@ -113,7 +113,7 @@ publishing {
         register<MavenPublication>("lsplant") {
             group = "org.lsposed.lsplant"
             artifactId = "lsplant"
-            version = "3.1"
+            version = "3.2"
             afterEvaluate {
                 from(components.getByName("release"))
                 artifact(symbolsTask)
