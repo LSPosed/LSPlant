@@ -17,49 +17,25 @@ class Instrumentation {
     }
 
     CREATE_MEM_HOOK_STUB_ENTRY(
-        "_ZN3art15instrumentation15Instrumentation21UpdateMethodsCodeImplEPNS_9ArtMethodEPKv", void,
-        UpdateMethodsCodeImpl,
-        (Instrumentation * thiz, ArtMethod *art_method, const void *quick_code),
-        { backup(thiz, MaybeUseBackupMethod(art_method, quick_code), quick_code); });
+        "_ZN3art15instrumentation15Instrumentation40UpdateMethodsCodeToInterpreterEntryPointEPNS_9ArtMethodE",
+        void, UpdateMethodsCodeToInterpreterEntryPoint,
+        (Instrumentation * thiz, ArtMethod *art_method),
+        { backup(thiz, MaybeUseBackupMethod(art_method, nullptr)); });
 
     CREATE_MEM_HOOK_STUB_ENTRY(
-        "_ZN3art15instrumentation15Instrumentation17UpdateMethodsCodeEPNS_9ArtMethodEPKv", void,
-        UpdateMethodsCode, (Instrumentation * thiz, ArtMethod *art_method, const void *quick_code),
-        {
-            if (UpdateMethodsCodeImpl.backup) {
-                UpdateMethodsCodeImpl.backup(thiz, MaybeUseBackupMethod(art_method, quick_code),
-                                             quick_code);
-            } else {
-                backup(thiz, MaybeUseBackupMethod(art_method, quick_code), quick_code);
-            }
-        });
-    CREATE_MEM_HOOK_STUB_ENTRY(
-        "_ZN3art15instrumentation15Instrumentation17UpdateMethodsCodeEPNS_6mirror9ArtMethodEPKvS6_b",
-        void, UpdateMethodsCodeWithProtableCode,
-        (Instrumentation * thiz, ArtMethod *art_method, const void *quick_code,
-         const void *portable_code, bool have_portable_code),
-        {
-            backup(thiz, MaybeUseBackupMethod(art_method, quick_code), quick_code, portable_code,
-                   have_portable_code);
-        });
+            "_ZN3art15instrumentation15Instrumentation21InitializeMethodsCodeEPNS_9ArtMethodEPKv",
+            void, InitializeMethodsCode,
+            (Instrumentation * thiz, ArtMethod *art_method, const void* quick_code),
+            { backup(thiz, MaybeUseBackupMethod(art_method, quick_code), quick_code); });
 
 public:
-    static bool Init(JNIEnv* env, const HookHandler &handler) {
+    static bool Init(JNIEnv *env, const HookHandler &handler) {
         if (!IsJavaDebuggable(env)) [[likely]] {
             return true;
         }
         int sdk_int = GetAndroidApiLevel();
-        if (sdk_int < __ANDROID_API_M__) [[unlikely]] {
-            if (!HookSyms(handler, UpdateMethodsCodeWithProtableCode)) {
-                return false;
-            }
-            return true;
-        }
-        if (!HookSyms(handler, UpdateMethodsCode)) {
-            return false;
-        }
-        if (sdk_int >= __ANDROID_API_N__) [[likely]] {
-            if (!HookSyms(handler, UpdateMethodsCodeImpl)) {
+        if (sdk_int >= __ANDROID_API_P__) [[likely]] {
+            if (!HookSyms(handler, InitializeMethodsCode, UpdateMethodsCodeToInterpreterEntryPoint)) {
                 return false;
             }
         }

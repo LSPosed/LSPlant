@@ -31,6 +31,7 @@ namespace lsplant {
 using art::ArtMethod;
 using art::ClassLinker;
 using art::DexFile;
+using art::Instrumentation;
 using art::Thread;
 using art::gc::ScopedGCCriticalSection;
 using art::jit::JitCodeCache;
@@ -247,6 +248,10 @@ bool InitNative(JNIEnv *env, const HookHandler &handler) {
     }
     if (!DexFile::Init(env, handler)) {
         LOGE("Failed to init dex file");
+        return false;
+    }
+    if (!Instrumentation::Init(env, handler)) {
+        LOGE("Failed to init instrumentation");
         return false;
     }
     if (!JniIdManager::Init(env, handler)) {
