@@ -53,6 +53,37 @@ inline auto GetAndroidApiLevel() {
     return kApiLevel;
 }
 
+inline auto IsJavaDebuggable(JNIEnv *env) {
+    static auto kDebuggable = [&env]() {
+        auto runtime_class = JNI_FindClass(env, "dalvik/system/VMRuntime");
+        if (!runtime_class) {
+            LOGE("Failed to find VMRuntime");
+            return false;
+        }
+        auto get_runtime_method = JNI_GetStaticMethodID(env, runtime_class, "getRuntime",
+                                                        "()Ldalvik/system/VMRuntime;");
+        if (!get_runtime_method) {
+            LOGE("Failed to find VMRuntime.getRuntime()");
+            return false;
+        }
+        auto is_debuggable_method =
+                JNI_GetMethodID(env, runtime_class, "isJavaDebuggable", "()Z");
+        if (!is_debuggable_method) {
+            LOGE("Failed to find VMRuntime.isJavaDebuggable()");
+            return false;
+        }
+        auto runtime = JNI_CallStaticObjectMethod(env, runtime_class, get_runtime_method);
+        if (!runtime) {
+            LOGE("Failed to get VMRuntime");
+            return false;
+        }
+        bool is_debuggable = JNI_CallBooleanMethod(env, runtime, is_debuggable_method);
+        LOGD("java runtime debuggable %s", is_debuggable ? "true" : "false");
+        return is_debuggable;
+    }();
+    return kDebuggable;
+}
+
 inline static constexpr auto kPointerSize = sizeof(void *);
 
 namespace art {

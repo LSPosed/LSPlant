@@ -2,7 +2,7 @@
 
 #include "art/runtime/art_method.hpp"
 #include "art/runtime/obj_ptr.hpp"
-#include "art/thread.hpp"
+#include "art/runtime/thread.hpp"
 #include "common.hpp"
 
 namespace lsplant::art {
