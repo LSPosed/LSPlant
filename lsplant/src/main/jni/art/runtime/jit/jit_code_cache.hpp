@@ -17,8 +17,10 @@ class JitCodeCache {
 
     CREATE_MEM_HOOK_STUB_ENTRY("_ZN3art3jit12JitCodeCache19GarbageCollectCacheEPNS_6ThreadE", void,
                                GarbageCollectCache, (JitCodeCache * thiz, Thread *self), {
-                                   LOGD("Before jit cache gc, moving hooked methods");
-                                   for (auto [target, backup] : GetJitMovements()) {
+                                   auto movements = GetJitMovements();
+                                   LOGD("Before jit cache gc, moving %zu hooked methods",
+                                        movements.size());
+                                   for (auto [target, backup] : movements) {
                                        MoveObsoleteMethod(thiz, target, backup);
                                    }
                                    backup(thiz, self);

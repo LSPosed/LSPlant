@@ -78,9 +78,22 @@ inline std::unordered_map<const art::dex::ClassDef *, std::unordered_set<art::Ar
 inline std::shared_mutex hooked_classes_lock_;
 }  // namespace
 
-inline bool IsHooked(art::ArtMethod *art_method) {
+inline art::ArtMethod *IsHooked(art::ArtMethod *art_method, bool including_backup = false) {
     std::shared_lock lk(hooked_methods_lock_);
-    return hooked_methods_.contains(art_method);
+    if (auto it = hooked_methods_.find(art_method);
+        it != hooked_methods_.end() && (!including_backup || it->second.first)) {
+        return it->second.second;
+    }
+    return nullptr;
+}
+
+inline art::ArtMethod *IsBackup(art::ArtMethod *art_method) {
+    std::shared_lock lk(hooked_methods_lock_);
+    if (auto it = hooked_methods_.find(art_method);
+        it != hooked_methods_.end() && !it->second.first) {
+        return it->second.second;
+    }
+    return nullptr;
 }
 
 inline std::list<std::pair<art::ArtMethod *, art::ArtMethod *>> GetJitMovements() {
@@ -93,6 +106,7 @@ inline void RecordHooked(art::ArtMethod *target, const art::dex::ClassDef *class
     {
         std::unique_lock lk(hooked_methods_lock_);
         hooked_methods_[target] = {reflected_backup, backup};
+        hooked_methods_[backup] = {nullptr, target};
     }
     {
         std::unique_lock lk(hooked_classes_lock_);
