@@ -4,7 +4,6 @@
 #include "art/runtime/reflective_handle.hpp"
 #include "common.hpp"
 
-// _ZN3art3jni12JniIdManager14EncodeMethodIdEPNS_9ArtMethodE
 namespace lsplant::art::jni {
 
 class JniIdManager {

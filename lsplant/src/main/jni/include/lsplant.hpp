@@ -97,6 +97,7 @@ struct InitInfo {
 /// call on this function with the same \p target_method does not guarantee only one will success.
 /// If you call this with different \p hooker_object on the same target_method simultaneously, the
 /// behavior is undefined.
+/// \note The behaviour of getting the \ref jmethodID of the backup method is undfined.
 [[nodiscard, maybe_unused, gnu::visibility("default")]] jobject Hook(JNIEnv *env,
                                                                      jobject target_method,
                                                                      jobject hooker_object,
