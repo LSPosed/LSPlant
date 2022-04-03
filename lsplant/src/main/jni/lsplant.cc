@@ -12,9 +12,11 @@
 #include "art/runtime/class_linker.hpp"
 #include "art/runtime/dex_file.hpp"
 #include "art/runtime/gc/scoped_gc_critical_section.hpp"
+#include "art/runtime/instrumentation.hpp"
 #include "art/runtime/jit/jit_code_cache.hpp"
-#include "art/thread.hpp"
-#include "art/thread_list.hpp"
+#include "art/runtime/jni/jni_id_manager.h"
+#include "art/runtime/thread.hpp"
+#include "art/runtime/thread_list.hpp"
 #include "common.hpp"
 #include "dex_builder.h"
 #include "utils/jni_helper.hpp"
@@ -29,9 +31,11 @@ namespace lsplant {
 using art::ArtMethod;
 using art::ClassLinker;
 using art::DexFile;
+using art::Instrumentation;
 using art::Thread;
 using art::gc::ScopedGCCriticalSection;
 using art::jit::JitCodeCache;
+using art::jni::JniIdManager;
 using art::mirror::Class;
 using art::thread_list::ScopedSuspendAll;
 
@@ -244,6 +248,14 @@ bool InitNative(JNIEnv *env, const HookHandler &handler) {
     }
     if (!DexFile::Init(env, handler)) {
         LOGE("Failed to init dex file");
+        return false;
+    }
+    if (!Instrumentation::Init(env, handler)) {
+        LOGE("Failed to init instrumentation");
+        return false;
+    }
+    if (!JniIdManager::Init(env, handler)) {
+        LOGE("Failed to init jni id manager");
         return false;
     }
     return true;
@@ -533,7 +545,7 @@ using ::lsplant::IsHooked;
     auto *target = ArtMethod::FromReflectedMethod(env, target_method);
     bool is_static = target->IsStatic();
 
-    if (IsHooked(target)) {
+    if (IsHooked(target, true)) {
         LOGW("Skip duplicate hook");
         return nullptr;
     }
@@ -600,9 +612,14 @@ using ::lsplant::IsHooked;
     art::ArtMethod *backup = nullptr;
     {
         std::unique_lock lk(hooked_methods_lock_);
-        if (auto it = hooked_methods_.find(target); it != hooked_methods_.end()) {
+        if (auto it = hooked_methods_.find(target); it != hooked_methods_.end()) [[likely]] {
             std::tie(reflected_backup, backup) = it->second;
+            if (reflected_backup == nullptr) {
+                LOGE("Unable to unhook a method that is not hooked");
+                return false;
+            }
             hooked_methods_.erase(it);
+            hooked_methods_.erase(it->second.second);
         }
     }
     {
@@ -615,10 +632,6 @@ using ::lsplant::IsHooked;
             }
         }
     }
-    if (reflected_backup == nullptr) {
-        LOGE("Unable to unhook a method that is not hooked");
-        return false;
-    }
     env->DeleteGlobalRef(reflected_backup);
     return DoUnHook(target, backup);
 }
@@ -629,8 +642,7 @@ using ::lsplant::IsHooked;
         return false;
     }
     auto *art_method = ArtMethod::FromReflectedMethod(env, method);
-    std::shared_lock lk(hooked_methods_lock_);
-    return hooked_methods_.contains(art_method);
+    return IsHooked(art_method);
 }
 
 [[maybe_unused]] bool Deoptimize(JNIEnv *env, jobject method) {
@@ -639,12 +651,8 @@ using ::lsplant::IsHooked;
         return false;
     }
     auto *art_method = ArtMethod::FromReflectedMethod(env, method);
-    if (IsHooked(art_method)) {
-        std::shared_lock lk(hooked_methods_lock_);
-        auto it = hooked_methods_.find(art_method);
-        if (it != hooked_methods_.end()) {
-            art_method = it->second.second;
-        }
+    if (auto *backup = IsHooked(art_method); backup) {
+        art_method = backup;
     }
     if (!art_method) {
         return false;
@@ -674,7 +682,7 @@ using ::lsplant::IsHooked;
     uint8_t access_flags = JNI_GetIntField(env, target, class_access_flags);
     constexpr static uint32_t kAccFinal = 0x0010;
     JNI_SetIntField(env, target, class_access_flags, static_cast<jint>(access_flags & ~kAccFinal));
-    for (auto &constructor : constructors) {
+    for (const auto &constructor : constructors) {
         auto *method = ArtMethod::FromReflectedMethod(env, constructor.get());
         if (method && !method->IsPublic() && !method->IsProtected()) method->SetProtected();
         if (method && method->IsFinal()) method->SetNonFinal();

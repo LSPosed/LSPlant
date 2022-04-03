@@ -1,8 +1,8 @@
 #pragma once
 
 #include "art/runtime/art_method.hpp"
-#include "art/runtime/obj_ptr.h"
-#include "art/thread.hpp"
+#include "art/runtime/obj_ptr.hpp"
+#include "art/runtime/thread.hpp"
 #include "common.hpp"
 
 namespace lsplant::art {
@@ -37,10 +37,8 @@ private:
                            });
 
     inline static art::ArtMethod *MayGetBackup(art::ArtMethod *method) {
-        std::shared_lock lk(hooked_methods_lock_);
-        if (auto found = hooked_methods_.find(method); found != hooked_methods_.end())
-            [[unlikely]] {
-            method = found->second.second;
+        if (auto backup = IsHooked(method); backup) [[unlikely]] {
+            method = backup;
             LOGV("propagate native method: %s", method->PrettyMethod(true).data());
         }
         return method;
@@ -102,9 +100,7 @@ private:
     static void FixTrampoline(const std::list<std::tuple<art::ArtMethod *, void *>> &methods) {
         std::shared_lock lk(hooked_methods_lock_);
         for (const auto &[art_method, old_trampoline] : methods) {
-            if (auto found = hooked_methods_.find(art_method); found != hooked_methods_.end())
-                [[likely]] {
-                auto &backup_method = found->second.second;
+            if (auto backup_method = IsHooked(art_method); backup_method) [[likely]] {
                 if (auto new_trampoline = art_method->GetEntryPoint();
                     new_trampoline != old_trampoline) [[unlikely]] {
                     LOGV("propagate entrypoint for %s", backup_method->PrettyMethod(true).data());

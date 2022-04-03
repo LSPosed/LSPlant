@@ -1,6 +1,6 @@
 #pragma once
 
-#include "art/thread.hpp"
+#include "art/runtime/thread.hpp"
 #include "collector_type.hpp"
 #include "common.hpp"
 #include "gc_cause.hpp"
