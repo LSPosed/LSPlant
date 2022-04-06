@@ -55,6 +55,10 @@ inline auto GetAndroidApiLevel() {
 
 inline auto IsJavaDebuggable(JNIEnv *env) {
     static auto kDebuggable = [&env]() {
+        auto sdk_int = GetAndroidApiLevel();
+        if (sdk_int < __ANDROID_API_P__) {
+            return false;
+        }
         auto runtime_class = JNI_FindClass(env, "dalvik/system/VMRuntime");
         if (!runtime_class) {
             LOGE("Failed to find VMRuntime");
