@@ -672,6 +672,7 @@ using ::lsplant::IsHooked;
     }
     return art_method->GetData();
 }
+
 [[maybe_unused]] bool MakeClassInheritable(JNIEnv *env, jclass target) {
     if (!target) {
         LOGE("target class is null");
