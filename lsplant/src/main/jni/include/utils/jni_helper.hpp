@@ -97,6 +97,7 @@ class JNIScopeFrame {
     JNIEnv *env_;
 
     DISALLOW_COPY_AND_ASSIGN(JNIScopeFrame);
+
 public:
     JNIScopeFrame(JNIEnv *env, jint size) : env_(env) { env_->PushLocalFrame(size); }
 
@@ -108,6 +109,7 @@ class JNIMonitor {
     jobject obj_;
 
     DISALLOW_COPY_AND_ASSIGN(JNIMonitor);
+
 public:
     JNIMonitor(JNIEnv *env, jobject obj) : env_(env), obj_(obj) { env_->MonitorEnter(obj_); }
 
@@ -1097,6 +1099,16 @@ template <ScopeOrClass Class, ScopeOrObject Object>
 [[maybe_unused]] inline auto JNI_NewDoubleArray(JNIEnv *env, jsize len) {
     return JNI_SafeInvoke(env, &JNIEnv::NewDoubleArray, len);
 }
+
+template <ScopeOrObject Object>
+[[maybe_unused]] inline auto JNI_GetObjectFieldOf(JNIEnv *env, Object &&object,
+                                                  std::string_view field_name,
+                                                  std::string_view field_class) {
+    auto &&o = std::forward<Object>(object);
+    return JNI_GetObjectField(
+        env, o, JNI_GetFieldID(env, JNI_GetObjectClass(env, o), field_name, field_class));
+}
+
 }  // namespace lsplant
 
 #undef DISALLOW_COPY_AND_ASSIGN

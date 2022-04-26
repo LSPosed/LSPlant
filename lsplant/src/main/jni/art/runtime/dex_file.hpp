@@ -45,6 +45,13 @@ class DexFile {
         return nullptr;
     }
 
+    CREATE_FUNC_SYMBOL_ENTRY(void, DexFile_setTrusted, JNIEnv* env, jclass clazz,
+                             jobject j_cookie) {
+        if (DexFile_setTrustedSym != nullptr) [[likely]] {
+            DexFile_setTrustedSym(env, clazz, j_cookie);
+        }
+    }
+
 public:
     static const DexFile* OpenMemory(const void* dex_file, size_t size, std::string location,
                                      std::string* error_msg) {
@@ -87,8 +94,21 @@ public:
         return java_dex_file;
     }
 
+    static bool SetTrusted(JNIEnv* env, jobject cookie) {
+        if (!DexFile_setTrustedSym) return false;
+        DexFile_setTrusted(env, nullptr, cookie);
+        return true;
+    }
+
     static bool Init(JNIEnv* env, const HookHandler& handler) {
         auto sdk_int = GetAndroidApiLevel();
+        if (sdk_int >= __ANDROID_API_P__) [[likely]] {
+            if (!RETRIEVE_FUNC_SYMBOL(
+                    DexFile_setTrusted,
+                    "_ZN3artL18DexFile_setTrustedEP7_JNIEnvP7_jclassP8_jobject")) {
+                return false;
+            }
+        }
         if (sdk_int >= __ANDROID_API_O__) [[likely]] {
             return true;
         }

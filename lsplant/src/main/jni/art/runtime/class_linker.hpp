@@ -15,26 +15,9 @@ private:
         }
     }
 
-    CREATE_HOOK_STUB_ENTRY(
-        "_ZN3art11ClassLinker30ShouldUseInterpreterEntrypointEPNS_9ArtMethodEPKv", bool,
-        ShouldUseInterpreterEntrypoint, (ArtMethod * art_method, const void *quick_code), {
-            if (quick_code != nullptr && IsHooked(art_method)) [[unlikely]] {
-                return false;
-            }
-            return backup(art_method, quick_code);
-        });
-
     CREATE_FUNC_SYMBOL_ENTRY(void, art_quick_to_interpreter_bridge, void *) {}
 
     CREATE_FUNC_SYMBOL_ENTRY(void, art_quick_generic_jni_trampoline, void *) {}
-
-    CREATE_HOOK_STUB_ENTRY("_ZN3art11interpreter29ShouldStayInSwitchInterpreterEPNS_9ArtMethodE",
-                           bool, ShouldStayInSwitchInterpreter, (ArtMethod * art_method), {
-                               if (IsHooked(art_method)) [[unlikely]] {
-                                   return false;
-                               }
-                               return backup(art_method);
-                           });
 
     inline static art::ArtMethod *MayGetBackup(art::ArtMethod *method) {
         if (auto backup = IsHooked(method); backup) [[unlikely]] {
@@ -138,15 +121,6 @@ private:
 
 public:
     static bool Init(const HookHandler &handler) {
-        int sdk_int = GetAndroidApiLevel();
-
-        if (sdk_int >= __ANDROID_API_N__) [[likely]] {
-            if (!HookSyms(handler, ShouldUseInterpreterEntrypoint, ShouldStayInSwitchInterpreter))
-                [[unlikely]] {
-                return false;
-            }
-        }
-
         if (!HookSyms(handler, FixupStaticTrampolinesWithThread, FixupStaticTrampolines,
                       FixupStaticTrampolinesRaw)) {
             return false;

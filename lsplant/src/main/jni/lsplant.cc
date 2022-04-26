@@ -15,6 +15,7 @@
 #include "art/runtime/instrumentation.hpp"
 #include "art/runtime/jit/jit_code_cache.hpp"
 #include "art/runtime/jni/jni_id_manager.h"
+#include "art/runtime/runtime.hpp"
 #include "art/runtime/thread.hpp"
 #include "art/runtime/thread_list.hpp"
 #include "common.hpp"
@@ -32,6 +33,7 @@ using art::ArtMethod;
 using art::ClassLinker;
 using art::DexFile;
 using art::Instrumentation;
+using art::Runtime;
 using art::Thread;
 using art::gc::ScopedGCCriticalSection;
 using art::jit::JitCodeCache;
@@ -257,6 +259,17 @@ bool InitNative(JNIEnv *env, const HookHandler &handler) {
     if (!JniIdManager::Init(env, handler)) {
         LOGE("Failed to init jni id manager");
         return false;
+    }
+    if (!Runtime::Init(handler)) {
+        LOGE("Failed to init runtime");
+        return false;
+    }
+
+    // This should always be the last one
+    if (IsJavaDebuggable(env)) {
+        // Make the runtime non-debuggable as a workaround
+        // when ShouldUseInterpreterEntrypoint inlined
+        Runtime::Current()->SetJavaDebuggable(false);
     }
     return true;
 }
@@ -689,6 +702,15 @@ using ::lsplant::IsHooked;
         if (method && method->IsFinal()) method->SetNonFinal();
     }
     return true;
+}
+
+[[maybe_unused]] bool MakeDexFileTrusted(JNIEnv *env, jobject cookie) {
+    struct Guard {
+        Guard() { Runtime::Current()->SetJavaDebuggable(true); }
+        ~Guard() { Runtime::Current()->SetJavaDebuggable(false); }
+    } guard;
+    if (!cookie) return false;
+    return DexFile::SetTrusted(env, cookie);
 }
 }  // namespace v1
 

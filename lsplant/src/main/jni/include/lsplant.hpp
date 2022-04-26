@@ -52,6 +52,8 @@ struct InitInfo {
 
 /// \brief Initialize LSPlant for the proceeding hook.
 /// It mainly prefetch needed symbols and hook some functions.
+/// The env should not have any restriction for accessing hidden APIs.
+/// You can obtain such a \ref JNIEnv in JNI_OnLoad().
 /// \param[in] env The Java environment. Must not be null.
 /// \param[in] info The information for initialized.
 /// Basically, the info provides the inline hooker and unhooker together with a symbol resolver of
@@ -155,5 +157,15 @@ struct InitInfo {
 /// \return Indicate whether the operation has succeed.
 [[nodiscard, maybe_unused, gnu::visibility("default")]] bool MakeClassInheritable(JNIEnv *env,
                                                                                   jclass target);
+
+/// \brief Make a DexFile trustable so that it can access hidden APIs. This is useful because we
+/// likely need to access hidden APIs when hooking system methods. A concern of this function is
+/// that cookie of the DexFile maybe a hidden APIs. So get please get the needed \ref jfieldID
+/// beforehand (like in JNI_OnLoad as #Init()).
+/// \param[in] env The Java environment.
+/// \param[in] cookie The cookie of the DexFile.
+/// \return Indicate whether the operation has succeed.
+[[nodiscard, maybe_unused, gnu::visibility("default")]] bool MakeDexFileTrusted(JNIEnv *env,
+                                                                                jobject cookie);
 }  // namespace v1
 }  // namespace lsplant
