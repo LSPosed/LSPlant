@@ -103,9 +103,9 @@ public:
     static bool Init(JNIEnv* env, const HookHandler& handler) {
         auto sdk_int = GetAndroidApiLevel();
         if (sdk_int >= __ANDROID_API_P__) [[likely]] {
-            if (!RETRIEVE_FUNC_SYMBOL(
-                    DexFile_setTrusted,
-                    "_ZN3artL18DexFile_setTrustedEP7_JNIEnvP7_jclassP8_jobject")) {
+            if (!RETRIEVE_FUNC_SYMBOL(DexFile_setTrusted,
+                                      "_ZN3artL18DexFile_setTrustedEP7_JNIEnvP7_jclassP8_jobject",
+                                      true)) {
                 return false;
             }
         }

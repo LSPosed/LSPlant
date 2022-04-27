@@ -77,8 +77,13 @@ inline constexpr auto operator+(const tstring<as...> &, const std::string &b) {
     return a + b;
 }
 
-inline void *Dlsym(const HookHandler &handle, const char *name) {
-    return handle.art_symbol_resolver(name);
+inline void *Dlsym(const HookHandler &handle, const char *name, bool match_prefix = false) {
+    if (auto match = handle.art_symbol_resolver(name); match) {
+        return match;
+    } else if (match_prefix && handle.art_symbol_prefix_resolver) {
+        return handle.art_symbol_prefix_resolver(name);
+    }
+    return nullptr;
 }
 
 template <typename Class, typename Return, typename T, typename... Args>

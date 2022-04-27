@@ -60,9 +60,11 @@ JNI_OnLoad(JavaVM* vm, void* reserved) {
             .inline_hooker = InlineHooker,
             .inline_unhooker = InlineUnhooker,
             .art_symbol_resolver = [&art](std::string_view symbol) -> void* {
-                auto* out = reinterpret_cast<void*>(art.getSymbAddress(symbol));
-                return out;
-            }
+                return art.getSymbAddress(symbol);
+            },
+            .art_symbol_prefix_resolver = [&art](auto symbol) {
+                return art.getSymbPrefixFirstOffset(symbol);
+            },
     };
     init_result = lsplant::Init(env, initInfo);
     return JNI_VERSION_1_6;

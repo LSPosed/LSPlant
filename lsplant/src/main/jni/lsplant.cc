@@ -527,7 +527,7 @@ bool DoUnHook(ArtMethod *target, ArtMethod *backup) {
 
 }  // namespace
 
-inline namespace v1 {
+inline namespace v2 {
 
 using ::lsplant::IsHooked;
 
@@ -712,7 +712,7 @@ using ::lsplant::IsHooked;
     if (!cookie) return false;
     return DexFile::SetTrusted(env, cookie);
 }
-}  // namespace v1
+}  // namespace v2
 
 }  // namespace lsplant
 

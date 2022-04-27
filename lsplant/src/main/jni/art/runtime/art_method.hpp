@@ -250,7 +250,7 @@ public:
         if (sdk_int < __ANDROID_API_Q__) kAccFastInterpreterToInterpreterInvoke = 0;
 
         if (!RETRIEVE_FUNC_SYMBOL(GetMethodShorty,
-                                  "_ZN3artL15GetMethodShortyEP7_JNIEnvP10_jmethodID") &&
+                                  "_ZN3artL15GetMethodShortyEP7_JNIEnvP10_jmethodID", true) &&
             !RETRIEVE_FUNC_SYMBOL(GetMethodShorty,
                                   "_ZN3art15GetMethodShortyEP7_JNIEnvP10_jmethodID")) {
             LOGE("Failed to find GetMethodShorty");
