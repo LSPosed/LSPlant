@@ -89,6 +89,11 @@ jclass executable = nullptr;
 jclass path_class_loader = nullptr;
 jmethodID path_class_loader_init = nullptr;
 
+constexpr auto kInternalMethods = std::make_tuple(
+    &method_get_name, &method_get_declaring_class, &class_get_name, &class_get_class_loader,
+    &class_get_declared_constructors, &in_memory_class_loader_init, &load_class, &set_accessible,
+    &path_class_loader_init);
+
 std::string generated_class_name;
 std::string generated_source_name;
 std::string generated_field_name;
@@ -604,6 +609,13 @@ using ::lsplant::IsHooked;
     JNI_SetStaticObjectField(env, built_class, hooker_field, hooker_object);
 
     if (DoHook(target, hook, backup)) {
+        std::apply(
+            [backup_method, target_method_id = env->FromReflectedMethod(target_method)](auto... v) {
+                ((*v == target_method_id &&
+                  (LOGD("Propagate internal used method because of hook"), *v = backup_method)) ||
+                 ...);
+            },
+            kInternalMethods);
         jobject global_backup = JNI_NewGlobalRef(env, reflected_backup);
         RecordHooked(target, target->GetDeclaringClass()->GetClassDef(), global_backup, backup);
         if (!is_proxy) [[likely]] {
@@ -645,8 +657,19 @@ using ::lsplant::IsHooked;
             }
         }
     }
+    auto *backup_method = env->FromReflectedMethod(reflected_backup);
     env->DeleteGlobalRef(reflected_backup);
-    return DoUnHook(target, backup);
+    if (DoUnHook(target, backup)) {
+        std::apply(
+            [backup_method, target_method_id = env->FromReflectedMethod(target_method)](auto... v) {
+                ((*v == backup_method && (LOGD("Propagate internal used method because of unhook"),
+                                          *v = target_method_id)) ||
+                 ...);
+            },
+            kInternalMethods);
+        return true;
+    }
+    return false;
 }
 
 [[maybe_unused]] bool IsHooked(JNIEnv *env, jobject method) {
