@@ -42,7 +42,7 @@ public:
         SetAccessFlags(access_flags);
     }
 
-    void SetNonIntrinsic() {
+    void ClearFastInterpretFlag() {
         auto access_flags = GetAccessFlags();
         access_flags &= ~kAccFastInterpreterToInterpreterInvoke;
         SetAccessFlags(access_flags);

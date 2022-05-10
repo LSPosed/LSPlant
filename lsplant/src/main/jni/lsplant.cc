@@ -502,7 +502,7 @@ bool DoHook(ArtMethod *target, ArtMethod *hook, ArtMethod *backup) {
         // copy after setNonCompilable
         backup->CopyFrom(target);
 
-        target->SetNonIntrinsic();
+        target->ClearFastInterpretFlag();
 
         target->SetEntryPoint(trampoline);
 
