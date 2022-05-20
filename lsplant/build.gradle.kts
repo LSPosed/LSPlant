@@ -93,6 +93,7 @@ android {
             version = androidCmakeVersion
         }
     }
+    namespace = "org.lsposed.lsplant"
 
     publishing {
         singleVariant("release") {
