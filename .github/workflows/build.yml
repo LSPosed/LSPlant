@@ -122,7 +122,7 @@ jobs:
           - api-level: 32
             target: google_apis
             arch: x86_64
-          - api-level: Tiramisu
+          - api-level: 33
             target: google_apis
             arch: x86_64
     steps:
@@ -163,7 +163,7 @@ jobs:
           disable-animations: false
           avd-name: ${{ matrix.api-level }}_${{ matrix.arch }}
       - name: run tests
-        uses: yujincheng08/android-emulator-runner@release/v2
+        uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: ${{ matrix.api-level }}
           arch: ${{ matrix.arch }}
