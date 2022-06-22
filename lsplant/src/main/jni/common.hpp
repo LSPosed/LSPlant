@@ -5,8 +5,8 @@
 #include <list>
 #include <shared_mutex>
 #include <string_view>
-#include <unordered_map>
-#include <unordered_set>
+#include <absl/container/flat_hash_map.h>
+#include <absl/container/flat_hash_set.h>
 
 #include "logging.hpp"
 #include "lsplant.hpp"
@@ -102,13 +102,13 @@ class Class;
 
 namespace {
 // target, backup
-inline std::unordered_map<art::ArtMethod *, std::pair<jobject, art::ArtMethod *>> hooked_methods_;
+inline absl::flat_hash_map<art::ArtMethod *, std::pair<jobject, art::ArtMethod *>> hooked_methods_;
 inline std::shared_mutex hooked_methods_lock_;
 
 inline std::list<std::pair<art::ArtMethod *, art::ArtMethod *>> jit_movements_;
 inline std::shared_mutex jit_movements_lock_;
 
-inline std::unordered_map<const art::dex::ClassDef *, std::unordered_set<art::ArtMethod *>>
+inline absl::flat_hash_map<const art::dex::ClassDef *, absl::flat_hash_set<art::ArtMethod *>>
     hooked_classes_;
 inline std::shared_mutex hooked_classes_lock_;
 }  // namespace
