@@ -643,8 +643,8 @@ using ::lsplant::IsHooked;
                 LOGE("Unable to unhook a method that is not hooked");
                 return false;
             }
-            hooked_methods_.erase(it);
             hooked_methods_.erase(it->second.second);
+            hooked_methods_.erase(it);
         }
     }
     {
