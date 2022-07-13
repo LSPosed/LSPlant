@@ -152,7 +152,7 @@ jobs:
           restore-keys: gradle-${{ runner.os }}-
       - name: create AVD and generate snapshot for caching
         if: steps.avd-cache.outputs.cache-hit != 'true'
-        uses: yujincheng08/android-emulator-runner@release/v2
+        uses: reactivecircus/android-emulator-runner@release/v2
         with:
           api-level: ${{ matrix.api-level }}
           arch: ${{ matrix.arch }}
