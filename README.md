@@ -28,7 +28,7 @@ repositories {
 }
 
 dependencies {
-    implementation "org.lsposed.lsplant:lsplant:4.0"
+    implementation "org.lsposed.lsplant:lsplant:4.1"
 }
 
 android {
