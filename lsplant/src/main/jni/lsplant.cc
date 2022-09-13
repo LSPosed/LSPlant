@@ -274,7 +274,7 @@ bool InitNative(JNIEnv *env, const HookHandler &handler) {
     if (IsJavaDebuggable(env)) {
         // Make the runtime non-debuggable as a workaround
         // when ShouldUseInterpreterEntrypoint inlined
-        Runtime::Current()->SetJavaDebuggable(false);
+        Runtime::Current()->SetJavaDebuggable(Runtime::RuntimeDebugState::kNonJavaDebuggable);
     }
     return true;
 }
@@ -735,8 +735,13 @@ using ::lsplant::IsHooked;
 
 [[maybe_unused]] bool MakeDexFileTrusted(JNIEnv *env, jobject cookie) {
     struct Guard {
-        Guard() { Runtime::Current()->SetJavaDebuggable(true); }
-        ~Guard() { Runtime::Current()->SetJavaDebuggable(false); }
+        Guard() {
+            Runtime::Current()->SetJavaDebuggable(
+                Runtime::RuntimeDebugState::kJavaDebuggableAtInit);
+        }
+        ~Guard() {
+            Runtime::Current()->SetJavaDebuggable(Runtime::RuntimeDebugState::kNonJavaDebuggable);
+        }
     } guard;
     if (!cookie) return false;
     return DexFile::SetTrusted(env, cookie);
