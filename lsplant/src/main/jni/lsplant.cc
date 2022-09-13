@@ -489,12 +489,12 @@ bool DoHook(ArtMethod *target, ArtMethod *hook, ArtMethod *backup) {
     LOGV("Hooking: target = %s(%p), hook = %s(%p), backup = %s(%p)", target->PrettyMethod().c_str(),
          target, hook->PrettyMethod().c_str(), hook, backup->PrettyMethod().c_str(), backup);
 
-    if (auto *trampoline = GenerateTrampolineFor(hook); !trampoline) {
+    if (auto *entrypoint = GenerateTrampolineFor(hook); !entrypoint) {
         LOGE("Failed to generate trampoline");
         return false;
         // NOLINTNEXTLINE
     } else {
-        LOGV("Generated trampoline %p", trampoline);
+        LOGV("Generated trampoline %p", entrypoint);
 
         target->SetNonCompilable();
         hook->SetNonCompilable();
@@ -504,7 +504,7 @@ bool DoHook(ArtMethod *target, ArtMethod *hook, ArtMethod *backup) {
 
         target->ClearFastInterpretFlag();
 
-        target->SetEntryPoint(trampoline);
+        target->SetEntryPoint(entrypoint);
 
         if (!backup->IsStatic()) backup->SetPrivate();
 
@@ -621,6 +621,10 @@ using ::lsplant::IsHooked;
         if (!is_proxy) [[likely]] {
             RecordJitMovement(target, backup);
         }
+        // Always record backup as deoptimized since we dont want its entrypoint to be updated
+        // by FixupStaticTrampolines on hooker class
+        // Used hook's declaring class here since backup's is no longer the same with hook's
+        RecordDeoptimized(hook->GetDeclaringClass()->GetClassDef(), backup);
         return global_backup;
     }
 
@@ -687,6 +691,8 @@ using ::lsplant::IsHooked;
         return false;
     }
     auto *art_method = ArtMethod::FromReflectedMethod(env, method);
+    // record the original but not the backup
+    RecordDeoptimized(art_method->GetDeclaringClass()->GetClassDef(), art_method);
     if (auto *backup = IsHooked(art_method); backup) {
         art_method = backup;
     }

@@ -68,13 +68,26 @@ private:
         std::list<std::tuple<art::ArtMethod *, void *>> out;
         auto class_def = mirror_class->GetClassDef();
         if (!class_def) return out;
-        std::shared_lock lk(hooked_classes_lock_);
-        if (auto found = hooked_classes_.find(class_def); found != hooked_classes_.end())
-            [[unlikely]] {
-            LOGD("Before fixup %s, backup hooked methods' trampoline",
-                 mirror_class->GetDescriptor().c_str());
-            for (auto method : found->second) {
-                out.emplace_back(method, method->GetEntryPoint());
+        {
+            std::shared_lock lk(hooked_classes_lock_);
+            if (auto found = hooked_classes_.find(class_def); found != hooked_classes_.end())
+                [[unlikely]] {
+                LOGV("Before fixup %s, backup %zu hooked methods' trampoline",
+                     mirror_class->GetDescriptor().c_str(), found->second.size());
+                for (auto method : found->second) {
+                    out.emplace_back(method, method->GetEntryPoint());
+                }
+            }
+        }
+        {
+            std::shared_lock lk(deoptimized_methods_lock_);
+            if (auto found = deoptimized_classes_.find(class_def);
+                found != deoptimized_classes_.end()) [[unlikely]] {
+                LOGV("Before fixup %s, backup %zu deoptimized methods' trampoline",
+                     mirror_class->GetDescriptor().c_str(), found->second.size());
+                for (auto method : found->second) {
+                    out.emplace_back(method, method->GetEntryPoint());
+                }
             }
         }
         return out;
@@ -83,12 +96,13 @@ private:
     static void FixTrampoline(const std::list<std::tuple<art::ArtMethod *, void *>> &methods) {
         std::shared_lock lk(hooked_methods_lock_);
         for (const auto &[art_method, old_trampoline] : methods) {
+            auto new_trampoline = art_method->GetEntryPoint();
+            art_method->SetEntryPoint(old_trampoline);
+            if (IsDeoptimized(art_method)) continue;
             if (auto backup_method = IsHooked(art_method); backup_method) [[likely]] {
-                if (auto new_trampoline = art_method->GetEntryPoint();
-                    new_trampoline != old_trampoline) [[unlikely]] {
+                if (new_trampoline != old_trampoline) [[unlikely]] {
                     LOGV("propagate entrypoint for %s", backup_method->PrettyMethod(true).data());
                     backup_method->SetEntryPoint(new_trampoline);
-                    art_method->SetEntryPoint(old_trampoline);
                 }
             }
         }
@@ -159,9 +173,14 @@ public:
         // Android 13
         if (art_quick_to_interpreter_bridgeSym && art_quick_generic_jni_trampolineSym) [[likely]] {
             if (art_method->GetAccessFlags() & ArtMethod::kAccNative) [[unlikely]] {
+                LOGV("deoptimize native method %s from %p to %p",
+                     art_method->PrettyMethod(true).data(), art_method->GetEntryPoint(),
+                     art_quick_generic_jni_trampolineSym);
                 art_method->SetEntryPoint(
                     reinterpret_cast<void *>(art_quick_generic_jni_trampolineSym));
             } else {
+                LOGV("deoptimize method %s from %p to %p", art_method->PrettyMethod(true).data(),
+                     art_method->GetEntryPoint(), art_quick_to_interpreter_bridgeSym);
                 art_method->SetEntryPoint(
                     reinterpret_cast<void *>(art_quick_to_interpreter_bridgeSym));
             }
