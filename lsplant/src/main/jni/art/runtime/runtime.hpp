@@ -75,7 +75,7 @@ public:
         LOGD("runtime instance = %p", instance_);
         if (sdk_int >= __ANDROID_API_O__) {
             if (!RETRIEVE_MEM_FUNC_SYMBOL(SetJavaDebuggable,
-                                          "_ZN3art7Runtime17SetJavaDebuggableEb") ||
+                                          "_ZN3art7Runtime17SetJavaDebuggableEb") &&
                 !RETRIEVE_MEM_FUNC_SYMBOL(
                     SetRuntimeDebugState,
                     "_ZN3art7Runtime20SetRuntimeDebugStateENS0_17RuntimeDebugStateE")) {
