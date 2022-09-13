@@ -84,9 +84,10 @@ public:
         }
         if (SetRuntimeDebugStateSym) {
             static constexpr size_t kLargeEnoughSizeForRuntime = 4096;
-            std::array<uint8_t, kLargeEnoughSizeForRuntime> code{0};
+            std::array<uint8_t, kLargeEnoughSizeForRuntime> code;
             static_assert(static_cast<int>(RuntimeDebugState::kJavaDebuggable) != 0);
             static_assert(static_cast<int>(RuntimeDebugState::kJavaDebuggableAtInit) != 0);
+            code.fill(uint8_t{0});
             auto *const fake_runtime = reinterpret_cast<Runtime *>(code.data());
             SetRuntimeDebugState(fake_runtime, RuntimeDebugState::kJavaDebuggable);
             for (size_t i = 0; i < kLargeEnoughSizeForRuntime; ++i) {
