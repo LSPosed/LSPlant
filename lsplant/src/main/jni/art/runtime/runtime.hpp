@@ -96,6 +96,7 @@ public:
                     RuntimeDebugState::kJavaDebuggable) {
                     LOGD("found debug_state at offset %zu", i);
                     debug_state_offset = i;
+                    break;
                 }
             }
             if (debug_state_offset == 0) {
