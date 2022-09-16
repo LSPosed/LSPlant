@@ -8,6 +8,11 @@ if (CCACHE)
     set(CMAKE_C_COMPILER_LAUNCHER ${CCACHE})
 endif ()
 
+if ("${ANDROID_STL}" STREQUAL "none")
+    find_package(cxx REQUIRED CONFIG)
+    link_libraries(cxx::cxx)
+endif()
+
 add_definitions(-std=c++20)
 
 set(SOURCES lsplant.cc)

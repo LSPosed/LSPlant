@@ -20,6 +20,7 @@ android {
         buildConfig = false
         prefabPublishing = true
         androidResources = false
+        prefab = true
     }
 
     packagingOptions {
@@ -40,6 +41,14 @@ android {
     }
 
     buildTypes {
+        create("standalone") {
+            initWith(getByName("release"))
+            externalNativeBuild {
+                cmake {
+                    arguments += "-DANDROID_STL=none"
+                }
+            }
+        }
         all {
             externalNativeBuild {
                 cmake {
@@ -70,13 +79,15 @@ android {
                         "-DNDEBUG"
                     ).joinToString(" ")
                     arguments(
-                        "-DANDROID_STL=c++_shared",
                         "-DCMAKE_CXX_FLAGS_RELEASE=$configFlags",
                         "-DCMAKE_CXX_FLAGS_RELWITHDEBINFO=$configFlags",
                         "-DCMAKE_C_FLAGS_RELEASE=$configFlags",
                         "-DCMAKE_C_FLAGS_RELWITHDEBINFO=$configFlags",
                         "-DDEBUG_SYMBOLS_PATH=${project.buildDir.absolutePath}/symbols/$name",
                     )
+                    if (name != "standalone") {
+                        arguments += "-DANDROID_STL=c++_shared"
+                    }
                 }
             }
         }
@@ -100,25 +111,30 @@ android {
             withSourcesJar()
             withJavadocJar()
         }
+        singleVariant("standalone") {
+            withSourcesJar()
+            withJavadocJar()
+        }
     }
 }
 
-val symbolsTask = tasks.register<Jar>("generateReleaseSymbolsJar") {
+val symbolsReleaseTask = tasks.register<Jar>("generateReleaseSymbolsJar") {
     from("${project.buildDir.absolutePath}/symbols/release")
+    exclude("**/dex_builder")
+    archiveClassifier.set("symbols")
+}
+
+val symbolsStandaloneTask = tasks.register<Jar>("generateStandaloneSymbolsJar") {
+    from("${project.buildDir.absolutePath}/symbols/standalone")
     exclude("**/dex_builder")
     archiveClassifier.set("symbols")
 }
 
 publishing {
     publications {
-        register<MavenPublication>("lsplant") {
+        fun MavenPublication.setup() {
             group = "org.lsposed.lsplant"
-            artifactId = "lsplant"
             version = "4.2"
-            afterEvaluate {
-                from(components.getByName("release"))
-                artifact(symbolsTask)
-            }
             pom {
                 name.set("LSPlant")
                 description.set("A hook framework for Android Runtime (ART)")
@@ -141,6 +157,22 @@ publishing {
                 }
             }
         }
+        register<MavenPublication>("lsplant") {
+            artifactId = "lsplant"
+            afterEvaluate {
+                from(components.getByName("release"))
+                artifact(symbolsReleaseTask)
+            }
+            setup()
+        }
+        register<MavenPublication>("lsplantStandalone") {
+            artifactId = "lsplant-standalone"
+            afterEvaluate {
+                from(components.getByName("standalone"))
+                artifact(symbolsStandaloneTask)
+            }
+            setup()
+        }
     }
     repositories {
         maven {
@@ -156,6 +188,9 @@ publishing {
                 password = System.getenv("GITHUB_TOKEN")
             }
         }
+    }
+    dependencies {
+         "standaloneImplementation"("dev.rikka.ndk.thirdparty:cxx:1.2.0")
     }
 }
 
