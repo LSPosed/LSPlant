@@ -41,14 +41,6 @@ android {
     }
 
     buildTypes {
-        create("standalone") {
-            initWith(getByName("release"))
-            externalNativeBuild {
-                cmake {
-                    arguments += "-DANDROID_STL=none"
-                }
-            }
-        }
         all {
             externalNativeBuild {
                 cmake {
@@ -68,7 +60,6 @@ android {
                         "-ffunction-sections",
                         "-fdata-sections",
                         "-Wno-unused-value",
-                        "-Wl,--gc-sections",
                         "-D__FILE__=__FILE_NAME__",
                         "-Wl,--exclude-libs,ALL",
                     )
@@ -80,14 +71,49 @@ android {
                     ).joinToString(" ")
                     arguments(
                         "-DCMAKE_CXX_FLAGS_RELEASE=$configFlags",
-                        "-DCMAKE_CXX_FLAGS_RELWITHDEBINFO=$configFlags",
                         "-DCMAKE_C_FLAGS_RELEASE=$configFlags",
-                        "-DCMAKE_C_FLAGS_RELWITHDEBINFO=$configFlags",
                         "-DDEBUG_SYMBOLS_PATH=${project.buildDir.absolutePath}/symbols/$name",
                     )
-                    if (name != "standalone") {
-                        arguments += "-DANDROID_STL=c++_shared"
-                    }
+                }
+            }
+        }
+        release {
+            externalNativeBuild {
+                val flags = arrayOf(
+                    "-Wl,--gc-sections",
+                    "-flto",
+                    "-fno-unwind-tables",
+                    "-fno-asynchronous-unwind-tables",
+                )
+                cmake {
+                    cppFlags += flags
+                    cFlags += flags
+                    arguments += "-DANDROID_STL=c++_shared"
+                    arguments += "-DCMAKE_BUILD_TYPE=Release"
+                }
+            }
+        }
+        debug {
+            externalNativeBuild {
+                cmake {
+                    arguments += "-DANDROID_STL=c++_shared"
+                }
+            }
+        }
+        create("standalone") {
+            initWith(getByName("release"))
+            externalNativeBuild {
+                val flags = arrayOf(
+                    "-Wl,--gc-sections",
+                    "-flto",
+                    "-fno-unwind-tables",
+                    "-fno-asynchronous-unwind-tables",
+                )
+                cmake {
+                    cppFlags += flags
+                    cFlags += flags
+                    arguments += "-DANDROID_STL=none"
+                    arguments += "-DCMAKE_BUILD_TYPE=Release"
                 }
             }
         }
