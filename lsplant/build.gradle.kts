@@ -190,7 +190,7 @@ publishing {
         }
     }
     dependencies {
-         "standaloneImplementation"("dev.rikka.ndk.thirdparty:cxx:1.2.0")
+         "standaloneCompileOnly"("dev.rikka.ndk.thirdparty:cxx:1.2.0")
     }
 }
 
