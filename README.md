@@ -27,14 +27,22 @@ repositories {
     mavenCentral()
 }
 
-dependencies {
-    implementation "org.lsposed.lsplant:lsplant:4.2"
-}
-
 android {
     buildFeatures {
         prefab true
     }
+}
+
+dependencies {
+    implementation "org.lsposed.lsplant:lsplant:5.0"
+}
+```
+
+If you don't want to include `libc++_shared.so` in your APK, you can use `lsplant-standalone` instead:
+
+```gradle
+dependencies {
+    implementation "org.lsposed.lsplant:lsplant-standalone:5.0"
 }
 ```
 

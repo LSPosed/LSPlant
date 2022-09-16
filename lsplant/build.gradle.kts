@@ -160,7 +160,7 @@ publishing {
     publications {
         fun MavenPublication.setup() {
             group = "org.lsposed.lsplant"
-            version = "4.2"
+            version = "5.0"
             pom {
                 name.set("LSPlant")
                 description.set("A hook framework for Android Runtime (ART)")
