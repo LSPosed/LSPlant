@@ -114,6 +114,7 @@ android {
                     cFlags += flags
                     arguments += "-DANDROID_STL=none"
                     arguments += "-DCMAKE_BUILD_TYPE=Release"
+                    arguments += "-DLSPLANT_STANDALONE=ON"
                 }
             }
         }

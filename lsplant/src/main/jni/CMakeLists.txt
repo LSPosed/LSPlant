@@ -8,7 +8,7 @@ if (CCACHE)
     set(CMAKE_C_COMPILER_LAUNCHER ${CCACHE})
 endif ()
 
-if ("${ANDROID_STL}" STREQUAL "none")
+if (LSPLANT_STANDALONE)
     find_package(cxx REQUIRED CONFIG)
     link_libraries(cxx::cxx)
 endif()
