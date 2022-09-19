@@ -168,7 +168,7 @@ jobs:
           api-level: ${{ matrix.api-level }}
           arch: ${{ matrix.arch }}
           target: ${{ matrix.target }}
-          script: ./gradlew :lsplant:prefabDebugConfigurePackage; ./gradlew :test:connectedCheck
+          script: ./gradlew :test:connectedCheck
           force-avd-creation: false
           emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           disable-animations: true
