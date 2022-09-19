@@ -88,6 +88,12 @@ jobs:
           echo -e "84831b9409646a918e30573bab4c9c91346d8abd" > $ANDROID_SDK_ROOT/licenses/android-sdk-preview-license
           echo 'android.native.buildOutput=verbose' >> gradle.properties
           ./gradlew :test:allDevicesDebugAndroidTest
+      - name: Upload outputs
+        if: always()
+        uses: actions/upload-artifact@v2
+        with:
+          name: test-outputs
+          path: test/build/outputs
 
   test:
     needs: build
