@@ -75,20 +75,22 @@ jobs:
             ~/.gradle/wrapper
           key: gradle-${{ runner.os }}-${{ hashFiles('**/*.gradle*') }}-${{ hashFiles('**/gradle/wrapper/gradle-wrapper.properties') }}-${{ hashFiles('**/buildSrc/**/*.kt') }}
           restore-keys: gradle-${{ runner.os }}-
-          save: false
       - name: ccache
         uses: hendrikmuhs/ccache-action@v1.2
         with:
           key: ${{ runner.os }}-${{ github.sha }}
           restore-keys: ${{ runner.os }}
+          save: false
       - name: Test with Gradle
         run: |
           ccache -o cache_dir=${{ github.workspace }}/.ccache
           ccache -o hash_dir=false
           ccache -o compiler_check='%compiler% -dumpmachine; %compiler% -dumpversion'
           echo -e "84831b9409646a918e30573bab4c9c91346d8abd" > $ANDROID_SDK_ROOT/licenses/android-sdk-preview-license
+          echo 'android.testoptions.manageddevices.emulator.gpu=swiftshader_indirect' >> gradle.properties
           echo 'android.native.buildOutput=verbose' >> gradle.properties
           ./gradlew :test:allDevicesDebugAndroidTest
+          rm -v app/build/outputs/androidTest-results/managedDevice/*/testlog/adb.additional_test_output*
       - name: Upload outputs
         if: always()
         uses: actions/upload-artifact@v2
@@ -176,6 +178,7 @@ jobs:
             ccache -o cache_dir=${{ github.workspace }}/.ccache
             ccache -o hash_dir=false
             ccache -o compiler_check='%compiler% -dumpmachine; %compiler% -dumpversion'
+            echo 'android.native.buildOutput=verbose' >> gradle.properties
             ./gradlew :test:connectedCheck
           emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           disable-animations: true
