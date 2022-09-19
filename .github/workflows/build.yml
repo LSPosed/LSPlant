@@ -35,8 +35,8 @@ jobs:
       - name: ccache
         uses: hendrikmuhs/ccache-action@v1.2
         with:
-          key: ccache-${{ matrix.os }}-${{ github.sha }}
-          restore-keys: ccache-${{ matrix.os }}-
+          key: ${{ runner.os }}-${{ github.sha }}
+          restore-keys: ${{ runner.os }}
       - name: Build with Gradle
         run: |
           ccache -o cache_dir=${{ github.workspace }}/.ccache
@@ -78,8 +78,8 @@ jobs:
       - name: ccache
         uses: hendrikmuhs/ccache-action@v1.2
         with:
-          key: ccache-${{ matrix.os }}-${{ github.sha }}
-          restore-keys: ccache-${{ matrix.os }}-
+          key: ${{ runner.os }}-${{ github.sha }}
+          restore-keys: ${{ runner.os }}
       - name: Test with Gradle
         run: |
           ccache -o cache_dir=${{ github.workspace }}/.ccache
@@ -164,8 +164,8 @@ jobs:
       - name: ccache
         uses: hendrikmuhs/ccache-action@v1.2
         with:
-          key: ccache-${{ matrix.os }}-${{ github.sha }}
-          restore-keys: ccache-${{ matrix.os }}-
+          key: ${{ runner.os }}-${{ github.sha }}
+          restore-keys: ${{ runner.os }}
       - name: create AVD and generate snapshot for caching
         if: steps.avd-cache.outputs.cache-hit != 'true'
         uses: reactivecircus/android-emulator-runner@release/v2
