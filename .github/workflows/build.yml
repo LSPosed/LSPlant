@@ -89,6 +89,7 @@ jobs:
           echo -e "84831b9409646a918e30573bab4c9c91346d8abd" > $ANDROID_SDK_ROOT/licenses/android-sdk-preview-license
           echo 'android.testoptions.manageddevices.emulator.gpu=swiftshader_indirect' >> gradle.properties
           echo 'android.native.buildOutput=verbose' >> gradle.properties
+          echo 'android.sdk.channel=3' >> gradle.properties
           ./gradlew :test:allDevicesDebugAndroidTest
           rm -v app/build/outputs/androidTest-results/managedDevice/*/testlog/adb.additional_test_output*
       - name: Upload outputs
