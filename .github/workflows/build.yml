@@ -91,7 +91,7 @@ jobs:
           echo 'android.native.buildOutput=verbose' >> gradle.properties
           echo 'android.sdk.channel=3' >> gradle.properties
           ./gradlew :test:allDevicesDebugAndroidTest
-          rm -v app/build/outputs/androidTest-results/managedDevice/*/testlog/adb.additional_test_output*
+          rm -v test/build/outputs/androidTest-results/managedDevice/*/testlog/adb.additional_test_output*
       - name: Upload outputs
         if: always()
         uses: actions/upload-artifact@v2
