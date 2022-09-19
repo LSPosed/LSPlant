@@ -44,7 +44,7 @@ jobs:
           ccache -o compiler_check='%compiler% -dumpmachine; %compiler% -dumpversion'
           ccache -p
           echo 'android.native.buildOutput=verbose' >> gradle.properties
-          ./gradlew :lsplant:publishToMavenLocal
+          ./gradlew :lsplant:publishToMavenLocal :lsplant:prefabDebugPackage
         env:
           ORG_GRADLE_PROJECT_signingKey: ${{ secrets.maven_pgp_signingKey }}
           ORG_GRADLE_PROJECT_signingPassword: ${{ secrets.maven_pgp_signingPassword }}
@@ -75,6 +75,7 @@ jobs:
             ~/.gradle/wrapper
           key: gradle-${{ runner.os }}-${{ hashFiles('**/*.gradle*') }}-${{ hashFiles('**/gradle/wrapper/gradle-wrapper.properties') }}-${{ hashFiles('**/buildSrc/**/*.kt') }}
           restore-keys: gradle-${{ runner.os }}-
+          save: false
       - name: ccache
         uses: hendrikmuhs/ccache-action@v1.2
         with:
@@ -151,14 +152,6 @@ jobs:
         uses: actions/setup-java@v1
         with:
           java-version: '11'
-      - name: AVD cache
-        uses: actions/cache@v2
-        id: avd-cache
-        with:
-          path: |
-            ~/.android/avd/*
-            ~/.android/adb*
-          key: avd-${{ matrix.api-level }}-${{ matrix.arch }}-${{ matrix.target }}
       - name: Gradle cache
         uses: actions/cache@v2
         with:
@@ -172,18 +165,7 @@ jobs:
         with:
           key: ${{ runner.os }}-${{ github.sha }}
           restore-keys: ${{ runner.os }}
-      - name: create AVD and generate snapshot for caching
-        if: steps.avd-cache.outputs.cache-hit != 'true'
-        uses: reactivecircus/android-emulator-runner@release/v2
-        with:
-          api-level: ${{ matrix.api-level }}
-          arch: ${{ matrix.arch }}
-          target: ${{ matrix.target }}
-          script: echo "Generated AVD snapshot for caching."
-          force-avd-creation: false
-          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
-          disable-animations: false
-          avd-name: ${{ matrix.api-level }}_${{ matrix.arch }}
+          save: false
       - name: run tests
         uses: reactivecircus/android-emulator-runner@v2
         with:
@@ -195,7 +177,6 @@ jobs:
             ccache -o hash_dir=false
             ccache -o compiler_check='%compiler% -dumpmachine; %compiler% -dumpversion'
             ./gradlew :test:connectedCheck
-          force-avd-creation: false
           emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           disable-animations: true
           avd-name: ${{ matrix.api-level }}_${{ matrix.arch }}
