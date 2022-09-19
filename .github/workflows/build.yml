@@ -39,12 +39,12 @@ jobs:
           restore-keys: ccache-${{ matrix.os }}-
       - name: Build with Gradle
         run: |
+          ccache -o cache_dir=${{ github.workspace }}/.ccache
           ccache -o hash_dir=false
           ccache -o compiler_check='%compiler% -dumpmachine; %compiler% -dumpversion'
-          ccache -zp
+          ccache -p
           echo 'android.native.buildOutput=verbose' >> gradle.properties
           ./gradlew :lsplant:publishToMavenLocal
-          ccache -s
         env:
           ORG_GRADLE_PROJECT_signingKey: ${{ secrets.maven_pgp_signingKey }}
           ORG_GRADLE_PROJECT_signingPassword: ${{ secrets.maven_pgp_signingPassword }}
@@ -82,13 +82,12 @@ jobs:
           restore-keys: ccache-${{ matrix.os }}-
       - name: Test with Gradle
         run: |
+          ccache -o cache_dir=${{ github.workspace }}/.ccache
           ccache -o hash_dir=false
           ccache -o compiler_check='%compiler% -dumpmachine; %compiler% -dumpversion'
-          ccache -zp
           echo -e "84831b9409646a918e30573bab4c9c91346d8abd" > $ANDROID_SDK_ROOT/licenses/android-sdk-preview-license
           echo 'android.native.buildOutput=verbose' >> gradle.properties
           ./gradlew :test:allDevicesDebugAndroidTest
-          ccache -s
 
   test:
     needs: build
@@ -186,11 +185,10 @@ jobs:
           arch: ${{ matrix.arch }}
           target: ${{ matrix.target }}
           script: |
+            ccache -o cache_dir=${{ github.workspace }}/.ccache
             ccache -o hash_dir=false
             ccache -o compiler_check='%compiler% -dumpmachine; %compiler% -dumpversion'
-            ccache -zp
             ./gradlew :test:connectedCheck
-            ccache -s
           force-avd-creation: false
           emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           disable-animations: true
