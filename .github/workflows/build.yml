@@ -95,6 +95,7 @@ jobs:
           echo 'android.testoptions.manageddevices.emulator.gpu=swiftshader_indirect' >> gradle.properties
           echo 'android.native.buildOutput=verbose' >> gradle.properties
           echo 'android.sdk.channel=3' >> gradle.properties
+          sudo rm -R /Applications/Xcode*
           ./gradlew :test:allDevicesDebugAndroidTest
           rm -v test/build/outputs/androidTest-results/managedDevice/*/testlog/adb.additional_test_output*
       - name: Upload outputs

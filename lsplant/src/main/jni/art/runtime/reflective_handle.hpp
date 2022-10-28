@@ -1,11 +1,13 @@
 #pragma once
 
+#include <type_traits>
+
 #include "reflective_reference.hpp"
+#include "value_object.hpp"
 
 namespace lsplant::art {
 
 class ArtMethod;
-class ValueObject {};
 
 template <typename T>
 class ReflectiveHandle : public ValueObject {

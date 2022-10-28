@@ -1,5 +1,7 @@
 #pragma once
 
+#include <type_traits>
+
 namespace lsplant::art {
 template <class ReflectiveType>
 class ReflectiveReference {
