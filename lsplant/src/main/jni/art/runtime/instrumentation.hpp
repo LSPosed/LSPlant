@@ -19,23 +19,33 @@ class Instrumentation {
     CREATE_MEM_HOOK_STUB_ENTRY(
         "_ZN3art15instrumentation15Instrumentation40UpdateMethodsCodeToInterpreterEntryPointEPNS_9ArtMethodE",
         void, UpdateMethodsCodeToInterpreterEntryPoint,
-        (Instrumentation * thiz, ArtMethod *art_method),
-        { backup(thiz, MaybeUseBackupMethod(art_method, nullptr)); });
+        (Instrumentation * thiz, ArtMethod *art_method), {
+            if (IsDeoptimized(art_method)) {
+                LOGV("skip update entrypoint on deoptimized method %s",
+                     art_method->PrettyMethod(true).c_str());
+                return;
+            }
+            backup(thiz, MaybeUseBackupMethod(art_method, nullptr));
+        });
 
     CREATE_MEM_HOOK_STUB_ENTRY(
-            "_ZN3art15instrumentation15Instrumentation21InitializeMethodsCodeEPNS_9ArtMethodEPKv",
-            void, InitializeMethodsCode,
-            (Instrumentation * thiz, ArtMethod *art_method, const void* quick_code),
-            { backup(thiz, MaybeUseBackupMethod(art_method, quick_code), quick_code); });
+        "_ZN3art15instrumentation15Instrumentation21InitializeMethodsCodeEPNS_9ArtMethodEPKv", void,
+        InitializeMethodsCode,
+        (Instrumentation * thiz, ArtMethod *art_method, const void *quick_code), {
+            if (IsDeoptimized(art_method)) {
+                LOGV("skip update entrypoint on deoptimized method %s",
+                     art_method->PrettyMethod(true).c_str());
+                return;
+            }
+            backup(thiz, MaybeUseBackupMethod(art_method, quick_code), quick_code);
+        });
 
 public:
     static bool Init(JNIEnv *env, const HookHandler &handler) {
-        if (!IsJavaDebuggable(env)) [[likely]] {
-            return true;
-        }
         int sdk_int = GetAndroidApiLevel();
         if (sdk_int >= __ANDROID_API_P__) [[likely]] {
-            if (!HookSyms(handler, InitializeMethodsCode, UpdateMethodsCodeToInterpreterEntryPoint)) {
+            if (!HookSyms(handler, InitializeMethodsCode,
+                          UpdateMethodsCodeToInterpreterEntryPoint)) {
                 return false;
             }
         }
