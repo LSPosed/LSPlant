@@ -76,7 +76,7 @@ android {
                 createDevice(28, true)
                 createDevice(29, false)
                 createDevice(29, true)
-                createDevice(30, false, "aosp_atd")
+                createDevice(30, false)
                 createDevice(30, true)
 //                createDevice(31, false, "android-tv")
                 createDevice(31, true, "aosp_atd")

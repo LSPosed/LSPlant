@@ -70,7 +70,7 @@ private:
 
     CREATE_HOOK_STUB_ENTRY(
         "_ZN3art6mirror5Class9SetStatusENS_6HandleIS1_EENS_11ClassStatusEPNS_6ThreadE", void,
-        SetClassStatus, (Handle<Class> h, uint8_t new_status, Thread *self), {
+        SetClassStatus, (TrivialHandle<Class> h, uint8_t new_status, Thread *self), {
             if (new_status == initialized_status) {
                 BackupClassMethods(h->GetClassDef(), self);
             }
@@ -81,6 +81,15 @@ private:
         "_ZN3art6mirror5Class9SetStatusENS_6HandleIS1_EENS1_6StatusEPNS_6ThreadE", void, SetStatus,
         (Handle<Class> h, int new_status, Thread *self), {
             if (new_status == static_cast<int>(initialized_status)) {
+                BackupClassMethods(h->GetClassDef(), self);
+            }
+            return backup(h, new_status, self);
+        });
+
+    CREATE_HOOK_STUB_ENTRY(
+        "_ZN3art6mirror5Class9SetStatusENS_6HandleIS1_EENS1_6StatusEPNS_6ThreadE", void,
+        TrivialSetStatus, (TrivialHandle<Class> h, uint32_t new_status, Thread *self), {
+            if (new_status == initialized_status) {
                 BackupClassMethods(h->GetClassDef(), self);
             }
             return backup(h, new_status, self);
@@ -107,11 +116,18 @@ public:
             return false;
         }
 
-        if (!HookSyms(handler, SetClassStatus, SetStatus, ClassSetStatus)) {
-            return false;
+        int sdk_int = GetAndroidApiLevel();
+
+        if (sdk_int < __ANDROID_API_O__) {
+            if (!HookSyms(handler, SetStatus, ClassSetStatus)) {
+                return false;
+            }
+        } else {
+            if (!HookSyms(handler, SetClassStatus, TrivialSetStatus)) {
+                return false;
+            }
         }
 
-        int sdk_int = GetAndroidApiLevel();
         if (sdk_int >= __ANDROID_API_R__) {
             initialized_status = 15;
         } else if (sdk_int >= __ANDROID_API_P__) {
