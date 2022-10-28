@@ -112,8 +112,10 @@ public:
         }
 
         int sdk_int = GetAndroidApiLevel();
-        if (sdk_int >= __ANDROID_API_P__) {
+        if (sdk_int >= __ANDROID_API_R__) {
             initialized_status = 15;
+        } else if (sdk_int >= __ANDROID_API_P__) {
+            initialized_status = 14;
         } else if (sdk_int == __ANDROID_API_O_MR1__) {
             initialized_status = 11;
         } else {
@@ -158,7 +160,7 @@ public:
                     it++;
                 }
             }
-        } else if (!class_def && self) {
+        } else if (self) {
             std::unique_lock lk(backup_methods_lock_);
             if (auto found = backup_methods_.find(self); found != backup_methods_.end()) {
                 for (auto it = found->second.begin(); it != found->second.end();) {
