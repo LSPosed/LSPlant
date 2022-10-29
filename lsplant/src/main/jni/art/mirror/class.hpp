@@ -42,8 +42,7 @@ private:
                 [[unlikely]] {
                 for (auto method : found->second) {
                     if (method->IsStatic()) {
-                        LOGV("Backup hooked method %s because of initialization",
-                             method->PrettyMethod(true).data());
+                        LOGV("Backup hooked method %p because of initialization", method);
                         out.emplace_back(method, method->GetEntryPoint());
                     }
                 }
@@ -55,8 +54,7 @@ private:
                 found != deoptimized_classes_.end()) [[unlikely]] {
                 for (auto method : found->second) {
                     if (method->IsStatic()) {
-                        LOGV("Backup deoptimized method %s because of initialization",
-                             method->PrettyMethod(true).data());
+                        LOGV("Backup deoptimized method %p because of initialization", method);
                         out.emplace_back(method, method->GetEntryPoint());
                     }
                 }
