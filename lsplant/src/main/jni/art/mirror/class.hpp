@@ -62,7 +62,7 @@ private:
                 }
             }
         }
-        {
+        if (!out.empty()) [[unlikely]] {
             std::unique_lock lk(backup_methods_lock_);
             backup_methods_[self].emplace(class_def, std::move(out));
         }
