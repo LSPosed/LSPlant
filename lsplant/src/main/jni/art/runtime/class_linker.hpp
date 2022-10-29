@@ -128,8 +128,12 @@ public:
             return false;
         }
 
-        // fixup static trampoline may have been inlined
-        HookSyms(handler, AdjustThreadVisibilityCounter);
+        int sdk_int = GetAndroidApiLevel();
+
+        if (sdk_int >= __ANDROID_API_R__) {
+            // fixup static trampoline may have been inlined
+            HookSyms(handler, AdjustThreadVisibilityCounter);
+        }
 
         if (!RETRIEVE_MEM_FUNC_SYMBOL(
                 SetEntryPointsToInterpreter,
