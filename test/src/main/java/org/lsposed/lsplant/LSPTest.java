@@ -50,4 +50,8 @@ public class LSPTest {
             }
         }
     }
+
+    public interface ForProxy {
+        String abstractMethod(String a, boolean b, byte c, short d, int e, long f, float g, double h, Integer i, Long j);
+    }
 }

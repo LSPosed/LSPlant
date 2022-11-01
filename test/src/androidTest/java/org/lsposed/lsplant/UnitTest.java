@@ -8,7 +8,10 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.MethodSorters;
 
+import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
+import java.lang.reflect.Proxy;
 
 @RunWith(AndroidJUnit4.class)
 @FixMethodOrder(MethodSorters.NAME_ASCENDING)
@@ -116,4 +119,32 @@ public class UnitTest {
         Assert.assertFalse((Boolean) callStaticMethod.invoke(null));
     }
 
+    @Test
+    public void t06_proxyMethod() throws ClassNotFoundException, NoSuchMethodException, InvocationTargetException, IllegalAccessException {
+        var proxyInterface = Class.forName("org.lsposed.lsplant.LSPTest$ForProxy");
+        var proxy = Proxy.newProxyInstance(proxyInterface.getClassLoader(), new Class[]{proxyInterface}, (proxy1, method, args) -> {
+            if (method.getName().equals("abstractMethod")) {
+                return (String) args[0] + (boolean) args[1] + (byte) args[2] + (short) args[3] + (int) args[4] + (long) args[5] + (float) args[6] + (double) args[7] + (Integer) args[8] + (Long) args[9];
+            }
+            return method.invoke(proxy1, args);
+        });
+        var abstractMethod = proxy.getClass().getDeclaredMethod("abstractMethod", String.class, boolean.class, byte.class, short.class, int.class, long.class, float.class, double.class, Integer.class, Long.class);
+        var abstractMethodReplacement = Replacement.class.getDeclaredMethod("manyParametersReplacement", Hooker.MethodCallback.class);
+        var a = "test";
+        var b = true;
+        var c = (byte) 114;
+        var d = (short) 514;
+        var e = 19;
+        var f = 19L;
+        var g = 810f;
+        var h = 12345f;
+        var o = a + b + c + d + e + f + g + h + e + f;
+        var r = a + b + c + d + e + f + g + h + e + f + "replace";
+
+        Assert.assertEquals(abstractMethod.invoke(proxy, a, b, c, d, e, f, g, h, e, f), o);
+        Hooker hooker = Hooker.hook(abstractMethod, abstractMethodReplacement, new Replacement());
+        Assert.assertNotNull(hooker);
+        Assert.assertEquals(abstractMethod.invoke(proxy, a, b, c, d, e, f, g, h, e, f), r);
+        Assert.assertEquals(hooker.backup.invoke(proxy, a, b, c, d, e, f, g, h, e, f), o);
+    }
 }
