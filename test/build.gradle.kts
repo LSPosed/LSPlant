@@ -1,4 +1,5 @@
 import com.android.build.api.dsl.ManagedVirtualDevice
+import com.android.build.gradle.internal.tasks.ManagedDeviceInstrumentationTestTask
 
 plugins {
     id("com.android.application")
@@ -58,25 +59,25 @@ android {
                     require64Bit = is64
                 }
 
-//                createDevice(21, false)
-//                createDevice(21, true)
-//                createDevice(22, false)
-//                createDevice(22, true)
-//                createDevice(23, false)
-//                createDevice(23, true)
-//                createDevice(24, false)
-//                createDevice(24, true)
-//                createDevice(25, false)
-//                createDevice(25, true)
-//                createDevice(26, false)
-//                createDevice(26, true)
+                createDevice(21, false)
+                createDevice(21, true)
+                createDevice(22, false)
+                createDevice(22, true)
+                createDevice(23, false)
+                createDevice(23, true)
+                createDevice(24, false)
+                createDevice(24, true)
+                createDevice(25, false)
+                createDevice(25, true)
+                createDevice(26, false)
+                createDevice(26, true)
                 createDevice(27, false)
                 createDevice(27, true)
                 createDevice(28, false)
                 createDevice(28, true)
                 createDevice(29, false)
                 createDevice(29, true)
-                createDevice(30, false)
+                createDevice(30, false, "aosp_atd")
                 createDevice(30, true)
 //                createDevice(31, false, "android-tv")
                 createDevice(31, true, "aosp_atd")
@@ -91,7 +92,7 @@ dependencies {
     implementation(project(":lsplant"))
     implementation("io.github.vvb2060.ndk:dobby:1.2")
 
-    androidTestImplementation("androidx.test.ext:junit:1.1.3")
-    androidTestImplementation("androidx.test:runner:1.4.0")
-    androidTestImplementation("androidx.test.espresso:espresso-core:3.4.0")
+    androidTestImplementation("androidx.test.ext:junit:1.1.4")
+    androidTestImplementation("androidx.test:runner:1.5.1")
+    androidTestImplementation("androidx.test.espresso:espresso-core:3.5.0")
 }
