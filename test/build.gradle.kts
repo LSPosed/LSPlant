@@ -96,3 +96,19 @@ dependencies {
     androidTestImplementation("androidx.test:runner:1.5.1")
     androidTestImplementation("androidx.test.espresso:espresso-core:3.5.0")
 }
+
+afterEvaluate {
+    task("testOnAllMVDs") {
+        dependsOn("assembleAndroidTest")
+        doLast {
+            tasks.withType(ManagedDeviceInstrumentationTestTask::class.java) {
+                println("::group::$this")
+                exec {
+                    executable = "${rootProject.buildFile.parent}/gradlew"
+                    args = listOf(":${project.name}:$name")
+                }
+                println("::endgroup::")
+            }
+        }
+    }
+}
