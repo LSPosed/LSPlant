@@ -42,6 +42,9 @@ class Instrumentation {
 
 public:
     static bool Init(JNIEnv *env, const HookHandler &handler) {
+        if (!IsJavaDebuggable(env)) [[likely]] {
+            return true;
+        }
         int sdk_int = GetAndroidApiLevel();
         if (sdk_int >= __ANDROID_API_P__) [[likely]] {
             if (!HookSyms(handler, InitializeMethodsCode,
