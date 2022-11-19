@@ -107,6 +107,10 @@ afterEvaluate {
                     executable = "${rootProject.buildFile.parent}/gradlew"
                     args = listOf(":${project.name}:$name")
                 }
+                exec {
+                    executable = "${rootProject.buildFile.parent}/gradlew"
+                    args = listOf(":${project.name}:cleanManagedDevices")
+                }
                 println("::endgroup::")
             }
         }

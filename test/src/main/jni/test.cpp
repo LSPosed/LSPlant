@@ -56,6 +56,9 @@ JNI_OnLoad(JavaVM* vm, void* reserved) {
         return JNI_ERR;
     }
     SandHook::ElfImg art("libart.so");
+#if !defined(__i386__)
+    dobby_enable_near_branch_trampoline();
+#endif
     lsplant::InitInfo initInfo{
             .inline_hooker = InlineHooker,
             .inline_unhooker = InlineUnhooker,
