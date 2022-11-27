@@ -88,7 +88,7 @@ jobs:
           key: ${{ runner.os }}-${{ github.sha }}
           restore-keys: ${{ runner.os }}
           save: false
-      - name: Test with Gradle
+      - name: Prepare Test with Gradle
         run: |
           ccache -o cache_dir=${{ github.workspace }}/.ccache
           ccache -o hash_dir=false
@@ -97,10 +97,127 @@ jobs:
           echo 'android.testoptions.manageddevices.emulator.gpu=swiftshader_indirect' >> gradle.properties
           echo 'android.native.buildOutput=verbose' >> gradle.properties
           echo 'android.sdk.channel=3' >> gradle.properties
-          ./gradlew :test:testOnAllMVDs
+          ./gradlew :test:assembleAndroidTest
+      - name: Test with dev21_default_x86_Pixel_2
+        if: always()
+        run: |
+          ./gradlew :test:avd-21-x86-defaultDebugAndroidTest
+          ./gradlew :test:cleanManagedDevices
+      - name: Test with dev21_default_x86_64_Pixel_2
+        if: always()
+        run: |
+          ./gradlew :test:avd-21-x86_64-defaultDebugAndroidTest
+          ./gradlew :test:cleanManagedDevices
+      - name: Test with dev22_default_x86_Pixel_2
+        if: always()
+        run: |
+          ./gradlew :test:avd-22-x86-defaultDebugAndroidTest
+          ./gradlew :test:cleanManagedDevices
+      - name: Test with dev22_default_x86_64_Pixel_2
+        if: always()
+        run: |
+          ./gradlew :test:avd-22-x86_64-defaultDebugAndroidTest
+          ./gradlew :test:cleanManagedDevices
+      - name: Test with dev23_default_x86_Pixel_2
+        if: always()
+        run: |
+          ./gradlew :test:avd-23-x86-defaultDebugAndroidTest
+          ./gradlew :test:cleanManagedDevices
+      - name: Test with dev23_default_x86_64_Pixel_2
+        if: always()
+        run: |
+          ./gradlew :test:avd-23-x86_64-defaultDebugAndroidTest
+          ./gradlew :test:cleanManagedDevices
+      - name: Test with dev24_default_x86_Pixel_2
+        if: always()
+        run: |
+          ./gradlew :test:avd-24-x86-defaultDebugAndroidTest
+          ./gradlew :test:cleanManagedDevices
+      - name: Test with dev24_default_x86_64_Pixel_2
+        if: always()
+        run: |
+          ./gradlew :test:avd-24-x86_64-defaultDebugAndroidTest
+          ./gradlew :test:cleanManagedDevices
+      - name: Test with dev25_default_x86_Pixel_2
+        if: always()
+        run: |
+          ./gradlew :test:avd-25-x86-defaultDebugAndroidTest
+          ./gradlew :test:cleanManagedDevices
+      - name: Test with dev25_default_x86_64_Pixel_2
+        if: always()
+        run: |
+          ./gradlew :test:avd-25-x86_64-defaultDebugAndroidTest
+          ./gradlew :test:cleanManagedDevices
+      - name: Test with dev26_default_x86_Pixel_2
+        if: always()
+        run: |
+          ./gradlew :test:avd-26-x86-defaultDebugAndroidTest
+          ./gradlew :test:cleanManagedDevices
+      - name: Test with dev26_default_x86_64_Pixel_2
+        if: always()
+        run: |
+          ./gradlew :test:avd-26-x86_64-defaultDebugAndroidTest
+          ./gradlew :test:cleanManagedDevices
+      - name: Test with dev27_default_x86_Pixel_2
+        if: always()
+        run: |
+          ./gradlew :test:avd-27-x86-defaultDebugAndroidTest
+          ./gradlew :test:cleanManagedDevices
+      - name: Test with dev27_default_x86_64_Pixel_2
+        if: always()
+        run: |
+          ./gradlew :test:avd-27-x86_64-defaultDebugAndroidTest
+          ./gradlew :test:cleanManagedDevices
+      - name: Test with dev28_default_x86_Pixel_2
+        if: always()
+        run: |
+          ./gradlew :test:avd-28-x86-defaultDebugAndroidTest
+          ./gradlew :test:cleanManagedDevices
+      - name: Test with dev28_default_x86_64_Pixel_2
+        if: always()
+        run: |
+          ./gradlew :test:avd-28-x86_64-defaultDebugAndroidTest
+          ./gradlew :test:cleanManagedDevices
+      - name: Test with dev29_default_x86_Pixel_2
+        if: always()
+        run: |
+          ./gradlew :test:avd-29-x86-defaultDebugAndroidTest
+          ./gradlew :test:cleanManagedDevices
+      - name: Test with dev29_default_x86_64_Pixel_2
+        if: always()
+        run: |
+          ./gradlew :test:avd-29-x86_64-defaultDebugAndroidTest
+          ./gradlew :test:cleanManagedDevices
+      - name: Test with dev30_aosp_atd_x86_Pixel_2
+        if: always()
+        run: |
+          ./gradlew :test:avd-30-x86-aosp_atdDebugAndroidTest
+          ./gradlew :test:cleanManagedDevices
+      - name: Test with dev30_default_x86_64_Pixel_2
+        if: always()
+        run: |
+          ./gradlew :test:avd-30-x86_64-defaultDebugAndroidTest
+          ./gradlew :test:cleanManagedDevices
+      - name: Test with dev31_aosp_atd_x86_64_Pixel_2
+        if: always()
+        run: |
+          ./gradlew :test:avd-31-x86_64-aosp_atdDebugAndroidTest
+          ./gradlew :test:cleanManagedDevices
+      - name: Test with dev32_google_apis_x86_64_Pixel_2
+        if: always()
+        run: |
+          ./gradlew :test:avd-32-x86_64-google_apisDebugAndroidTest
+          ./gradlew :test:cleanManagedDevices
+      - name: Test with dev33_google_apis_x86_64_Pixel_2
+        if: always()
+        run: |
+          ./gradlew :test:avd-33-x86_64-google_apisDebugAndroidTest
+          ./gradlew :test:cleanManagedDevices
       - name: Prepare upload
         if: always()
-        run: rm -vf test/build/outputs/androidTest-results/managedDevice/*/testlog/adb.additional_test_output*
+        run: |
+          df -h
+          rm -vf test/build/outputs/androidTest-results/managedDevice/*/testlog/adb.additional_test_output*
       - name: Upload outputs
         if: always()
         uses: actions/upload-artifact@v3
