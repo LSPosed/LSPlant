@@ -59,9 +59,86 @@ jobs:
           name: ${{ matrix.os }}-library
           path: ~/.m2
 
-  agp-test:
-    name: Test using AGP
+  test:
+    needs: build
+    name: Test on API ${{ matrix.api-level }} ${{ matrix.arch }}
     runs-on: macos-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - api-level: 21
+            target: default
+            arch: x86_64
+          - api-level: 21
+            target: default
+            arch: x86
+          - api-level: 22
+            target: default
+            arch: x86_64
+          - api-level: 22
+            target: default
+            arch: x86
+          - api-level: 23
+            target: default
+            arch: x86_64
+          - api-level: 23
+            target: default
+            arch: x86
+          - api-level: 24
+            target: default
+            arch: x86_64
+          - api-level: 24
+            target: default
+            arch: x86
+          - api-level: 25
+            target: default
+            arch: x86_64
+          - api-level: 25
+            target: default
+            arch: x86
+          - api-level: 26
+            target: default
+            arch: x86_64
+          - api-level: 26
+            target: default
+            arch: x86
+          - api-level: 27
+            target: default
+            arch: x86_64
+          - api-level: 27
+            target: default
+            arch: x86
+          - api-level: 28
+            target: default
+            arch: x86_64
+          - api-level: 28
+            target: default
+            arch: x86
+          - api-level: 29
+            target: default
+            arch: x86_64
+          - api-level: 29
+            target: default
+            arch: x86
+          - api-level: 30
+            target: default
+            arch: x86_64
+          - api-level: 30
+            target: google_apis
+            arch: x86
+          - api-level: 31
+            target: default
+            arch: x86_64
+          - api-level: 31
+            target: android-tv
+            arch: x86
+          - api-level: 32
+            target: google_apis
+            arch: x86_64
+          - api-level: 33
+            target: google_apis
+            arch: x86_64
     steps:
       - name: checkout
         uses: actions/checkout@v3
@@ -88,136 +165,21 @@ jobs:
           key: ${{ runner.os }}-${{ github.sha }}
           restore-keys: ${{ runner.os }}
           save: false
-      - name: Prepare Test with Gradle
-        run: |
-          ccache -o cache_dir=${{ github.workspace }}/.ccache
-          ccache -o hash_dir=false
-          ccache -o compiler_check='%compiler% -dumpmachine; %compiler% -dumpversion'
-          echo -e "84831b9409646a918e30573bab4c9c91346d8abd" > $ANDROID_SDK_ROOT/licenses/android-sdk-preview-license
-          echo 'android.testoptions.manageddevices.emulator.gpu=swiftshader_indirect' >> gradle.properties
-          echo 'android.native.buildOutput=verbose' >> gradle.properties
-          echo 'android.sdk.channel=3' >> gradle.properties
-          ./gradlew :test:assembleAndroidTest
-      - name: Test with dev21_default_x86_Pixel_2
-        if: always()
-        run: |
-          ./gradlew :test:avd-21-x86-defaultDebugAndroidTest
-          ./gradlew :test:cleanManagedDevices
-      - name: Test with dev21_default_x86_64_Pixel_2
-        if: always()
-        run: |
-          ./gradlew :test:avd-21-x86_64-defaultDebugAndroidTest
-          ./gradlew :test:cleanManagedDevices
-      - name: Test with dev22_default_x86_Pixel_2
-        if: always()
-        run: |
-          ./gradlew :test:avd-22-x86-defaultDebugAndroidTest
-          ./gradlew :test:cleanManagedDevices
-      - name: Test with dev22_default_x86_64_Pixel_2
-        if: always()
-        run: |
-          ./gradlew :test:avd-22-x86_64-defaultDebugAndroidTest
-          ./gradlew :test:cleanManagedDevices
-      - name: Test with dev23_default_x86_Pixel_2
-        if: always()
-        run: |
-          ./gradlew :test:avd-23-x86-defaultDebugAndroidTest
-          ./gradlew :test:cleanManagedDevices
-      - name: Test with dev23_default_x86_64_Pixel_2
-        if: always()
-        run: |
-          ./gradlew :test:avd-23-x86_64-defaultDebugAndroidTest
-          ./gradlew :test:cleanManagedDevices
-      - name: Test with dev24_default_x86_Pixel_2
-        if: always()
-        run: |
-          ./gradlew :test:avd-24-x86-defaultDebugAndroidTest
-          ./gradlew :test:cleanManagedDevices
-      - name: Test with dev24_default_x86_64_Pixel_2
-        if: always()
-        run: |
-          ./gradlew :test:avd-24-x86_64-defaultDebugAndroidTest
-          ./gradlew :test:cleanManagedDevices
-      - name: Test with dev25_default_x86_Pixel_2
-        if: always()
-        run: |
-          ./gradlew :test:avd-25-x86-defaultDebugAndroidTest
-          ./gradlew :test:cleanManagedDevices
-      - name: Test with dev25_default_x86_64_Pixel_2
-        if: always()
-        run: |
-          ./gradlew :test:avd-25-x86_64-defaultDebugAndroidTest
-          ./gradlew :test:cleanManagedDevices
-      - name: Test with dev26_default_x86_Pixel_2
-        if: always()
-        run: |
-          ./gradlew :test:avd-26-x86-defaultDebugAndroidTest
-          ./gradlew :test:cleanManagedDevices
-      - name: Test with dev26_default_x86_64_Pixel_2
-        if: always()
-        run: |
-          ./gradlew :test:avd-26-x86_64-defaultDebugAndroidTest
-          ./gradlew :test:cleanManagedDevices
-      - name: Test with dev27_default_x86_Pixel_2
-        if: always()
-        run: |
-          ./gradlew :test:avd-27-x86-defaultDebugAndroidTest
-          ./gradlew :test:cleanManagedDevices
-      - name: Test with dev27_default_x86_64_Pixel_2
-        if: always()
-        run: |
-          ./gradlew :test:avd-27-x86_64-defaultDebugAndroidTest
-          ./gradlew :test:cleanManagedDevices
-      - name: Test with dev28_default_x86_Pixel_2
-        if: always()
-        run: |
-          ./gradlew :test:avd-28-x86-defaultDebugAndroidTest
-          ./gradlew :test:cleanManagedDevices
-      - name: Test with dev28_default_x86_64_Pixel_2
-        if: always()
-        run: |
-          ./gradlew :test:avd-28-x86_64-defaultDebugAndroidTest
-          ./gradlew :test:cleanManagedDevices
-      - name: Test with dev29_default_x86_Pixel_2
-        if: always()
-        run: |
-          ./gradlew :test:avd-29-x86-defaultDebugAndroidTest
-          ./gradlew :test:cleanManagedDevices
-      - name: Test with dev29_default_x86_64_Pixel_2
-        if: always()
-        run: |
-          ./gradlew :test:avd-29-x86_64-defaultDebugAndroidTest
-          ./gradlew :test:cleanManagedDevices
-      - name: Test with dev30_aosp_atd_x86_Pixel_2
-        if: always()
-        run: |
-          ./gradlew :test:avd-30-x86-aosp_atdDebugAndroidTest
-          ./gradlew :test:cleanManagedDevices
-      - name: Test with dev30_default_x86_64_Pixel_2
-        if: always()
-        run: |
-          ./gradlew :test:avd-30-x86_64-defaultDebugAndroidTest
-          ./gradlew :test:cleanManagedDevices
-      - name: Test with dev31_aosp_atd_x86_64_Pixel_2
-        if: always()
-        run: |
-          ./gradlew :test:avd-31-x86_64-aosp_atdDebugAndroidTest
-          ./gradlew :test:cleanManagedDevices
-      - name: Test with dev32_google_apis_x86_64_Pixel_2
-        if: always()
-        run: |
-          ./gradlew :test:avd-32-x86_64-google_apisDebugAndroidTest
-          ./gradlew :test:cleanManagedDevices
-      - name: Test with dev33_google_apis_x86_64_Pixel_2
-        if: always()
-        run: |
-          ./gradlew :test:avd-33-x86_64-google_apisDebugAndroidTest
-          ./gradlew :test:cleanManagedDevices
-      - name: Prepare upload
-        if: always()
-        run: |
-          df -h
-          rm -vf test/build/outputs/androidTest-results/managedDevice/*/testlog/adb.additional_test_output*
+      - name: run tests
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: ${{ matrix.api-level }}
+          arch: ${{ matrix.arch }}
+          target: ${{ matrix.target }}
+          script: |
+            ccache -o cache_dir=${{ github.workspace }}/.ccache
+            ccache -o hash_dir=false
+            ccache -o compiler_check='%compiler% -dumpmachine; %compiler% -dumpversion'
+            echo 'android.native.buildOutput=verbose' >> gradle.properties
+            ./gradlew :test:connectedCheck
+          emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          disable-animations: true
+          avd-name: ${{ matrix.api-level }}_${{ matrix.arch }}
       - name: Upload outputs
         if: always()
         uses: actions/upload-artifact@v3
