@@ -4,7 +4,7 @@
 
 #include <string_view>
 
-/// \namespace namespace of LSPlant
+/// \namespace lsplant
 namespace lsplant {
 
 inline namespace v2 {

@@ -1,9 +1,20 @@
 import java.nio.file.Paths
+import org.eclipse.jgit.api.Git
+import org.eclipse.jgit.storage.file.FileRepositoryBuilder
 
 plugins {
     id("com.android.library")
     id("maven-publish")
     id("signing")
+}
+
+buildscript {
+    repositories {
+        mavenCentral()
+    }
+    dependencies {
+        classpath("org.eclipse.jgit:org.eclipse.jgit:6.3.0.202209071007-r")
+    }
 }
 
 val androidTargetSdkVersion: Int by rootProject.extra
@@ -173,11 +184,18 @@ val symbolsStandaloneTask = tasks.register<Jar>("generateStandaloneSymbolsJar") 
     archiveClassifier.set("symbols")
 }
 
+val ver = FileRepositoryBuilder().findGitDir(rootProject.file(".git")).runCatching {
+    build().use {
+        Git(it).describe().setTags(true).setAbbrev(0).call().removePrefix("v")
+    }
+}.getOrNull() ?: "0.0"
+println("${rootProject.name} version: $ver")
+
 publishing {
     publications {
         fun MavenPublication.setup() {
             group = "org.lsposed.lsplant"
-            version = "5.2"
+            version = ver
             pom {
                 name.set("LSPlant")
                 description.set("A hook framework for Android Runtime (ART)")
@@ -233,7 +251,7 @@ publishing {
         }
     }
     dependencies {
-         "standaloneCompileOnly"("dev.rikka.ndk.thirdparty:cxx:1.2.0")
+        "standaloneCompileOnly"("dev.rikka.ndk.thirdparty:cxx:1.2.0")
     }
 }
 
