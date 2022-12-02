@@ -70,9 +70,10 @@ private:
             auto new_trampoline = art_method->GetEntryPoint();
             art_method->SetEntryPoint(old_trampoline);
             if (IsDeoptimized(art_method)) {
-                if (new_trampoline != old_trampoline) [[unlikely]] {
-                    LOGV("prevent deoptimized method %s from being overwritten",
-                         art_method->PrettyMethod(true).data());
+                if (new_trampoline != art_quick_to_interpreter_bridge ||
+                    new_trampoline != art_quick_generic_jni_trampoline) {
+                    LOGV("re-deoptimize for %s", art_method->PrettyMethod(true).data());
+                    SetEntryPointsToInterpreter(art_method);
                 }
                 continue;
             }
