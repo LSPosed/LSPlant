@@ -109,7 +109,9 @@ private:
                                });
 
     CREATE_MEM_HOOK_STUB_ENTRY(
-        "_ZN3art11ClassLinker26VisiblyInitializedCallback29AdjustThreadVisibilityCounterEPNS_6ThreadEl",
+        LP_SELECT(
+            "_ZN3art11ClassLinker26VisiblyInitializedCallback29AdjustThreadVisibilityCounterEPNS_6ThreadEi",
+            "_ZN3art11ClassLinker26VisiblyInitializedCallback29AdjustThreadVisibilityCounterEPNS_6ThreadEl"),
         void, AdjustThreadVisibilityCounter, (void *thiz, art::Thread *self, ssize_t adjustment), {
             backup(thiz, self, adjustment);
             RestoreBackup(nullptr, self);
