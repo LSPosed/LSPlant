@@ -134,8 +134,10 @@ public:
         int sdk_int = GetAndroidApiLevel();
 
         if (sdk_int >= __ANDROID_API_R__) {
-            // fixup static trampoline may have been inlined
-            HookSyms(handler, AdjustThreadVisibilityCounter);
+            if constexpr (GetArch() != Arch::kX86 && GetArch() != Arch::kX8664) {
+                // fixup static trampoline may have been inlined
+                HookSyms(handler, AdjustThreadVisibilityCounter);
+            }
         }
 
         if (!RETRIEVE_MEM_FUNC_SYMBOL(
