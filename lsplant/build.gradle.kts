@@ -80,6 +80,7 @@ android {
                         "-fno-stack-protector",
                         "-fomit-frame-pointer",
                         "-Wno-builtin-macro-redefined",
+                        "-Wno-c++2b-extensions",
                         "-ffunction-sections",
                         "-fdata-sections",
                         "-Wno-unused-value",
