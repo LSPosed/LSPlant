@@ -5,8 +5,8 @@ pluginManagement {
         mavenCentral()
     }
     plugins {
-        id("com.android.application") version "7.3.1"
-        id("com.android.library") version "7.3.1"
+        id("com.android.application") version "7.4.0"
+        id("com.android.library") version "7.4.0"
     }
 }
 dependencyResolutionManagement {
