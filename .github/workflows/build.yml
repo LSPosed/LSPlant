@@ -173,7 +173,7 @@ jobs:
           restore-keys: ${{ runner.os }}
           save: false
       - name: run tests
-        uses: yujincheng08/android-emulator-runner@apilevel
+        uses: yujincheng08/android-emulator-runner@release/apilevel
         with:
           api-level: ${{ matrix.api-level }}
           arch: ${{ matrix.arch }}
