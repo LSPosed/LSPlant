@@ -18,18 +18,21 @@ enum class Arch {
     kArm,
     kArm64,
     kX86,
-    kX8664,
+    kX86_64,
+    kRiscv64,
 };
 
 consteval inline Arch GetArch() {
 #if defined(__i386__)
     return Arch::kX86;
 #elif defined(__x86_64__)
-    return Arch::kX8664;
+    return Arch::kX86_64;
 #elif defined(__arm__)
     return Arch::kArm;
 #elif defined(__aarch64__)
     return Arch::kArm64;
+#elif defined(__riscv)
+    return Arch::kRiscv64;
 #else
 #error "unsupported architecture"
 #endif

@@ -64,10 +64,16 @@ consteval inline auto GetTrampoline() {
                                // NOLINTNEXTLINE
                                uint8_t{56u}, uintptr_t{1u});
     }
-    if constexpr (kArch == Arch::kX8664) {
+    if constexpr (kArch == Arch::kX86_64) {
         return std::make_tuple("\x48\xbf\x78\x56\x34\x12\x78\x56\x34\x12\xff\x77\x00\xc3"_uarr,
                                // NOLINTNEXTLINE
                                uint8_t{96u}, uintptr_t{2u});
+    }
+    if constexpr (kArch == Arch::kRiscv64) {
+        return std::make_tuple(
+            "\x17\x05\x00\x00\x03\x35\xc5\x00\x67\x00\x05\x00\x78\x56\x34\x12\x78\x56\x34\x12"_uarr,
+            // NOLINTNEXTLINE
+            uint8_t{84u}, uintptr_t{12u});
     }
 }
 

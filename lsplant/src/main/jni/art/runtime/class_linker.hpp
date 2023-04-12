@@ -134,7 +134,7 @@ public:
         int sdk_int = GetAndroidApiLevel();
 
         if (sdk_int >= __ANDROID_API_R__) {
-            if constexpr (GetArch() != Arch::kX86 && GetArch() != Arch::kX8664) {
+            if constexpr (GetArch() != Arch::kX86 && GetArch() != Arch::kX86_64) {
                 // fixup static trampoline may have been inlined
                 HookSyms(handler, AdjustThreadVisibilityCounter);
             }
