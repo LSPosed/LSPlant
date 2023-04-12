@@ -177,12 +177,14 @@ val symbolsReleaseTask = tasks.register<Jar>("generateReleaseSymbolsJar") {
     from("${project.buildDir.absolutePath}/symbols/release")
     exclude("**/dex_builder")
     archiveClassifier.set("symbols")
+    archiveBaseName.set("release")
 }
 
 val symbolsStandaloneTask = tasks.register<Jar>("generateStandaloneSymbolsJar") {
     from("${project.buildDir.absolutePath}/symbols/standalone")
     exclude("**/dex_builder")
     archiveClassifier.set("symbols")
+    archiveBaseName.set("standalone")
 }
 
 val ver = FileRepositoryBuilder().findGitDir(rootProject.file(".git")).runCatching {
