@@ -82,6 +82,7 @@ android {
                 createDevice(31, true, "aosp_atd")
                 createDevice(32, true, "google_apis")
                 createDevice(33, true, "google_apis")
+                createDevice(34, true, "google_apis")
             }
         }
     }
