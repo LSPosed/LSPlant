@@ -106,7 +106,7 @@ public:
             if (!RETRIEVE_FUNC_SYMBOL(DexFile_setTrusted,
                                       "_ZN3artL18DexFile_setTrustedEP7_JNIEnvP7_jclassP8_jobject",
                                       true)) {
-                return false;
+                LOGW("DexFile.setTrusted not found, MakeDexFileTrusted will not work.");
             }
         }
         if (sdk_int >= __ANDROID_API_O__) [[likely]] {
