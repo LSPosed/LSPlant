@@ -613,6 +613,26 @@ std::string GetProxyMethodShorty(JNIEnv *env, jobject proxy_method) {
     return out;
 }
 
+struct JavaDebuggableGuard {
+    JavaDebuggableGuard() {
+        std::unique_lock lk(lock);
+        if (count.fetch_add(1, std::memory_order_acq_rel) == 0) {
+            Runtime::Current()->SetJavaDebuggable(
+                    Runtime::RuntimeDebugState::kJavaDebuggableAtInit);
+        }
+    }
+
+    ~JavaDebuggableGuard() {
+        std::unique_lock lk(lock);
+        if (count.fetch_sub(1, std::memory_order_acq_rel) == 1) {
+            Runtime::Current()->SetJavaDebuggable(Runtime::RuntimeDebugState::kNonJavaDebuggable);
+        }
+    }
+
+    inline static std::atomic_size_t count{0};
+    inline static std::mutex lock;
+};
+
 }  // namespace
 
 inline namespace v2 {
@@ -819,15 +839,7 @@ using ::lsplant::IsHooked;
 }
 
 [[maybe_unused]] bool MakeDexFileTrusted(JNIEnv *env, jobject cookie) {
-    struct Guard {
-        Guard() {
-            Runtime::Current()->SetJavaDebuggable(
-                Runtime::RuntimeDebugState::kJavaDebuggableAtInit);
-        }
-        ~Guard() {
-            Runtime::Current()->SetJavaDebuggable(Runtime::RuntimeDebugState::kNonJavaDebuggable);
-        }
-    } guard;
+    JavaDebuggableGuard guard;
     if (!cookie) return false;
     return DexFile::SetTrusted(env, cookie);
 }
