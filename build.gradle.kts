@@ -1,3 +1,7 @@
+plugins {
+    alias(libs.plugins.lsplugin.publish)
+}
+
 val androidTargetSdkVersion by extra(33)
 val androidMinSdkVersion by extra(21)
 val androidBuildToolsVersion by extra("33.0.2")

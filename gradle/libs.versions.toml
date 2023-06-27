@@ -4,6 +4,9 @@ agp = "8.0.2"
 [plugins]
 agp-app = { id = "com.android.application", version.ref = "agp" }
 agp-lib = { id = "com.android.library", version.ref = "agp" }
+lsplugin-jgit = { id = "org.lsposed.lsplugin.jgit", version = "1.1" }
+lsplugin-publish = { id = "org.lsposed.lsplugin.publish", version = "1.1" }
+lsplugin-cmaker = { id = "org.lsposed.lsplugin.cmaker", version = "1.2" }
 
 [libraries]
 cxx = { module = "dev.rikka.ndk.thirdparty:cxx", version = "1.2.0" }

@@ -1,20 +1,12 @@
 import java.nio.file.Paths
-import org.eclipse.jgit.api.Git
-import org.eclipse.jgit.storage.file.FileRepositoryBuilder
 
 plugins {
     alias(libs.plugins.agp.lib)
-    id("maven-publish")
-    id("signing")
-}
-
-buildscript {
-    repositories {
-        mavenCentral()
-    }
-    dependencies {
-        classpath("org.eclipse.jgit:org.eclipse.jgit:6.6.0.202305301015-r")
-    }
+    alias(libs.plugins.lsplugin.jgit)
+    alias(libs.plugins.lsplugin.publish)
+    alias(libs.plugins.lsplugin.cmaker)
+    `maven-publish`
+    signing
 }
 
 val androidTargetSdkVersion: Int by rootProject.extra
@@ -23,16 +15,6 @@ val androidBuildToolsVersion: String by rootProject.extra
 val androidCompileSdkVersion: Int by rootProject.extra
 val androidNdkVersion: String by rootProject.extra
 val androidCmakeVersion: String by rootProject.extra
-
-fun findInPath(executable: String): String? {
-    val pathEnv = System.getenv("PATH")
-    return pathEnv.split(File.pathSeparator).map { folder ->
-        Paths.get("${folder}${File.separator}${executable}${if (org.gradle.internal.os.OperatingSystem.current().isWindows) ".exe" else ""}")
-            .toFile()
-    }.firstOrNull { path ->
-        path.exists()
-    }?.absolutePath
-}
 
 android {
     compileSdk = androidCompileSdkVersion
@@ -63,87 +45,9 @@ android {
     }
 
     buildTypes {
-        all {
-            externalNativeBuild {
-                cmake {
-                    abiFilters("arm64-v8a", "armeabi-v7a", "x86", "x86_64")
-                    val flags = arrayOf(
-                        "-Wall",
-                        "-Werror",
-                        "-Qunused-arguments",
-                        "-Wno-gnu-string-literal-operator-template",
-                        "-fno-rtti",
-                        "-fvisibility=hidden",
-                        "-fvisibility-inlines-hidden",
-                        "-fno-exceptions",
-                        "-fno-stack-protector",
-                        "-fomit-frame-pointer",
-                        "-Wno-builtin-macro-redefined",
-                        "-Wno-c++2b-extensions",
-                        "-ffunction-sections",
-                        "-fdata-sections",
-                        "-Wno-unused-value",
-                        "-D__FILE__=__FILE_NAME__",
-                        "-Wl,--exclude-libs,ALL",
-                    )
-                    cppFlags("-std=c++20", *flags)
-                    cFlags("-std=c18", *flags)
-                    val configFlags = arrayOf(
-                        "-Oz",
-                        "-DNDEBUG"
-                    ).joinToString(" ")
-                    arguments(
-                        "-DCMAKE_CXX_FLAGS_RELEASE=$configFlags",
-                        "-DCMAKE_C_FLAGS_RELEASE=$configFlags",
-                        "-DDEBUG_SYMBOLS_PATH=${project.buildDir.absolutePath}/symbols/$name",
-                    )
-                    findInPath("ccache")?.let {
-                        println("Using ccache $it")
-                        arguments += "-DANDROID_CCACHE=$it"
-                    }
-                }
-            }
-        }
-        release {
-            externalNativeBuild {
-                val flags = arrayOf(
-                    "-Wl,--gc-sections",
-                    "-flto",
-                    "-fno-unwind-tables",
-                    "-fno-asynchronous-unwind-tables",
-                )
-                cmake {
-                    cppFlags += flags
-                    cFlags += flags
-                    arguments += "-DANDROID_STL=c++_shared"
-                    arguments += "-DCMAKE_BUILD_TYPE=Release"
-                }
-            }
-        }
-        debug {
-            externalNativeBuild {
-                cmake {
-                    arguments += "-DANDROID_STL=c++_shared"
-                }
-            }
-        }
         create("standalone") {
             initWith(getByName("release"))
-            externalNativeBuild {
-                val flags = arrayOf(
-                    "-Wl,--gc-sections",
-                    "-flto",
-                    "-fno-unwind-tables",
-                    "-fno-asynchronous-unwind-tables",
-                )
-                cmake {
-                    cppFlags += flags
-                    cFlags += flags
-                    arguments += "-DANDROID_STL=none"
-                    arguments += "-DCMAKE_BUILD_TYPE=Release"
-                    arguments += "-DLSPLANT_STANDALONE=ON"
-                }
-            }
+            matchingFallbacks += "release"
         }
     }
 
@@ -172,6 +76,34 @@ android {
     }
 }
 
+cmaker {
+    default {
+        val flags = arrayOf(
+            "-Werror",
+            "-Wno-gnu-string-literal-operator-template",
+            "-Wno-c++2b-extensions",
+        )
+        cppFlags += flags
+        cFlags += flags
+    }
+    buildTypes {
+        when (it.name) {
+            "debug", "release" -> {
+                arguments += "-DANDROID_STL=c++_shared"
+            }
+            "standalone" -> {
+                arguments += "-DANDROID_STL=none"
+                arguments += "-DLSPLANT_STANDALONE=ON"
+            }
+        }
+        arguments += "-DDEBUG_SYMBOLS_PATH=${project.buildDir.absolutePath}/symbols/${it.name}"
+    }
+}
+
+dependencies {
+    "standaloneCompileOnly"(libs.cxx)
+}
+
 val symbolsReleaseTask = tasks.register<Jar>("generateReleaseSymbolsJar") {
     from("${project.buildDir.absolutePath}/symbols/release")
     exclude("**/dex_builder")
@@ -186,14 +118,12 @@ val symbolsStandaloneTask = tasks.register<Jar>("generateStandaloneSymbolsJar") 
     archiveBaseName.set("standalone")
 }
 
-val ver = FileRepositoryBuilder().findGitDir(rootProject.file(".git")).runCatching {
-    build().use {
-        Git(it).describe().setTags(true).setAbbrev(0).call().removePrefix("v")
-    }
-}.getOrNull() ?: "0.0"
+val repo = jgit.repo(true)
+val ver = repo?.latestTag?.removePrefix("v") ?: "0.0"
 println("${rootProject.name} version: $ver")
 
-publishing {
+publish {
+    githubRepo = "LSPosed/LSPlant"
     publications {
         fun MavenPublication.setup() {
             group = "org.lsposed.lsplant"
@@ -237,31 +167,4 @@ publishing {
             setup()
         }
     }
-    repositories {
-        maven {
-            name = "ossrh"
-            url = uri("https://s01.oss.sonatype.org/service/local/staging/deploy/maven2/")
-            credentials(PasswordCredentials::class)
-        }
-        maven {
-            name = "GitHubPackages"
-            url = uri("https://maven.pkg.github.com/LSPosed/LSPlant")
-            credentials {
-                username = System.getenv("GITHUB_ACTOR")
-                password = System.getenv("GITHUB_TOKEN")
-            }
-        }
-    }
-    dependencies {
-        "standaloneCompileOnly"(libs.cxx)
-    }
-}
-
-signing {
-    val signingKey = findProperty("signingKey") as String?
-    val signingPassword = findProperty("signingPassword") as String?
-    if (signingKey != null && signingPassword != null) {
-        useInMemoryPgpKeys(signingKey, signingPassword)
-    }
-    sign(publishing.publications)
 }
