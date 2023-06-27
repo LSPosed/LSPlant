@@ -1,7 +1,7 @@
 import com.android.build.api.dsl.ManagedVirtualDevice
 
 plugins {
-    id("com.android.application")
+    alias(libs.plugins.agp.app)
 }
 
 val androidTargetSdkVersion: Int by rootProject.extra
@@ -90,10 +90,10 @@ android {
 
 dependencies {
     implementation(project(":lsplant"))
-    implementation("io.github.vvb2060.ndk:dobby:1.2")
+    implementation(libs.dobby)
 
-    androidTestImplementation("androidx.test.ext:junit:1.1.5")
-    androidTestImplementation("androidx.test:runner:1.5.2")
-    androidTestImplementation("androidx.test.espresso:espresso-core:3.5.1")
+    androidTestImplementation(libs.test.ext.junit)
+    androidTestImplementation(libs.test.runner)
+    androidTestImplementation(libs.test.espresso)
 }
 

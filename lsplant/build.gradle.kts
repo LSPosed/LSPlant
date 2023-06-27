@@ -3,7 +3,7 @@ import org.eclipse.jgit.api.Git
 import org.eclipse.jgit.storage.file.FileRepositoryBuilder
 
 plugins {
-    id("com.android.library")
+    alias(libs.plugins.agp.lib)
     id("maven-publish")
     id("signing")
 }
@@ -253,7 +253,7 @@ publishing {
         }
     }
     dependencies {
-        "standaloneCompileOnly"("dev.rikka.ndk.thirdparty:cxx:1.2.0")
+        "standaloneCompileOnly"(libs.cxx)
     }
 }
 
