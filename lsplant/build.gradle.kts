@@ -46,7 +46,7 @@ android {
         prefab = true
     }
 
-    packagingOptions {
+    packaging {
         jniLibs {
             excludes += "**.so"
         }
@@ -60,7 +60,6 @@ android {
 
     defaultConfig {
         minSdk = androidMinSdkVersion
-        targetSdk = androidTargetSdkVersion
     }
 
     buildTypes {
