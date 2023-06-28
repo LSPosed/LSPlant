@@ -9,8 +9,8 @@ class Instrumentation {
     inline static ArtMethod *MaybeUseBackupMethod(ArtMethod *art_method, const void *quick_code) {
         if (auto backup = IsHooked(art_method); backup && art_method->GetEntryPoint() != quick_code)
             [[unlikely]] {
-            LOGD("Propagate update method code %p for hooked method %s to its backup", quick_code,
-                 art_method->PrettyMethod().c_str());
+            LOGD("Propagate update method code %p for hooked method %p to its backup", quick_code,
+                 art_method);
             return backup;
         }
         return art_method;
