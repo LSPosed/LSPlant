@@ -36,6 +36,12 @@ android {
         }
     }
 
+    buildTypes {
+        debug {
+            isDebuggable = false
+        }
+    }
+
     externalNativeBuild {
         cmake {
             path = file("src/main/jni/CMakeLists.txt")
