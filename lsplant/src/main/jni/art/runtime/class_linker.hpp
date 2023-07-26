@@ -15,6 +15,16 @@ private:
         }
     }
 
+    CREATE_HOOK_STUB_ENTRY(
+            "_ZN3art11ClassLinker30ShouldUseInterpreterEntrypointEPNS_9ArtMethodEPKv", bool,
+            ShouldUseInterpreterEntrypoint, (ArtMethod * art_method, const void *quick_code), {
+                if (quick_code != nullptr && IsHooked(art_method)) [[unlikely]] {
+                    return false;
+                }
+                return backup(art_method, quick_code);
+            });
+
+
     CREATE_FUNC_SYMBOL_ENTRY(void, art_quick_to_interpreter_bridge, void *) {}
 
     CREATE_FUNC_SYMBOL_ENTRY(void, art_quick_generic_jni_trampoline, void *) {}
@@ -119,6 +129,12 @@ private:
 
 public:
     static bool Init(const HookHandler &handler) {
+        int sdk_int = GetAndroidApiLevel();
+
+        if (sdk_int >= __ANDROID_API_N__) [[likely]] {
+            !HookSyms(handler, ShouldUseInterpreterEntrypoint);
+        }
+
         if (!HookSyms(handler, FixupStaticTrampolinesWithThread, FixupStaticTrampolines,
                       FixupStaticTrampolinesRaw)) {
             return false;
@@ -130,8 +146,6 @@ public:
                       UnregisterNativeThread)) {
             return false;
         }
-
-        int sdk_int = GetAndroidApiLevel();
 
         if (sdk_int >= __ANDROID_API_R__) {
             if constexpr (GetArch() != Arch::kX86 && GetArch() != Arch::kX86_64) {
