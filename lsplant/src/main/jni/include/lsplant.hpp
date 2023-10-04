@@ -3,6 +3,7 @@
 #include <jni.h>
 
 #include <string_view>
+#include <functional>
 
 /// \namespace lsplant
 namespace lsplant {
