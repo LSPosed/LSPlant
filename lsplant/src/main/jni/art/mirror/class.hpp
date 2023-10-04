@@ -28,8 +28,8 @@ private:
     }
 
     using BackupMethods = std::list<std::tuple<art::ArtMethod *, void *>>;
-    inline static absl::flat_hash_map<const art::Thread *,
-                                      absl::flat_hash_map<const dex::ClassDef *, BackupMethods>>
+    inline static phmap::flat_hash_map<const art::Thread *,
+                                       phmap::flat_hash_map<const dex::ClassDef *, BackupMethods>>
         backup_methods_;
     inline static std::mutex backup_methods_lock_;
 
@@ -37,28 +37,24 @@ private:
         std::list<std::tuple<art::ArtMethod *, void *>> out;
         if (!class_def) return;
         {
-            std::shared_lock lk(hooked_classes_lock_);
-            if (auto found = hooked_classes_.find(class_def); found != hooked_classes_.end())
-                [[unlikely]] {
-                for (auto method : found->second) {
+            hooked_classes_.if_contains(class_def, [&out](const auto &it) {
+                for (auto method : it.second) {
                     if (method->IsStatic()) {
                         LOGV("Backup hooked method %p because of initialization", method);
                         out.emplace_back(method, method->GetEntryPoint());
                     }
                 }
-            }
+            });
         }
         {
-            std::shared_lock lk(deoptimized_methods_lock_);
-            if (auto found = deoptimized_classes_.find(class_def);
-                found != deoptimized_classes_.end()) [[unlikely]] {
-                for (auto method : found->second) {
+            deoptimized_classes_.if_contains(class_def, [&out](const auto &it) {
+                for (auto method : it.second) {
                     if (method->IsStatic()) {
                         LOGV("Backup deoptimized method %p because of initialization", method);
                         out.emplace_back(method, method->GetEntryPoint());
                     }
                 }
-            }
+            });
         }
         if (!out.empty()) [[unlikely]] {
             std::unique_lock lk(backup_methods_lock_);

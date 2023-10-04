@@ -158,7 +158,8 @@ bool InitJNI(JNIEnv *env) {
         return false;
     }
     if (method_get_return_type =
-            JNI_GetMethodID(env, JNI_FindClass(env, "java/lang/reflect/Method"), "getReturnType", "()Ljava/lang/Class;");
+            JNI_GetMethodID(env, JNI_FindClass(env, "java/lang/reflect/Method"), "getReturnType",
+                            "()Ljava/lang/Class;");
         !method_get_return_type) {
         LOGE("Failed to find getReturnType method");
         return false;
@@ -620,7 +621,7 @@ struct JavaDebuggableGuard {
             if (count.compare_exchange_strong(expected, 1, std::memory_order_acq_rel,
                                               std::memory_order_acquire)) {
                 Runtime::Current()->SetJavaDebuggable(
-                        Runtime::RuntimeDebugState::kJavaDebuggableAtInit);
+                    Runtime::RuntimeDebugState::kJavaDebuggableAtInit);
                 count.fetch_add(1, std::memory_order_release);
                 count.notify_all();
                 break;
@@ -642,7 +643,7 @@ struct JavaDebuggableGuard {
             if (count.compare_exchange_strong(expected, 1, std::memory_order_acq_rel,
                                               std::memory_order_acquire)) {
                 Runtime::Current()->SetJavaDebuggable(
-                        Runtime::RuntimeDebugState::kNonJavaDebuggable);
+                    Runtime::RuntimeDebugState::kNonJavaDebuggable);
                 count.fetch_sub(1, std::memory_order_release);
                 count.notify_all();
                 break;
@@ -776,28 +777,19 @@ using ::lsplant::IsHooked;
     auto *target = ArtMethod::FromReflectedMethod(env, target_method);
     jobject reflected_backup = nullptr;
     art::ArtMethod *backup = nullptr;
-    {
-        std::unique_lock lk(hooked_methods_lock_);
-        if (auto it = hooked_methods_.find(target); it != hooked_methods_.end()) [[likely]] {
-            std::tie(reflected_backup, backup) = it->second;
-            if (reflected_backup == nullptr) {
-                LOGE("Unable to unhook a method that is not hooked");
-                return false;
-            }
-            hooked_methods_.erase(it->second.second);
-            hooked_methods_.erase(it);
-        }
+    if (!hooked_methods_.erase_if(target, [&reflected_backup, &backup](const auto &it) {
+            std::tie(reflected_backup, backup) = it.second;
+            return reflected_backup != nullptr;
+        })) {
+        LOGE("Unable to unhook a method that is not hooked");
+        return false;
     }
-    {
-        std::unique_lock lk(hooked_classes_lock_);
-        if (auto it = hooked_classes_.find(target->GetDeclaringClass()->GetClassDef());
-            it != hooked_classes_.end()) {
-            it->second.erase(target);
-            if (it->second.empty()) {
-                hooked_classes_.erase(it);
-            }
-        }
-    }
+    // FIXME: not atomic, but should be fine
+    hooked_methods_.erase(backup);
+    hooked_classes_.erase_if(target->GetDeclaringClass()->GetClassDef(), [&target](auto &it) {
+        it.second.erase(target);
+        return it.second.empty();
+    });
     auto *backup_method = env->FromReflectedMethod(reflected_backup);
     env->DeleteGlobalRef(reflected_backup);
     if (DoUnHook(target, backup)) {

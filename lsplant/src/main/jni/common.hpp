@@ -1,7 +1,6 @@
 #pragma once
 
-#include <absl/container/flat_hash_map.h>
-#include <absl/container/flat_hash_set.h>
+#include <parallel_hashmap/phmap.h>
 #include <sys/system_properties.h>
 
 #include <list>
@@ -104,44 +103,47 @@ class Class;
 
 namespace {
 // target, backup
-inline absl::flat_hash_map<art::ArtMethod *, std::pair<jobject, art::ArtMethod *>> hooked_methods_;
-inline std::shared_mutex hooked_methods_lock_;
+template <class K, class V, class Hash = phmap::priv::hash_default_hash<K>,
+          class Eq = phmap::priv::hash_default_eq<K>,
+          class Alloc = phmap::priv::Allocator<phmap::priv::Pair<const K, V>>, size_t N = 4>
+using SharedHashMap = phmap::parallel_flat_hash_map<K, V, Hash, Eq, Alloc, N, std::shared_mutex>;
 
-inline absl::flat_hash_map<const art::dex::ClassDef *, absl::flat_hash_set<art::ArtMethod *>>
+template <class T, class Hash = phmap::priv::hash_default_hash<T>,
+          class Eq = phmap::priv::hash_default_eq<T>, class Alloc = phmap::priv::Allocator<T>,
+          size_t N = 4>
+using SharedHashSet = phmap::parallel_flat_hash_set<T, Hash, Eq, Alloc, N, std::shared_mutex>;
+
+inline SharedHashMap<art::ArtMethod *, std::pair<jobject, art::ArtMethod *>> hooked_methods_;
+
+inline SharedHashMap<const art::dex::ClassDef *, phmap::flat_hash_set<art::ArtMethod *>>
     hooked_classes_;
-inline std::shared_mutex hooked_classes_lock_;
 
-inline absl::flat_hash_set<art::ArtMethod *> deoptimized_methods_set_;
-inline std::shared_mutex deoptimized_methods_lock_;
+inline SharedHashSet<art::ArtMethod *> deoptimized_methods_set_;
 
-inline absl::flat_hash_map<const art::dex::ClassDef *, absl::flat_hash_set<art::ArtMethod *>>
+inline SharedHashMap<const art::dex::ClassDef *, phmap::flat_hash_set<art::ArtMethod *>>
     deoptimized_classes_;
-inline std::shared_mutex deoptimized_classes_lock_;
 
 inline std::list<std::pair<art::ArtMethod *, art::ArtMethod *>> jit_movements_;
 inline std::shared_mutex jit_movements_lock_;
 }  // namespace
 
 inline art::ArtMethod *IsHooked(art::ArtMethod *art_method, bool including_backup = false) {
-    std::shared_lock lk(hooked_methods_lock_);
-    if (auto it = hooked_methods_.find(art_method);
-        it != hooked_methods_.end() && (!including_backup || it->second.first)) {
-        return it->second.second;
-    }
-    return nullptr;
+    art::ArtMethod *backup = nullptr;
+    hooked_methods_.if_contains(art_method, [&backup, &including_backup](const auto &it) {
+        if (!including_backup || it.second.first) backup = it.second.second;
+    });
+    return backup;
 }
 
 inline art::ArtMethod *IsBackup(art::ArtMethod *art_method) {
-    std::shared_lock lk(hooked_methods_lock_);
-    if (auto it = hooked_methods_.find(art_method);
-        it != hooked_methods_.end() && !it->second.first) {
-        return it->second.second;
-    }
+    art::ArtMethod *backup = nullptr;
+    hooked_methods_.if_contains(art_method, [&backup](const auto &it) {
+        if (!it.second.first) backup = it.second.second;
+    });
     return nullptr;
 }
 
 inline bool IsDeoptimized(art::ArtMethod *art_method) {
-    std::shared_lock lk(deoptimized_methods_lock_);
     return deoptimized_methods_set_.contains(art_method);
 }
 
@@ -152,26 +154,18 @@ inline std::list<std::pair<art::ArtMethod *, art::ArtMethod *>> GetJitMovements(
 
 inline void RecordHooked(art::ArtMethod *target, const art::dex::ClassDef *class_def,
                          jobject reflected_backup, art::ArtMethod *backup) {
-    {
-        std::unique_lock lk(hooked_classes_lock_);
-        hooked_classes_[class_def].emplace(target);
-    }
-    {
-        std::unique_lock lk(hooked_methods_lock_);
-        hooked_methods_[target] = {reflected_backup, backup};
-        hooked_methods_[backup] = {nullptr, target};
-    }
+    hooked_classes_.lazy_emplace_l(
+        class_def, [&target](auto &it) { it.second.emplace(target); },
+        [&class_def, &target](const auto &ctor) {
+            ctor(class_def, phmap::flat_hash_set<art::ArtMethod *>{target});
+        });
+    hooked_methods_.insert({std::make_pair(target, std::make_pair(reflected_backup, backup)),
+                            std::make_pair(backup, std::make_pair(nullptr, target))});
 }
 
 inline void RecordDeoptimized(const art::dex::ClassDef *class_def, art::ArtMethod *art_method) {
-    {
-        std::unique_lock lk(deoptimized_classes_lock_);
-        deoptimized_classes_[class_def].emplace(art_method);
-    }
-    {
-        std::unique_lock lk(deoptimized_methods_lock_);
-        deoptimized_methods_set_.insert(art_method);
-    }
+    { deoptimized_classes_[class_def].emplace(art_method); }
+    deoptimized_methods_set_.insert(art_method);
 }
 
 inline void RecordJitMovement(art::ArtMethod *target, art::ArtMethod *backup) {
