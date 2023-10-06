@@ -132,7 +132,7 @@ public:
         int sdk_int = GetAndroidApiLevel();
 
         if (sdk_int >= __ANDROID_API_N__ && sdk_int < __ANDROID_API_T__) {
-            !HookSyms(handler, ShouldUseInterpreterEntrypoint);
+            HookSyms(handler, ShouldUseInterpreterEntrypoint);
         }
 
         if (!HookSyms(handler, FixupStaticTrampolinesWithThread, FixupStaticTrampolines,
