@@ -301,6 +301,58 @@ bool InitNative(JNIEnv *env, const HookHandler &handler) {
     return true;
 }
 
+struct JavaDebuggableGuard {
+    JavaDebuggableGuard() {
+        while (true) {
+            size_t expected = 0;
+            if (count.compare_exchange_strong(expected, 1, std::memory_order_acq_rel,
+                                              std::memory_order_acquire)) {
+                Runtime::Current()->SetJavaDebuggable(
+                        Runtime::RuntimeDebugState::kJavaDebuggableAtInit);
+                count.fetch_add(1, std::memory_order_release);
+                count.notify_all();
+                break;
+            }
+            if (expected == 1) {
+                count.wait(expected, std::memory_order_acquire);
+                continue;
+            }
+            if (count.compare_exchange_strong(expected, expected + 1, std::memory_order_acq_rel,
+                                              std::memory_order_relaxed)) {
+                break;
+            }
+        }
+    }
+
+    ~JavaDebuggableGuard() {
+        while (true) {
+            size_t expected = 2;
+            if (count.compare_exchange_strong(expected, 1, std::memory_order_acq_rel,
+                                              std::memory_order_acquire)) {
+                Runtime::Current()->SetJavaDebuggable(
+                        Runtime::RuntimeDebugState::kNonJavaDebuggable);
+                count.fetch_sub(1, std::memory_order_release);
+                count.notify_all();
+                break;
+            }
+            if (expected == 1) {
+                count.wait(expected, std::memory_order_acquire);
+                continue;
+            }
+            if (count.compare_exchange_strong(expected, expected - 1, std::memory_order_acq_rel,
+                                              std::memory_order_relaxed)) {
+                break;
+            }
+        }
+    }
+
+private:
+    inline static std::atomic_size_t count{0};
+    static_assert(std::atomic_size_t::is_always_lock_free, "Unsupported architecture");
+    static_assert(std::is_same_v<std::atomic_size_t::value_type, size_t>,
+                  "Unsupported architecture");
+};
+
 std::tuple<jclass, jfieldID, jmethodID, jmethodID> BuildDex(JNIEnv *env, jobject class_loader,
                                                             std::string_view shorty, bool is_static,
                                                             std::string_view method_name,
@@ -395,17 +447,17 @@ std::tuple<jclass, jfieldID, jmethodID, jmethodID> BuildDex(JNIEnv *env, jobject
 
     jclass target_class = nullptr;
 
+    ScopedLocalRef<jobject> my_cl{nullptr};
+
     if (in_memory_class_loader_init) [[likely]] {
         auto dex_buffer = JNI_NewDirectByteBuffer(env, const_cast<void *>(image.ptr()),
                                                   static_cast<jlong>(image.size()));
-        auto my_cl = JNI_NewObject(env, in_memory_class_loader, in_memory_class_loader_init,
+        // FIXME: a very hacky way to disable background verification of the hooker classloader,
+        //        which fixes a crash for art 34+; there should be a better way to do this.
+        JavaDebuggableGuard guard;
+
+        my_cl = JNI_NewObject(env, in_memory_class_loader, in_memory_class_loader_init,
                                    dex_buffer, class_loader);
-        if (my_cl) {
-            target_class = JNI_Cast<jclass>(JNI_CallObjectMethod(
-                                                env, my_cl, load_class,
-                                                JNI_NewStringUTF(env, generated_class_name.data())))
-                               .release();
-        }
     } else {
         void *target =
             mmap(nullptr, image.size(), PROT_WRITE | PROT_READ, MAP_ANONYMOUS | MAP_PRIVATE, -1, 0);
@@ -420,13 +472,16 @@ std::tuple<jclass, jfieldID, jmethodID, jmethodID> BuildDex(JNIEnv *env, jobject
         }
         auto java_dex_file = WrapScope(env, dex ? dex->ToJavaDexFile(env) : jobject{nullptr});
         if (dex && java_dex_file) {
-            auto p = JNI_NewObject(env, path_class_loader, path_class_loader_init,
+            my_cl = JNI_NewObject(env, path_class_loader, path_class_loader_init,
                                    JNI_NewStringUTF(env, ""), class_loader);
-            target_class = JNI_Cast<jclass>(JNI_CallObjectMethod(
-                                                env, java_dex_file, load_class,
-                                                env->NewStringUTF(generated_class_name.data()), p))
-                               .release();
         }
+    }
+
+    if (my_cl) {
+        target_class = JNI_Cast<jclass>(JNI_CallObjectMethod(
+                env, my_cl, load_class,
+                JNI_NewStringUTF(env, generated_class_name.data())))
+                .release();
     }
 
     if (target_class) {
@@ -613,59 +668,6 @@ std::string GetProxyMethodShorty(JNIEnv *env, jobject proxy_method) {
     }
     return out;
 }
-
-struct JavaDebuggableGuard {
-    JavaDebuggableGuard() {
-        while (true) {
-            size_t expected = 0;
-            if (count.compare_exchange_strong(expected, 1, std::memory_order_acq_rel,
-                                              std::memory_order_acquire)) {
-                Runtime::Current()->SetJavaDebuggable(
-                    Runtime::RuntimeDebugState::kJavaDebuggableAtInit);
-                count.fetch_add(1, std::memory_order_release);
-                count.notify_all();
-                break;
-            }
-            if (expected == 1) {
-                count.wait(expected, std::memory_order_acquire);
-                continue;
-            }
-            if (count.compare_exchange_strong(expected, expected + 1, std::memory_order_acq_rel,
-                                              std::memory_order_relaxed)) {
-                break;
-            }
-        }
-    }
-
-    ~JavaDebuggableGuard() {
-        while (true) {
-            size_t expected = 2;
-            if (count.compare_exchange_strong(expected, 1, std::memory_order_acq_rel,
-                                              std::memory_order_acquire)) {
-                Runtime::Current()->SetJavaDebuggable(
-                    Runtime::RuntimeDebugState::kNonJavaDebuggable);
-                count.fetch_sub(1, std::memory_order_release);
-                count.notify_all();
-                break;
-            }
-            if (expected == 1) {
-                count.wait(expected, std::memory_order_acquire);
-                continue;
-            }
-            if (count.compare_exchange_strong(expected, expected - 1, std::memory_order_acq_rel,
-                                              std::memory_order_relaxed)) {
-                break;
-            }
-        }
-    }
-
-private:
-    inline static std::atomic_size_t count{0};
-    static_assert(std::atomic_size_t::is_always_lock_free, "Unsupported architecture");
-    static_assert(std::is_same_v<std::atomic_size_t::value_type, size_t>,
-                  "Unsupported architecture");
-};
-
 }  // namespace
 
 inline namespace v2 {
