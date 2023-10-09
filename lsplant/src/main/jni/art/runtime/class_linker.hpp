@@ -82,14 +82,14 @@ private:
             if (IsDeoptimized(art_method)) {
                 if (new_trampoline != art_quick_to_interpreter_bridge ||
                     new_trampoline != art_quick_generic_jni_trampoline) {
-                    LOGV("re-deoptimize for %s", art_method->PrettyMethod(true).data());
+                    LOGV("re-deoptimize for %p", art_method);
                     SetEntryPointsToInterpreter(art_method);
                 }
                 continue;
             }
             if (auto backup_method = IsHooked(art_method); backup_method) [[likely]] {
                 if (new_trampoline != old_trampoline) [[unlikely]] {
-                    LOGV("propagate entrypoint for %s", backup_method->PrettyMethod(true).data());
+                    LOGV("propagate entrypoint for %p", backup_method);
                     backup_method->SetEntryPoint(new_trampoline);
                 }
             }
