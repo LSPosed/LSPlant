@@ -308,7 +308,7 @@ struct JavaDebuggableGuard {
             if (count.compare_exchange_strong(expected, 1, std::memory_order_acq_rel,
                                               std::memory_order_acquire)) {
                 Runtime::Current()->SetJavaDebuggable(
-                        Runtime::RuntimeDebugState::kJavaDebuggableAtInit);
+                    Runtime::RuntimeDebugState::kJavaDebuggableAtInit);
                 count.fetch_add(1, std::memory_order_release);
                 count.notify_all();
                 break;
@@ -330,7 +330,7 @@ struct JavaDebuggableGuard {
             if (count.compare_exchange_strong(expected, 1, std::memory_order_acq_rel,
                                               std::memory_order_acquire)) {
                 Runtime::Current()->SetJavaDebuggable(
-                        Runtime::RuntimeDebugState::kNonJavaDebuggable);
+                    Runtime::RuntimeDebugState::kNonJavaDebuggable);
                 count.fetch_sub(1, std::memory_order_release);
                 count.notify_all();
                 break;
@@ -447,8 +447,6 @@ std::tuple<jclass, jfieldID, jmethodID, jmethodID> BuildDex(JNIEnv *env, jobject
 
     jclass target_class = nullptr;
 
-    ScopedLocalRef<jobject> my_cl{nullptr};
-
     if (in_memory_class_loader_init) [[likely]] {
         auto dex_buffer = JNI_NewDirectByteBuffer(env, const_cast<void *>(image.ptr()),
                                                   static_cast<jlong>(image.size()));
@@ -456,8 +454,14 @@ std::tuple<jclass, jfieldID, jmethodID, jmethodID> BuildDex(JNIEnv *env, jobject
         //        which fixes a crash for art 34+; there should be a better way to do this.
         JavaDebuggableGuard guard;
 
-        my_cl = JNI_NewObject(env, in_memory_class_loader, in_memory_class_loader_init,
+        auto my_cl = JNI_NewObject(env, in_memory_class_loader, in_memory_class_loader_init,
                                    dex_buffer, class_loader);
+        if (my_cl) {
+            target_class = JNI_Cast<jclass>(JNI_CallObjectMethod(
+                                                env, my_cl, load_class,
+                                                JNI_NewStringUTF(env, generated_class_name.data())))
+                               .release();
+        }
     } else {
         void *target =
             mmap(nullptr, image.size(), PROT_WRITE | PROT_READ, MAP_ANONYMOUS | MAP_PRIVATE, -1, 0);
@@ -472,16 +476,14 @@ std::tuple<jclass, jfieldID, jmethodID, jmethodID> BuildDex(JNIEnv *env, jobject
         }
         auto java_dex_file = WrapScope(env, dex ? dex->ToJavaDexFile(env) : jobject{nullptr});
         if (dex && java_dex_file) {
-            my_cl = JNI_NewObject(env, path_class_loader, path_class_loader_init,
-                                   JNI_NewStringUTF(env, ""), class_loader);
+            auto my_cl = JNI_NewObject(env, path_class_loader, path_class_loader_init,
+                                       JNI_NewStringUTF(env, ""), class_loader);
+            target_class =
+                JNI_Cast<jclass>(
+                    JNI_CallObjectMethod(env, java_dex_file, load_class,
+                                         JNI_NewStringUTF(env, generated_class_name.data()), my_cl))
+                    .release();
         }
-    }
-
-    if (my_cl) {
-        target_class = JNI_Cast<jclass>(JNI_CallObjectMethod(
-                env, my_cl, load_class,
-                JNI_NewStringUTF(env, generated_class_name.data())))
-                .release();
     }
 
     if (target_class) {
