@@ -127,6 +127,12 @@ private:
             RestoreBackup(nullptr, self);
         });
 
+    CREATE_MEM_HOOK_STUB_ENTRY(
+        "_ZN3art11ClassLinker26VisiblyInitializedCallback22MarkVisiblyInitializedEPNS_6ThreadE",
+        void, MarkVisiblyInitialized, (void *thiz, Thread* self), {
+            backup(thiz, self);
+            RestoreBackup(nullptr, self);
+        });
 public:
     static bool Init(const HookHandler &handler) {
         int sdk_int = GetAndroidApiLevel();
@@ -150,7 +156,7 @@ public:
         if (sdk_int >= __ANDROID_API_R__) {
             if constexpr (GetArch() != Arch::kX86 && GetArch() != Arch::kX86_64) {
                 // fixup static trampoline may have been inlined
-                HookSyms(handler, AdjustThreadVisibilityCounter);
+                HookSyms(handler, AdjustThreadVisibilityCounter, MarkVisiblyInitialized);
             }
         }
 
