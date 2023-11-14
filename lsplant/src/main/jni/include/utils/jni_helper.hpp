@@ -667,7 +667,7 @@ template <ScopeOrClass Class, typename... Args>
                           std::forward<Args>(args)...);
 }
 
-// non-vritual methods
+// non-virtual methods
 
 template <ScopeOrObject Object, ScopeOrClass Class, typename... Args>
 [[maybe_unused]] inline auto JNI_CallCallNonvirtualVoidMethod(JNIEnv *env, Object &&obj,
