@@ -80,7 +80,7 @@ private:
             auto new_trampoline = art_method->GetEntryPoint();
             art_method->SetEntryPoint(old_trampoline);
             if (IsDeoptimized(art_method)) {
-                if (new_trampoline != art_quick_to_interpreter_bridge ||
+                if (new_trampoline != art_quick_to_interpreter_bridge &&
                     new_trampoline != art_quick_generic_jni_trampoline) {
                     LOGV("re-deoptimize for %p", art_method);
                     SetEntryPointsToInterpreter(art_method);
