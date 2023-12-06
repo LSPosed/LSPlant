@@ -178,8 +178,8 @@ public:
             LOGE("Throwable has less than 2 constructors");
             return false;
         }
-        auto &first_ctor = constructors[0];
-        auto &second_ctor = constructors[1];
+        auto first_ctor = constructors[0];
+        auto second_ctor = constructors[1];
         auto *first = FromReflectedMethod(env, first_ctor.get());
         auto *second = FromReflectedMethod(env, second_ctor.get());
         art_method_size = reinterpret_cast<uintptr_t>(second) - reinterpret_cast<uintptr_t>(first);

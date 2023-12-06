@@ -63,11 +63,6 @@ public:
 
     operator T() const { return local_ref_; }
 
-    // We do not expose an empty constructor as it can easily lead to errors
-    // using common idioms, e.g.:
-    //   ScopedLocalRef<...> ref;
-    //   ref.reset(...);
-    // Move assignment operator.
     ScopedLocalRef &operator=(ScopedLocalRef &&s) noexcept {
         reset(s.release());
         env_ = s.env_;
@@ -837,10 +832,6 @@ using JArrayUnderlyingType = typename JArrayUnderlyingTypeHelper<T>::Type;
 
 template <JArray T>
 class ScopedLocalRef<T> {
-    ScopedLocalRef(JNIEnv *env, T local_ref, size_t size, JArrayUnderlyingType<T> *elements,
-                   bool modified) noexcept
-        : env_(env), local_ref_(local_ref), size_(size), elements_(elements), modified_(modified) {}
-
 public:
     class Iterator {
         friend class ScopedLocalRef<T>;
@@ -898,12 +889,8 @@ public:
         reset(local_ref);
     }
 
-    ScopedLocalRef(ScopedLocalRef &&s) noexcept
-        : ScopedLocalRef(s.env_, s.local_ref_, s.size_, s.elements_, s.modified_) {
-        s.local_ref_ = nullptr;
-        s.size_ = 0;
-        s.elements_ = nullptr;
-        s.modified_ = false;
+    ScopedLocalRef(ScopedLocalRef &&s) noexcept {
+        *this = std::move(s);
     }
 
     template <JObject U>
@@ -918,25 +905,13 @@ public:
             if (local_ref_ != nullptr) {
                 ReleaseElements(modified_ ? 0 : JNI_ABORT);
                 env_->DeleteLocalRef(local_ref_);
-                if constexpr (std::is_same_v<T, jobjectArray>) {
-                    for (size_t i = 0; i < size_; ++i) {
-                        elements_[i].~ScopedLocalRef<jobject>();
-                    }
-                    operator delete[](elements_);
-                }
                 elements_ = nullptr;
             }
             local_ref_ = ptr;
             size_ = local_ref_ ? env_->GetArrayLength(local_ref_) : 0;
             if (!local_ref_) return;
-            if constexpr (std::is_same_v<T, jobjectArray>) {
-                elements_ = static_cast<ScopedLocalRef<jobject> *>(operator new[](
-                    sizeof(ScopedLocalRef<jobject>) * size_));
-                for (size_t i = 0; i < size_; ++i) {
-                    new (&elements_[i]) ScopedLocalRef<jobject>(
-                        JNI_SafeInvoke(env_, &JNIEnv::GetObjectArrayElement, local_ref_, i));
-                }
-            } else if constexpr (std::is_same_v<T, jbooleanArray>) {
+            static_assert(!std::is_same_v<T, jobjectArray>);
+            if constexpr (std::is_same_v<T, jbooleanArray>) {
                 elements_ = env_->GetBooleanArrayElements(local_ref_, nullptr);
             } else if constexpr (std::is_same_v<T, jbyteArray>) {
                 elements_ = env_->GetByteArrayElements(local_ref_, nullptr);
@@ -961,12 +936,6 @@ public:
         size_ = 0;
         local_ref_ = nullptr;
         ReleaseElements(modified_ ? 0 : JNI_ABORT);
-        if constexpr (std::is_same_v<T, jobjectArray>) {
-            for (size_t i = 0; i < size_; ++i) {
-                elements_[i].~ScopedLocalRef<jobject>();
-            }
-            operator delete[](elements_);
-        }
         elements_ = nullptr;
         return localRef;
     }
@@ -1017,11 +986,7 @@ public:
 private:
     void ReleaseElements(jint mode) {
         if (!local_ref_ || !elements_) return;
-        if constexpr (std::is_same_v<T, jobjectArray>) {
-            for (size_t i = 0; i < size_; ++i) {
-                JNI_SafeInvoke(env_, &JNIEnv::SetObjectArrayElement, local_ref_, i, elements_[i]);
-            }
-        } else if constexpr (std::is_same_v<T, jbooleanArray>) {
+        if constexpr (std::is_same_v<T, jbooleanArray>) {
             env_->ReleaseBooleanArrayElements(local_ref_, elements_, mode);
         } else if constexpr (std::is_same_v<T, jbyteArray>) {
             env_->ReleaseByteArrayElements(local_ref_, elements_, mode);
@@ -1050,170 +1015,205 @@ private:
 
 
 class JObjectArrayElement{
-public:
     friend class ScopedLocalRef<jobjectArray>;
-    explicit JObjectArrayElement(JNIEnv * env, jobjectArray array, int i) : env_(env), array_(array), i_(i) {
-        item_ = JNI_SafeInvoke(env_, &JNIEnv::GetObjectArrayElement, array_, i_).release();
+
+    auto obtain() {
+        if (i_ < 0 || i_ >= size_) return JObjectArrayElement(env_, array_, i_, ScopedLocalRef<jobject>{nullptr});
+        return JObjectArrayElement(env_, array_, i_, JNI_SafeInvoke(env_, &JNIEnv::GetObjectArrayElement, array_, i_));
     }
 
-    ~JObjectArrayElement(){
-        if (item_){
-            env_->DeleteLocalRef(item_);
-        }
+    explicit JObjectArrayElement(JNIEnv * env, jobjectArray array, int i, size_t size_) :
+            env_(env), array_(array), i_(i),
+            item_(obtain()) {}
+
+    JObjectArrayElement &operator++() {
+        ++i_;
+        item_ = obtain();
+        return *this;
     }
 
-    void reset(int i){
-        if (item_){
-            env_->DeleteLocalRef(item_);
-        }
-        i_ = i;
-        item_ = JNI_SafeInvoke(env_, &JNIEnv::GetObjectArrayElement, array_, i).release();
+    JObjectArrayElement &operator--() {
+        --i_;
+        item_ = obtain();
+        return *this;
     }
 
-    JObjectArrayElement(JObjectArrayElement&& s){
-        env_ = s.env_;
-        array_ = s.array_;
-        i_ = s.i_;
-        item_ = s.item_;
-        s.env_ = nullptr;
-        s.array_ = nullptr;
-        s.i_ = -1;
-        s.item_ = nullptr;
+    JObjectArrayElement operator++(int) {
+        return JObjectArrayElement(env_, array_, i_ + 1, size_);
     }
 
-    operator jobject(){
+    JObjectArrayElement operator--(int) {
+        return JObjectArrayElement(env_, array_, i_ - 1, size_);
+    }
+
+public:
+    JObjectArrayElement(JObjectArrayElement&& s): env_(s.env_), array_(s.array_), i_(s.i_), item_(std::move(s.item_)) {}
+
+    operator ScopedLocalRef<jobject>& () & {
         return item_;
     }
 
-    JObjectArrayElement &operator=(jobject s) noexcept {
-        if (item_){
-            env_->DeleteLocalRef(item_);
-        }
-        JNI_SafeInvoke(env_, &JNIEnv::SetObjectArrayElement, array_, i_, s);
-        item_ = s;
+    operator ScopedLocalRef<jobject>&& () && {
+        return std::move(item_);
+    }
+
+    JObjectArrayElement& operator=(JObjectArrayElement&& s) {
+        reset(s.item_.release());
         return *this;
     }
+
+    JObjectArrayElement& operator=(const JObjectArrayElement& s) {
+        item_.reset(env_->NewLocalRef(s.get()));
+        return *this;
+    }
+
+    JObjectArrayElement& operator=(ScopedLocalRef<jobject>&& s) {
+        reset(s.release());
+        return *this;
+    }
+
+    JObjectArrayElement& operator=(const ScopedLocalRef<jobject>& s) {
+        item_.reset(env_->NewLocalRef(s.get()));
+        return *this;
+    }
+
+    JObjectArrayElement& operator=(const jobject &s) {
+        item_.reset(env_->NewLocalRef(s));
+        return *this;
+    }
+
+    void reset(jobject item) {
+        item_.reset(item);
+        if (item_) JNI_SafeInvoke(env_, &JNIEnv::SetObjectArrayElement, array_, i_, item_);
+    }
+
+    jobject get() const { return item_.get(); }
+
+    jobject release() { return item_.release(); }
+
+    jobject operator->() const { return item_.get(); }
+
+    jobject operator*() const { return item_.get(); }
 private:
     JNIEnv *env_;
     jobjectArray array_;
     int i_;
-    jobject item_;
-    DISALLOW_COPY_AND_ASSIGN(JObjectArrayElement);
+    int size_;
+    ScopedLocalRef<jobject> item_;
+    JObjectArrayElement(const JObjectArrayElement&) = delete;
 };
 
 template<>
 class ScopedLocalRef<jobjectArray> {
-    using T = jobjectArray;
-
-    ScopedLocalRef(JNIEnv *env, T local_ref, size_t size) noexcept
-            : env_(env), local_ref_(local_ref), size_(size) {}
-
 public:
     class Iterator {
-        friend class ScopedLocalRef<T>;
+        friend class ScopedLocalRef<jobjectArray>;
 
-        Iterator(JObjectArrayElement&& e) : e_(std::move(e)) {}
-
-        JObjectArrayElement e_;
-
+        Iterator(JObjectArrayElement &&e) : e_(std::move(e)) {}
+        Iterator(JNIEnv *env, jobjectArray array, int i, size_t size) : e_(env, array, i, size) {}
     public:
         auto &operator*() { return e_; }
 
-        auto *operator->() { return &e_; }
+        auto *operator->() { return e_.get(); }
 
         Iterator &operator++() {
-            e_.reset(e_.i_ + 1);
+            ++e_;
             return *this;
         }
 
         Iterator &operator--() {
-            e_.reset(e_.i_ - 1);
+            --e_;
             return *this;
         }
 
         Iterator operator++(int) {
-            return Iterator(JObjectArrayElement(e_.env_, e_.array_, e_.i_ + 1));
+            return Iterator(e_++);
         }
 
         Iterator operator--(int) {
-            return Iterator(JObjectArrayElement(e_.env_, e_.array_, e_.i_ - 1));
+            return Iterator(e_--);
         }
 
         bool operator==(const Iterator &other) const { return other.e_.i_ == e_.i_; }
 
         bool operator!=(const Iterator &other) const { return other.e_.i_ != e_.i_; }
+    private:
+        JObjectArrayElement e_;
     };
 
     class ConstIterator {
-        friend class ScopedLocalRef<T>;
+        friend class ScopedLocalRef<jobjectArray>;
 
-        ConstIterator(JNIEnv * env, jobjectArray array, int i) : env_(env), array_(array), i_(i), item_(JNI_SafeInvoke(env, &JNIEnv::GetObjectArrayElement, array, i)) {}
+        auto obtain() {
+            if (i_ < 0 || i_ >= size_) return ScopedLocalRef<jobject>{nullptr};
+            return JNI_SafeInvoke(env_, &JNIEnv::GetObjectArrayElement, array_, i_);
+        }
 
-        JNIEnv* env_;
-        jobjectArray array_;
-        int i_;
-        ScopedLocalRef<jobject> item_;
-
+        ConstIterator(JNIEnv * env, jobjectArray array, int i, int size) : env_(env), array_(array), i_(i), size_(size), item_(obtain()) {}
     public:
         auto &operator*() { return item_; }
 
         auto *operator->() { return &item_; }
 
         ConstIterator &operator++() {
-            item_ = JNI_SafeInvoke(env_, &JNIEnv::GetObjectArrayElement, array_, ++i_);
+            ++i_;
+            item_ = obtain();
             return *this;
         }
 
         ConstIterator &operator--() {
-            item_ = JNI_SafeInvoke(env_, &JNIEnv::GetObjectArrayElement, array_, --i_);
+            --i_;
+            item_ = obtain();
             return *this;
         }
 
         ConstIterator operator++(int) {
-            return ConstIterator(env_, array_, i_ + 1);
+            return ConstIterator(env_, array_, i_ + 1, size_);
         }
 
         ConstIterator operator--(int) {
-            return ConstIterator(env_, array_, i_ - 1);
+            return ConstIterator(env_, array_, i_ - 1, size_);
         }
 
         bool operator==(const ConstIterator &other) const { return other.i_ == i_; }
 
         bool operator!=(const ConstIterator &other) const { return other.i_ != i_; }
+    private:
+        JNIEnv* env_;
+        jobjectArray array_;
+        int i_;
+        int size_;
+        ScopedLocalRef<jobject> item_;
     };
 
-    auto begin() { return Iterator(JObjectArrayElement(env_, local_ref_, 0)); }
+    auto begin() { return Iterator(env_, local_ref_, 0, size_); }
 
-    auto end() { return Iterator(JObjectArrayElement(env_, local_ref_, size_ - 1)); }
+    auto end() { return Iterator(env_, local_ref_, size_, size_); }
 
-    const auto begin() const { return ConstIterator(env_, local_ref_, 0); }
+    const auto begin() const { return ConstIterator(env_, local_ref_, 0, size_); }
 
-    auto end() const { return ConstIterator(env_, local_ref_, size_ - 1); }
+    auto end() const { return ConstIterator(env_, local_ref_, size_, size_); }
 
-    const auto cbegin() const { return ConstIterator(env_, local_ref_, 0); }
+    const auto cbegin() const { return ConstIterator(env_, local_ref_, 0, size_); }
 
-    auto cend() const { return ConstIterator(env_, local_ref_, size_ - 1); }
+    auto cend() const { return ConstIterator(env_, local_ref_, size_, size_); }
 
-    using BaseType [[maybe_unused]] = T;
-
-    ScopedLocalRef(JNIEnv *env, T local_ref) noexcept: env_(env), local_ref_(nullptr) {
+    ScopedLocalRef(JNIEnv *env, jobjectArray local_ref) noexcept: env_(env), local_ref_(nullptr) {
         reset(local_ref);
     }
 
-    ScopedLocalRef(ScopedLocalRef &&s) noexcept
-            : ScopedLocalRef(s.env_, s.local_ref_, s.size_) {
-            s.local_ref_ = nullptr;
-            s.size_ = 0;
+    ScopedLocalRef(ScopedLocalRef &&s) noexcept {
+        *this = std::move(s);
     }
 
     template<JObject U>
-    ScopedLocalRef(ScopedLocalRef<U> &&s) noexcept : ScopedLocalRef(s.env_, (T) s.release()) {}
+    ScopedLocalRef(ScopedLocalRef<U> &&s) noexcept : ScopedLocalRef(s.env_, (jobjectArray) s.release()) {}
 
-    explicit ScopedLocalRef(JNIEnv *env) noexcept: ScopedLocalRef(env, T{nullptr}) {}
+    explicit ScopedLocalRef(JNIEnv *env) noexcept: ScopedLocalRef(env, jobjectArray {nullptr}) {}
 
     ~ScopedLocalRef() { env_->DeleteLocalRef(release()); }
 
-    void reset(T ptr = nullptr) {
+    void reset(jobjectArray ptr = nullptr) {
         if (ptr != local_ref_) {
             if (local_ref_ != nullptr) {
                 env_->DeleteLocalRef(local_ref_);
@@ -1224,19 +1224,17 @@ public:
         }
     }
 
-    [[nodiscard]] T release() {
-        T localRef = local_ref_;
+    [[nodiscard]] jobjectArray release() {
+        jobjectArray localRef = local_ref_;
         size_ = 0;
         local_ref_ = nullptr;
         return localRef;
     }
 
-    T get() const { return local_ref_; }
-
-    explicit operator T() const { return local_ref_; }
+    jobjectArray get() const { return local_ref_; }
 
     JObjectArrayElement operator[](size_t index) {
-        return JObjectArrayElement(env_, local_ref_, index);
+        return JObjectArrayElement(env_, local_ref_, index, JNI_SafeInvoke(env_, &JNIEnv::GetObjectArrayElement, local_ref_, index));
     }
 
     const ScopedLocalRef<jobject> operator[](size_t index) const {
@@ -1262,14 +1260,13 @@ public:
     operator bool() const { return local_ref_; }
 
     template<JObject U>
-    friend
-    class ScopedLocalRef;
+    friend class ScopedLocalRef;
 
     friend class JUTFString;
 
 private:
     JNIEnv *env_;
-    T local_ref_;
+    jobjectArray local_ref_;
     size_t size_;
     DISALLOW_COPY_AND_ASSIGN(ScopedLocalRef);
 };
