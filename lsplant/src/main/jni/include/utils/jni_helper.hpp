@@ -177,12 +177,12 @@ inline auto JNI_NewStringUTF(JNIEnv *env, std::string_view sv) {
 
 class JUTFString {
 public:
-    inline JUTFString(JNIEnv *env, jstring jstr) : JUTFString(env, jstr, nullptr) {}
+    JUTFString(JNIEnv *env, jstring jstr) : JUTFString(env, jstr, nullptr) {}
 
-    inline JUTFString(const ScopedLocalRef<jstring> &jstr)
+    JUTFString(const ScopedLocalRef<jstring> &jstr)
         : JUTFString(jstr.env_, jstr.local_ref_, nullptr) {}
 
-    inline JUTFString(JNIEnv *env, jstring jstr, const char *default_cstr)
+    JUTFString(JNIEnv *env, jstring jstr, const char *default_cstr)
         : env_(env), jstr_(jstr) {
         if (env_ && jstr_)
             cstr_ = env_->GetStringUTFChars(jstr, nullptr);
@@ -190,15 +190,15 @@ public:
             cstr_ = default_cstr;
     }
 
-    inline operator const char *() const { return cstr_; }
+    operator const char *() const { return cstr_; }
 
-    inline operator const std::string() const { return cstr_; }
+    operator const std::string() const { return cstr_; }
 
-    inline operator const bool() const { return cstr_ != nullptr; }
+    operator const bool() const { return cstr_ != nullptr; }
 
-    inline auto get() const { return cstr_; }
+    auto get() const { return cstr_; }
 
-    inline ~JUTFString() {
+    ~JUTFString() {
         if (env_ && jstr_) env_->ReleaseStringUTFChars(jstr_, cstr_);
     }
 
