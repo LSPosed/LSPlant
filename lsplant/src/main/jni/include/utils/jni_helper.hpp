@@ -61,6 +61,10 @@ public:
 
     T get() const { return local_ref_; }
 
+    ScopedLocalRef<T> clone() const {
+        return ScopedLocalRef<T>(env_, (T)env_->NewLocalRef(local_ref_));
+    }
+
     operator T() const { return local_ref_; }
 
     ScopedLocalRef &operator=(ScopedLocalRef &&s) noexcept {
@@ -786,6 +790,11 @@ template <typename U, typename T>
     return ScopedLocalRef<U>(std::move(x));
 }
 
+template <typename U>
+[[maybe_unused]] inline auto JNI_Cast(JObjectArrayElement &&x) {
+    return JNI_Cast<U, jobject>(std::move(x));
+}
+
 [[maybe_unused]] inline auto JNI_NewDirectByteBuffer(JNIEnv *env, void *address, jlong capacity) {
     return JNI_SafeInvoke(env, &JNIEnv::NewDirectByteBuffer, address, capacity);
 }
@@ -1072,17 +1081,7 @@ public:
         return *this;
     }
 
-    JObjectArrayElement& operator=(ScopedLocalRef<jobject>&& s) {
-        reset(s.release());
-        return *this;
-    }
-
-    JObjectArrayElement& operator=(const ScopedLocalRef<jobject>& s) {
-        item_.reset(env_->NewLocalRef(s.get()));
-        return *this;
-    }
-
-    JObjectArrayElement& operator=(const jobject &s) {
+    JObjectArrayElement& operator=(jobject s) {
         item_.reset(env_->NewLocalRef(s));
         return *this;
     }
@@ -1090,6 +1089,14 @@ public:
     void reset(jobject item) {
         item_.reset(item);
         if (item_) JNI_SafeInvoke(env_, &JNIEnv::SetObjectArrayElement, array_, i_, item_);
+    }
+
+    ScopedLocalRef<jobject> clone() const {
+        return item_.clone();
+    }
+
+    operator jobject() const {
+        return item_;
     }
 
     jobject get() const { return item_.get(); }
