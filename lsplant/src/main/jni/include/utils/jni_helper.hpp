@@ -82,6 +82,8 @@ private:
     DISALLOW_COPY_AND_ASSIGN(ScopedLocalRef);
 };
 
+class JObjectArrayElement;
+
 template <typename T>
 concept JArray = std::is_base_of_v<std::remove_pointer_t<_jarray>, std::remove_pointer_t<T>>;
 
@@ -114,7 +116,9 @@ public:
 template <typename T, typename U>
 concept ScopeOrRaw = std::is_convertible_v<T, U> ||
     (is_instance_v<std::decay_t<T>, ScopedLocalRef>
-         &&std::is_convertible_v<typename std::decay_t<T>::BaseType, U>);
+         &&std::is_convertible_v<typename std::decay_t<T>::BaseType, U>) ||
+    (std::is_same_v<std::decay_t<T>, JObjectArrayElement>
+        &&std::is_convertible_v<jobject, U>);
 
 template <typename T>
 concept ScopeOrClass = ScopeOrRaw<T, jclass>;
@@ -140,6 +144,8 @@ template <typename T>
     if constexpr (std::is_same_v<std::decay_t<T>, std::string_view>)
         return x.data();
     else if constexpr (is_instance_v<std::decay_t<T>, ScopedLocalRef>)
+        return x.get();
+    else if constexpr (std::is_same_v<std::decay_t<T>, JObjectArrayElement>)
         return x.get();
     else
         return std::forward<T>(x);
@@ -1013,8 +1019,7 @@ private:
     DISALLOW_COPY_AND_ASSIGN(ScopedLocalRef);
 };
 
-
-class JObjectArrayElement{
+class JObjectArrayElement {
     friend class ScopedLocalRef<jobjectArray>;
 
     auto obtain() {
