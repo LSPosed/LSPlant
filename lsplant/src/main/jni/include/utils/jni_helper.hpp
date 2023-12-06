@@ -1105,8 +1105,8 @@ template<>
 class ScopedLocalRef<jobjectArray> {
     using T = jobjectArray;
 
-    ScopedLocalRef(JNIEnv *env, T local_ref, size_t size,bool modified) noexcept
-            : env_(env), local_ref_(local_ref), size_(size), modified_(modified) {}
+    ScopedLocalRef(JNIEnv *env, T local_ref, size_t size) noexcept
+            : env_(env), local_ref_(local_ref), size_(size) {}
 
 public:
     class Iterator {
@@ -1144,61 +1144,55 @@ public:
         bool operator!=(const Iterator &other) const { return other.e_.i_ != e_.i_; }
     };
 
-//    class ConstIterator {
-//        friend class ScopedLocalRef<T>;
-//
-//        ConstIterator(int i) : i_(i) {
-//            item_ = JNI_SafeInvoke(env_, &JNIEnv::GetObjectArrayElement, local_ref_, i);
-//        }
-//
-//        int i_;
-//        jobject item_;
-//
-//    public:
-//        auto &operator*() { return e_; }
-//
-//        auto *operator->() { return &e_; }
-//
-//        ConstIterator &operator++() {
-//            e_ = std::move(JObjectArrayConstElement(e_.env_, e_.array_, e_.i_ + 1));
-//            return *this;
-//        }
-//
-//        ConstIterator &operator--() {
-//            e_ = JObjectArrayConstElement(e_.env_, e_.array_, e_.i_ - 1);
-//            return *this;
-//        }
-//
-//        ConstIterator operator++(int) {
-//            return ConstIterator(JObjectArrayConstElement(e_.env_, e_.array_, e_.i_ + 1));
-//        }
-//
-//        ConstIterator operator--(int) {
-//            return ConstIterator(JObjectArrayConstElement(e_.env_, e_.array_, e_.i_ - 1));
-//        }
-//
-//        bool operator==(const ConstIterator &other) const { return other.e_.i_ == e_.i_; }
-//
-//        bool operator!=(const ConstIterator &other) const { return other.e_.i_ != e_.i_; }
-//    };
+    class ConstIterator {
+        friend class ScopedLocalRef<T>;
 
-    auto begin() {
-        modified_ = true;
-        return Iterator(JObjectArrayElement(env_, local_ref_, 0));
-    }
+        ConstIterator(JNIEnv * env, jobjectArray array, int i) : env_(env), array_(array), i_(i), item_(JNI_SafeInvoke(env, &JNIEnv::GetObjectArrayElement, array, i)) {}
 
-    auto end() {
-        modified_ = true;
-        return Iterator(JObjectArrayElement(env_, local_ref_, size_));
-    }
+        JNIEnv* env_;
+        jobjectArray array_;
+        int i_;
+        ScopedLocalRef<jobject> item_;
 
-//    const auto begin() const { return ConstIterator(JObjectArrayConstElement(env_, local_ref_, 0)); }
-//
-//    auto end() const { return ConstIterator(JObjectArrayConstElement(env_, local_ref_, size_)); }
-//
-//    const auto cbegin() const { return ConstIterator(JObjectArrayConstElement(env_, local_ref_, 0)); }
-//
-//    auto cend() const { return ConstIterator(JObjectArrayConstElement(env_, local_ref_, size_)); }
+    public:
+        auto &operator*() { return item_; }
+
+        auto *operator->() { return &item_; }
+
+        ConstIterator &operator++() {
+            item_ = JNI_SafeInvoke(env_, &JNIEnv::GetObjectArrayElement, array_, ++i_);
+            return *this;
+        }
+
+        ConstIterator &operator--() {
+            item_ = JNI_SafeInvoke(env_, &JNIEnv::GetObjectArrayElement, array_, --i_);
+            return *this;
+        }
+
+        ConstIterator operator++(int) {
+            return ConstIterator(env_, array_, i_ + 1);
+        }
+
+        ConstIterator operator--(int) {
+            return ConstIterator(env_, array_, i_ - 1);
+        }
+
+        bool operator==(const ConstIterator &other) const { return other.i_ == i_; }
+
+        bool operator!=(const ConstIterator &other) const { return other.i_ != i_; }
+    };
+
+    auto begin() { return Iterator(JObjectArrayElement(env_, local_ref_, 0)); }
+
+    auto end() { return Iterator(JObjectArrayElement(env_, local_ref_, size_ - 1)); }
+
+    const auto begin() const { return ConstIterator(env_, local_ref_, 0); }
+
+    auto end() const { return ConstIterator(env_, local_ref_, size_ - 1); }
+
+    const auto cbegin() const { return ConstIterator(env_, local_ref_, 0); }
+
+    auto cend() const { return ConstIterator(env_, local_ref_, size_ - 1); }
 
     using BaseType [[maybe_unused]] = T;
 
@@ -1207,10 +1201,9 @@ public:
     }
 
     ScopedLocalRef(ScopedLocalRef &&s) noexcept
-            : ScopedLocalRef(s.env_, s.local_ref_, s.size_, s.modified_) {
+            : ScopedLocalRef(s.env_, s.local_ref_, s.size_) {
             s.local_ref_ = nullptr;
             s.size_ = 0;
-            s.modified_ = false;
     }
 
     template<JObject U>
@@ -1243,16 +1236,11 @@ public:
     explicit operator T() const { return local_ref_; }
 
     JObjectArrayElement operator[](size_t index) {
-        modified_ = true;
         return JObjectArrayElement(env_, local_ref_, index);
     }
 
     const ScopedLocalRef<jobject> operator[](size_t index) const {
         return JNI_SafeInvoke(env_, &JNIEnv::GetObjectArrayElement, local_ref_, index);
-    }
-
-    void commit() {
-        modified_ = false;
     }
 
     // We do not expose an empty constructor as it can easily lead to errors
@@ -1264,9 +1252,7 @@ public:
         env_ = s.env_;
         local_ref_ = s.local_ref_;
         size_ = s.size_;
-        modified_ = s.modified_;
         s.size_ = 0;
-        s.modified_ = false;
         s.local_ref_ = nullptr;
         return *this;
     }
@@ -1285,7 +1271,6 @@ private:
     JNIEnv *env_;
     T local_ref_;
     size_t size_;
-    bool modified_ = false;
     DISALLOW_COPY_AND_ASSIGN(ScopedLocalRef);
 };
 // functions to array
