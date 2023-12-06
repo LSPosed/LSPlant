@@ -15,7 +15,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ ubuntu-latest, windows-latest, macOS-latest ]
+        os: [ ubuntu-latest, windows-latest, macos-13 ]
 
     steps:
       - name: Check out
@@ -55,7 +55,7 @@ jobs:
   test:
     needs: build
     name: Test on API ${{ matrix.api-level }} ${{ matrix.arch }}
-    runs-on: macos-latest
+    runs-on: macos-13
     strategy:
       fail-fast: false
       matrix:
