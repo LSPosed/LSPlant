@@ -1036,7 +1036,7 @@ class JObjectArrayElement {
         return JNI_SafeInvoke(env_, &JNIEnv::GetObjectArrayElement, array_, i_);
     }
 
-    explicit JObjectArrayElement(JNIEnv * env, jobjectArray array, int i, size_t size_) :
+    explicit JObjectArrayElement(JNIEnv * env, jobjectArray array, int i, size_t size) :
             env_(env), array_(array), i_(i), size_(size)
             item_(obtain()) {}
 
