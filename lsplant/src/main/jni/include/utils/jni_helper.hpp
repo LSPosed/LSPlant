@@ -1037,7 +1037,7 @@ class JObjectArrayElement {
     }
 
     explicit JObjectArrayElement(JNIEnv * env, jobjectArray array, int i, size_t size) :
-            env_(env), array_(array), i_(i), size_(size)
+            env_(env), array_(array), i_(i), size_(size),
             item_(obtain()) {}
 
     JObjectArrayElement &operator++() {
@@ -1061,7 +1061,7 @@ class JObjectArrayElement {
     }
 
 public:
-    JObjectArrayElement(JObjectArrayElement&& s): env_(s.env_), array_(s.array_), i_(s.i_), item_(std::move(s.item_)) {}
+    JObjectArrayElement(JObjectArrayElement&& s): env_(s.env_), array_(s.array_), i_(s.i_), size_(s.size_), item_(std::move(s.item_)) {}
 
     operator ScopedLocalRef<jobject>& () & {
         return item_;
@@ -1077,7 +1077,7 @@ public:
     }
 
     JObjectArrayElement& operator=(const JObjectArrayElement& s) {
-        reset(env_->NewLocalRef(s.item_.get()))
+        reset(env_->NewLocalRef(s.item_.get()));
         return *this;
     }
 
