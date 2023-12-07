@@ -1037,7 +1037,7 @@ class JObjectArrayElement {
     }
 
     explicit JObjectArrayElement(JNIEnv * env, jobjectArray array, int i, size_t size_) :
-            env_(env), array_(array), i_(i),
+            env_(env), array_(array), i_(i), size_(size)
             item_(obtain()) {}
 
     JObjectArrayElement &operator++() {
@@ -1077,12 +1077,12 @@ public:
     }
 
     JObjectArrayElement& operator=(const JObjectArrayElement& s) {
-        item_ = s.item_.clone();
+        reset(env_->NewLocalRef(s.item_.get()))
         return *this;
     }
 
     JObjectArrayElement& operator=(jobject s) {
-        item_.reset(env_->NewLocalRef(s));
+        reset(env_->NewLocalRef(s));
         return *this;
     }
 
