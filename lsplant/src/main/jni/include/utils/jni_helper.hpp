@@ -1032,8 +1032,8 @@ class JObjectArrayElement {
     friend class ScopedLocalRef<jobjectArray>;
 
     auto obtain() {
-        if (i_ < 0 || i_ >= size_) return JObjectArrayElement(env_, array_, i_, ScopedLocalRef<jobject>{nullptr});
-        return JObjectArrayElement(env_, array_, i_, JNI_SafeInvoke(env_, &JNIEnv::GetObjectArrayElement, array_, i_));
+        if (i_ < 0 || i_ >= size_) ScopedLocalRef<jobject>{nullptr};
+        return JNI_SafeInvoke(env_, &JNIEnv::GetObjectArrayElement, array_, i_);
     }
 
     explicit JObjectArrayElement(JNIEnv * env, jobjectArray array, int i, size_t size_) :
@@ -1077,7 +1077,7 @@ public:
     }
 
     JObjectArrayElement& operator=(const JObjectArrayElement& s) {
-        item_.reset(env_->NewLocalRef(s.get()));
+        item_ = s.item_.clone();
         return *this;
     }
 
