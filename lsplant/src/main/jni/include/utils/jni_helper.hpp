@@ -1032,7 +1032,7 @@ class JObjectArrayElement {
     friend class ScopedLocalRef<jobjectArray>;
 
     auto obtain() {
-        if (i_ < 0 || i_ >= size_) ScopedLocalRef<jobject>{nullptr};
+        if (i_ < 0 || i_ >= size_) return ScopedLocalRef<jobject>{nullptr};
         return JNI_SafeInvoke(env_, &JNIEnv::GetObjectArrayElement, array_, i_);
     }
 
