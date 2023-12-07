@@ -1088,7 +1088,7 @@ public:
 
     void reset(jobject item) {
         item_.reset(item);
-        if (item_) JNI_SafeInvoke(env_, &JNIEnv::SetObjectArrayElement, array_, i_, item_);
+        JNI_SafeInvoke(env_, &JNIEnv::SetObjectArrayElement, array_, i_, item_);
     }
 
     ScopedLocalRef<jobject> clone() const {
