@@ -274,6 +274,7 @@ public:
                     LOGE("Failed to find Executable.getName");
                     return false;
                 }
+                RETRIEVE_MEM_FUNC_SYMBOL(ThrowInvocationTimeError, "_ZN3art9ArtMethod24ThrowInvocationTimeErrorEv");
                 auto abstract_method = FromReflectedMethod(
                     env, JNI_ToReflectedMethod(env, executable, executable_get_name, false));
                 uint32_t access_flags = abstract_method->GetAccessFlags();
