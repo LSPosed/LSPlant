@@ -1,7 +1,7 @@
 #include <dobby.h>
 #include <lsplant.hpp>
 #include <sys/mman.h>
-#include "elf_util.h"
+#include <lsparself.hpp>
 #include "logging.h"
 
 #define _uintval(p)               reinterpret_cast<uintptr_t>(p)
@@ -55,7 +55,7 @@ JNI_OnLoad(JavaVM* vm, void* reserved) {
     if (vm->GetEnv((void**) &env, JNI_VERSION_1_6) != JNI_OK) {
         return JNI_ERR;
     }
-    SandHook::ElfImg art("libart.so");
+    lsparself::Elf art("/libart.so");
 #if !defined(__i386__)
     dobby_enable_near_branch_trampoline();
 #endif
@@ -66,7 +66,7 @@ JNI_OnLoad(JavaVM* vm, void* reserved) {
                 return art.getSymbAddress(symbol);
             },
             .art_symbol_prefix_resolver = [&art](auto symbol) {
-                return art.getSymbPrefixFirstOffset(symbol);
+                return art.getSymbPrefixFirstAddress(symbol);
             },
     };
     init_result = lsplant::Init(env, initInfo);
