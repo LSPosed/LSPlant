@@ -27,21 +27,21 @@ private:
         return nullptr;
     }
 
-    using BackupMethods = std::list<std::tuple<art::ArtMethod *, void *>>;
+    using BackupMethods = phmap::flat_hash_map<art::ArtMethod *, void *>;
     inline static phmap::flat_hash_map<const art::Thread *,
                                        phmap::flat_hash_map<const dex::ClassDef *, BackupMethods>>
         backup_methods_;
     inline static std::mutex backup_methods_lock_;
 
     static void BackupClassMethods(const dex::ClassDef *class_def, art::Thread *self) {
-        std::list<std::tuple<art::ArtMethod *, void *>> out;
+        BackupMethods out;
         if (!class_def) return;
         {
             hooked_classes_.if_contains(class_def, [&out](const auto &it) {
                 for (auto method : it.second) {
                     if (method->IsStatic()) {
                         LOGV("Backup hooked method %p because of initialization", method);
-                        out.emplace_back(method, method->GetEntryPoint());
+                        out.emplace(method, method->GetEntryPoint());
                     }
                 }
             });
@@ -51,7 +51,7 @@ private:
                 for (auto method : it.second) {
                     if (method->IsStatic()) {
                         LOGV("Backup deoptimized method %p because of initialization", method);
-                        out.emplace_back(method, method->GetEntryPoint());
+                        out.emplace(method, method->GetEntryPoint());
                     }
                 }
             });

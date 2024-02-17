@@ -79,18 +79,19 @@ private:
         for (const auto &[art_method, old_trampoline] : methods) {
             auto new_trampoline = art_method->GetEntryPoint();
             art_method->SetEntryPoint(old_trampoline);
-            if (IsDeoptimized(art_method)) {
+            auto deoptimized = IsDeoptimized(art_method);
+            auto backup_method = IsHooked(art_method);
+            if (backup_method) {
+                // If deoptimized, the backup entrypoint should be already set to interpreter
+                if (!deoptimized && new_trampoline != old_trampoline) [[unlikely]] {
+                    LOGV("propagate entrypoint for orig %p backup %p", art_method, backup_method);
+                    backup_method->SetEntryPoint(new_trampoline);
+                }
+            } else if (deoptimized) {
                 if (new_trampoline != art_quick_to_interpreter_bridge &&
                     new_trampoline != art_quick_generic_jni_trampoline) {
                     LOGV("re-deoptimize for %p", art_method);
                     SetEntryPointsToInterpreter(art_method);
-                }
-                continue;
-            }
-            if (auto backup_method = IsHooked(art_method); backup_method) [[likely]] {
-                if (new_trampoline != old_trampoline) [[unlikely]] {
-                    LOGV("propagate entrypoint for %p", backup_method);
-                    backup_method->SetEntryPoint(new_trampoline);
                 }
             }
         }
