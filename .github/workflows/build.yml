@@ -167,7 +167,7 @@ jobs:
             sudo udevadm control --reload-rules
             sudo udevadm trigger --name-match=kvm
       - name: run tests
-        uses: reactivecircus/android-emulator-runner@v2
+        uses: yujincheng08/android-emulator-runner@VanillaIceCream
         with:
           api-level: ${{ matrix.api-level }}
           arch: ${{ matrix.arch }}
@@ -185,4 +185,6 @@ jobs:
         uses: actions/upload-artifact@v3
         with:
           name: test-outputs
-          path: test/build/outputs
+          path: |
+            test/build/outputs
+            !test/build/outputs/apk
