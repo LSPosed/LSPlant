@@ -130,17 +130,20 @@ jobs:
             target: google_apis
             arch: x86_64
           - api-level: 33
-            target: google_apis
+            target: default
             arch: x86_64
           - api-level: 33
             target: android-tv
             arch: x86
           - api-level: 34
-            target: google_apis
+            target: default
             arch: x86_64
           - api-level: 34
             target: android-tv
             arch: x86
+          - api-level: VanillaIceCream
+            target: google_apis
+            arch: x86_64
     steps:
       - name: checkout
         uses: actions/checkout@v3
@@ -164,7 +167,7 @@ jobs:
             sudo udevadm control --reload-rules
             sudo udevadm trigger --name-match=kvm
       - name: run tests
-        uses: yujincheng08/android-emulator-runner@release/apilevel
+        uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: ${{ matrix.api-level }}
           arch: ${{ matrix.arch }}
@@ -173,7 +176,6 @@ jobs:
             ccache -o cache_dir=${{ github.workspace }}/.ccache
             ccache -o hash_dir=false
             ccache -o compiler_check='%compiler% -dumpmachine; %compiler% -dumpversion'
-            echo 'android.native.buildOutput=verbose' >> gradle.properties
             ./gradlew :test:connectedCheck
           emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           disable-animations: true
