@@ -1,5 +1,3 @@
-import java.nio.file.Paths
-
 plugins {
     alias(libs.plugins.agp.lib)
     alias(libs.plugins.lsplugin.jgit)
@@ -96,7 +94,7 @@ cmaker {
                 arguments += "-DLSPLANT_STANDALONE=ON"
             }
         }
-        arguments += "-DDEBUG_SYMBOLS_PATH=${project.buildDir.absolutePath}/symbols/${it.name}"
+        arguments += "-DDEBUG_SYMBOLS_PATH=${project.layout.buildDirectory.file("symbols/${it.name}").get().asFile.absolutePath}"
     }
 }
 
@@ -105,14 +103,14 @@ dependencies {
 }
 
 val symbolsReleaseTask = tasks.register<Jar>("generateReleaseSymbolsJar") {
-    from("${project.buildDir.absolutePath}/symbols/release")
+    from(project.layout.buildDirectory.file("symbols/release"))
     exclude("**/dex_builder")
     archiveClassifier.set("symbols")
     archiveBaseName.set("release")
 }
 
 val symbolsStandaloneTask = tasks.register<Jar>("generateStandaloneSymbolsJar") {
-    from("${project.buildDir.absolutePath}/symbols/standalone")
+    from(project.layout.buildDirectory.file("symbols/standalone"))
     exclude("**/dex_builder")
     archiveClassifier.set("symbols")
     archiveBaseName.set("standalone")
