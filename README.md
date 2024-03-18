@@ -1,7 +1,7 @@
 # LSPlant
 
 ![](https://img.shields.io/badge/license-LGPL--3.0-orange.svg)
-![](https://img.shields.io/badge/Android-5.0%20--%2014-blue.svg)
+![](https://img.shields.io/badge/Android-5.0%20--%2015%20DP1-blue.svg)
 ![](https://img.shields.io/badge/arch-armeabi--v7a%20%7C%20arm64--v8a%20%7C%20x86%20%7C%20x86--64%7C%20riscv64-brightgreen.svg)
 ![](https://github.com/LSPosed/LSPlant/actions/workflows/build.yml/badge.svg?branch=master&event=push)
 ![](https://img.shields.io/maven-central/v/org.lsposed.lsplant/lsplant.svg)
@@ -12,7 +12,7 @@ This project is part of LSPosed framework under GNU Lesser General Public Licens
 
 ## Features
 
-+ Support Android 5.0 - 14 (API level 21 - 34)
++ Support Android 5.0 - 15 DP1 (API level 21 - 35)
 + Support armeabi-v7a, arm64-v8a, x86, x86-64, riscv64
 + Support customized inline hook framework and ART symbol resolver
 
