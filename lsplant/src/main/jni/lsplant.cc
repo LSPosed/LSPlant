@@ -6,6 +6,7 @@
 
 #include <array>
 #include <atomic>
+#include <bits/sysconf.h>
 
 #include "art/mirror/class.hpp"
 #include "art/runtime/art_method.hpp"
@@ -509,7 +510,8 @@ static_assert(std::endian::native == std::endian::little, "Unsupported architect
 union Trampoline {
 public:
     uintptr_t address;
-    unsigned count : 12;
+    unsigned count4k : 12;
+    unsigned count16k : 14;
 };
 
 static_assert(sizeof(Trampoline) == sizeof(uintptr_t), "Unsupported architecture");
@@ -518,16 +520,16 @@ static_assert(std::atomic_uintptr_t::is_always_lock_free, "Unsupported architect
 std::atomic_uintptr_t trampoline_pool{0};
 std::atomic_flag trampoline_lock{false};
 constexpr size_t kTrampolineSize = RoundUpTo(sizeof(trampoline), kPointerSize);
-constexpr size_t kPageSize = 4096;  // assume
-constexpr size_t kTrampolineNumPerPage = kPageSize / kTrampolineSize;
 constexpr uintptr_t kAddressMask = 0xFFFU;
 
 void *GenerateTrampolineFor(art::ArtMethod *hook) {
+    static const size_t kPageSize = sysconf(_SC_PAGESIZE);  // assume
+    static const size_t kTrampolineNumPerPage = kPageSize / kTrampolineSize;
     unsigned count;
     uintptr_t address;
     while (true) {
         auto tl = Trampoline{.address = trampoline_pool.fetch_add(1, std::memory_order_release)};
-        count = tl.count;
+        count = kPageSize == 16384 ? tl.count16k : tl.count4k;
         address = tl.address & ~kAddressMask;
         if (address == 0 || count >= kTrampolineNumPerPage) {
             if (trampoline_lock.test_and_set(std::memory_order_acq_rel)) {
@@ -545,7 +547,7 @@ void *GenerateTrampolineFor(art::ArtMethod *hook) {
             }
             count = 0;
             tl.address = address;
-            tl.count = count + 1;
+            kPageSize == 16384 ? tl.count16k = count + 1 : tl.count4k = count + 1;
             trampoline_pool.store(tl.address, std::memory_order_release);
             trampoline_lock.clear(std::memory_order_release);
             trampoline_lock.notify_all();
