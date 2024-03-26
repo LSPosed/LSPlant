@@ -72,9 +72,9 @@ consteval inline auto GetTrampoline() {
     }
     if constexpr (kArch == Arch::kRiscv64) {
         return std::make_tuple(
-            "\x17\x05\x00\x00\x03\x35\xc5\x00\x67\x00\x05\x00\x78\x56\x34\x12\x78\x56\x34\x12"_uarr,
+            "\x17\x05\x00\x00\x03\x35\x05\x01\x83\x3f\x05\x00\x67\x80\x0f\x00\x78\x56\x34\x12\x78\x56\x34\x12"_uarr,
             // NOLINTNEXTLINE
-            uint8_t{84u}, uintptr_t{12u});
+            uint8_t{84u}, uintptr_t{16u});
     }
 }
 
