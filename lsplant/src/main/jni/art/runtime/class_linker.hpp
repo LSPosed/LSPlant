@@ -109,7 +109,7 @@ private:
         void, FixupStaticTrampolinesWithThread,
         (ClassLinker * thiz, art::Thread *self, ObjPtr<mirror::Class> mirror_class), {
             backup(thiz, self, mirror_class);
-            RestoreBackup(mirror_class->GetClassDef(), self);
+            RestoreBackup(nullptr, self);
         });
 
     CREATE_MEM_HOOK_STUB_ENTRY("_ZN3art11ClassLinker22FixupStaticTrampolinesEPNS_6mirror5ClassE",
