@@ -81,6 +81,7 @@ cmaker {
             "-Wno-gnu-string-literal-operator-template",
             "-Wno-c++2b-extensions",
         )
+        abiFilters("armeabi-v7a", "arm64-v8a", "x86", "x86_64", "riscv64")
         cppFlags += flags
         cFlags += flags
     }
@@ -88,7 +89,6 @@ cmaker {
         when (it.name) {
             "debug", "release" -> {
                 arguments += "-DANDROID_STL=c++_shared"
-                abiFilters("armeabi-v7a", "arm64-v8a", "x86", "x86_64", "riscv64")
             }
             "standalone" -> {
                 arguments += "-DANDROID_STL=none"
