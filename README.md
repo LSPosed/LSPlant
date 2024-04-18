@@ -34,7 +34,7 @@ android {
 }
 
 dependencies {
-    implementation "org.lsposed.lsplant:lsplant:5.2"
+    implementation "org.lsposed.lsplant:lsplant:+"
 }
 ```
 
@@ -42,7 +42,7 @@ If you don't want to include `libc++_shared.so` in your APK, you can use `lsplan
 
 ```gradle
 dependencies {
-    implementation "org.lsposed.lsplant:lsplant-standalone:5.2"
+    implementation "org.lsposed.lsplant:lsplant-standalone:+"
 }
 ```
 
