@@ -1,18 +1,20 @@
-#pragma once
+module;
 
-#include "art/runtime/art_method.hpp"
-#include "art/runtime/handle.hpp"
-#include "common.hpp"
+#include <parallel_hashmap/phmap.h>
 
-namespace lsplant::art {
-class Thread;
-namespace dex {
-class ClassDef {};
-}  // namespace dex
+#include "logging.hpp"
+#include "utils/hook_helper.hpp"
 
-namespace mirror {
+export module clazz;
 
-class Class {
+import common;
+import art_method;
+import thread;
+import handle;
+
+namespace lsplant::art::mirror {
+
+export class Class {
 private:
     CREATE_MEM_FUNC_SYMBOL_ENTRY(const char *, GetDescriptor, Class *thiz, std::string *storage) {
         if (GetDescriptorSym) [[likely]]
@@ -184,5 +186,4 @@ public:
     }
 };
 
-}  // namespace mirror
-}  // namespace lsplant::art
+}  // namespace lsplant::art::mirror

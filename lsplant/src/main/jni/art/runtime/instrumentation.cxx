@@ -1,11 +1,16 @@
-#pragma once
+module;
 
-#include "art_method.hpp"
-#include "common.hpp"
+#include "logging.hpp"
+#include "utils/hook_helper.hpp"
+
+export module instrumentation;
+
+import art_method;
+import common;
 
 namespace lsplant::art {
 
-class Instrumentation {
+export class Instrumentation {
     inline static ArtMethod *MaybeUseBackupMethod(ArtMethod *art_method, const void *quick_code) {
         if (auto backup = IsHooked(art_method); backup && art_method->GetEntryPoint() != quick_code)
             [[unlikely]] {

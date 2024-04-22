@@ -15,7 +15,9 @@
     TypeName(const TypeName &) = delete;                                                           \
     void operator=(const TypeName &) = delete
 
+#ifndef JNI_HELPER_NO_NS // workaroud for https://github.com/llvm/llvm-project/issues/88400
 namespace lsplant {
+#endif
 template <class, template <class, class...> class>
 struct is_instance : public std::false_type {};
 
@@ -1338,7 +1340,9 @@ template <ScopeOrObject Object>
         env, o, JNI_GetFieldID(env, JNI_GetObjectClass(env, o), field_name, field_class));
 }
 
+#ifndef JNI_HELPER_NO_NS
 }  // namespace lsplant
+#endif
 
 #undef DISALLOW_COPY_AND_ASSIGN
 

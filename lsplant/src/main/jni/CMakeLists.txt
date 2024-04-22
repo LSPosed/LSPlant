@@ -1,7 +1,10 @@
-cmake_minimum_required(VERSION 3.4.1)
+cmake_minimum_required(VERSION 3.28)
 project(lsplant)
 
 find_program(CCACHE ccache)
+
+set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_SCAN_FOR_MODULES ON)
 
 if (CCACHE)
     set(CMAKE_CXX_COMPILER_LAUNCHER ${CCACHE})
@@ -13,9 +16,8 @@ if (LSPLANT_STANDALONE)
     link_libraries(cxx::cxx)
 endif()
 
-add_definitions(-std=c++20)
-
 set(SOURCES lsplant.cc)
+file(GLOB_RECURSE MODULE_SOURCES "*.cxx")
 
 set(DEX_BUILDER_BUILD_SHARED OFF CACHE INTERNAL "" FORCE)
 add_subdirectory(external/dex_builder)
@@ -25,6 +27,7 @@ option(LSPLANT_BUILD_SHARED "If ON, lsplant will also build shared library" ON)
 if (LSPLANT_BUILD_SHARED)
     message(STATUS "Building lsplant as a shared library")
     add_library(${PROJECT_NAME} SHARED ${SOURCES})
+    target_sources(${PROJECT_NAME} PRIVATE FILE_SET CXX_MODULES FILES ${MODULE_SOURCES})
     target_include_directories(${PROJECT_NAME} PUBLIC include)
     target_include_directories(${PROJECT_NAME} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
     target_compile_options(${PROJECT_NAME} PRIVATE -flto)
@@ -40,6 +43,7 @@ if (LSPLANT_BUILD_SHARED)
 endif()
 
 add_library(${PROJECT_NAME}_static STATIC ${SOURCES})
+target_sources(${PROJECT_NAME}_static PRIVATE FILE_SET CXX_MODULES FILES ${MODULE_SOURCES})
 target_include_directories(${PROJECT_NAME}_static PUBLIC include)
 target_include_directories(${PROJECT_NAME}_static PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 

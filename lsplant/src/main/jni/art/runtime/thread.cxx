@@ -1,10 +1,11 @@
-#pragma once
+module;
 
-#include "common.hpp"
+#include "utils/hook_helper.hpp"
+
+export module thread;
 
 namespace lsplant::art {
-
-class Thread {
+export class Thread {
     CREATE_FUNC_SYMBOL_ENTRY(Thread *, CurrentFromGdb) {
         if (CurrentFromGdbSym) [[likely]]
             return CurrentFromGdbSym();

@@ -1,33 +1,40 @@
 #include "lsplant.hpp"
 
 #include <android/api-level.h>
+#include <bits/sysconf.h>
+#include <dex_builder.h>
 #include <sys/mman.h>
 #include <sys/system_properties.h>
 
 #include <array>
 #include <atomic>
-#include <bits/sysconf.h>
 
-#include "art/mirror/class.hpp"
-#include "art/runtime/art_method.hpp"
-#include "art/runtime/class_linker.hpp"
-#include "art/runtime/dex_file.hpp"
-#include "art/runtime/gc/scoped_gc_critical_section.hpp"
-#include "art/runtime/instrumentation.hpp"
-#include "art/runtime/jit/jit_code_cache.hpp"
-#include "art/runtime/jni/jni_id_manager.h"
-#include "art/runtime/runtime.hpp"
-#include "art/runtime/thread.hpp"
-#include "art/runtime/thread_list.hpp"
-#include "common.hpp"
-#include "dex_builder.h"
+#include "logging.hpp"
+#include "lsplant.hpp"
+
+#define JNI_HELPER_NO_NS
+#include "utils/hook_helper.hpp"
 #include "utils/jni_helper.hpp"
+
+import common;
+import art_method;
+import clazz;
+import thread;
+import instrumentation;
+import runtime;
+import thread_list;
+import class_linker;
+import scope_gc_critical_section;
+import jit_code_cache;
+import jni_id_manager;
+import dex_file;
 
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wunknown-pragmas"
 #pragma ide diagnostic ignored "ConstantConditionsOC"
 #pragma ide diagnostic ignored "Simplify"
 #pragma ide diagnostic ignored "UnreachableCode"
+
 namespace lsplant {
 
 using art::ArtMethod;

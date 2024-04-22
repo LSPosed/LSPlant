@@ -1,12 +1,18 @@
-#pragma once
+module;
 
-#include "art/runtime/art_method.hpp"
-#include "art/runtime/obj_ptr.hpp"
-#include "art/runtime/thread.hpp"
-#include "common.hpp"
+#include "include/utils/hook_helper.hpp"
+#include "logging.hpp"
+
+export module class_linker;
+
+import art_method;
+import thread;
+import common;
+import clazz;
+import handle;
 
 namespace lsplant::art {
-class ClassLinker {
+export class ClassLinker {
 private:
     CREATE_MEM_FUNC_SYMBOL_ENTRY(void, SetEntryPointsToInterpreter, ClassLinker *thiz,
                                  ArtMethod *art_method) {
@@ -16,14 +22,13 @@ private:
     }
 
     CREATE_HOOK_STUB_ENTRY(
-            "_ZN3art11ClassLinker30ShouldUseInterpreterEntrypointEPNS_9ArtMethodEPKv", bool,
-            ShouldUseInterpreterEntrypoint, (ArtMethod * art_method, const void *quick_code), {
-                if (quick_code != nullptr && IsHooked(art_method)) [[unlikely]] {
-                    return false;
-                }
-                return backup(art_method, quick_code);
-            });
-
+        "_ZN3art11ClassLinker30ShouldUseInterpreterEntrypointEPNS_9ArtMethodEPKv", bool,
+        ShouldUseInterpreterEntrypoint, (ArtMethod * art_method, const void *quick_code), {
+            if (quick_code != nullptr && IsHooked(art_method)) [[unlikely]] {
+                return false;
+            }
+            return backup(art_method, quick_code);
+        });
 
     CREATE_FUNC_SYMBOL_ENTRY(void, art_quick_to_interpreter_bridge, void *) {}
 
@@ -130,10 +135,11 @@ private:
 
     CREATE_MEM_HOOK_STUB_ENTRY(
         "_ZN3art11ClassLinker26VisiblyInitializedCallback22MarkVisiblyInitializedEPNS_6ThreadE",
-        void, MarkVisiblyInitialized, (void *thiz, Thread* self), {
+        void, MarkVisiblyInitialized, (void *thiz, Thread *self), {
             backup(thiz, self);
             RestoreBackup(nullptr, self);
         });
+
 public:
     static bool Init(const HookHandler &handler) {
         int sdk_int = GetAndroidApiLevel();
@@ -155,7 +161,7 @@ public:
         }
 
         if (sdk_int >= __ANDROID_API_R__) {
-            if constexpr (GetArch() != Arch::kX86 && GetArch() != Arch::kX86_64) {
+            if constexpr (kArch != Arch::kX86 && kArch != Arch::kX86_64) {
                 // fixup static trampoline may have been inlined
                 HookSyms(handler, AdjustThreadVisibilityCounter, MarkVisiblyInitialized);
             }

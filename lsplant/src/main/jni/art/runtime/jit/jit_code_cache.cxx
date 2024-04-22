@@ -1,9 +1,16 @@
-#pragma once
+module;
 
-#include "common.hpp"
+#include "logging.hpp"
+#include "utils/hook_helper.hpp"
+
+export module jit_code_cache;
+
+import art_method;
+import common;
+import thread;
 
 namespace lsplant::art::jit {
-class JitCodeCache {
+export class JitCodeCache {
     CREATE_MEM_FUNC_SYMBOL_ENTRY(void, MoveObsoleteMethod, JitCodeCache *thiz,
                                  ArtMethod *old_method, ArtMethod *new_method) {
         if (MoveObsoleteMethodSym) [[likely]] {

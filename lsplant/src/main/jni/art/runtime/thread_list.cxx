@@ -1,10 +1,12 @@
-#pragma once
+module;
 
-#include "common.hpp"
+#include "include/utils/hook_helper.hpp"
+
+export module thread_list;
 
 namespace lsplant::art::thread_list {
 
-class ScopedSuspendAll {
+export class ScopedSuspendAll {
     CREATE_MEM_FUNC_SYMBOL_ENTRY(void, constructor, ScopedSuspendAll *thiz, const char *cause,
                                  bool long_suspend) {
         if (thiz && constructorSym) [[likely]] {
