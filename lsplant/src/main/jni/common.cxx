@@ -12,6 +12,7 @@ module;
 #include "utils/jni_helper.hpp"
 
 export module common;
+export import jni_helper;
 
 namespace lsplant {
 

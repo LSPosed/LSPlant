@@ -1,8 +1,6 @@
 module;
 
 #include "logging.hpp"
-
-#define JNI_HELPER_NO_NS
 #include "utils/hook_helper.hpp"
 
 export module art_method;

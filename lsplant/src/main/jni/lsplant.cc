@@ -12,9 +12,7 @@
 #include "logging.hpp"
 #include "lsplant.hpp"
 
-#define JNI_HELPER_NO_NS
 #include "utils/hook_helper.hpp"
-#include "utils/jni_helper.hpp"
 
 import common;
 import art_method;
@@ -482,7 +480,7 @@ std::tuple<jclass, jfieldID, jmethodID, jmethodID> BuildDex(JNIEnv *env, jobject
         if (!dex) {
             LOGE("Failed to open memory dex: %s", err_msg.data());
         } else {
-            java_dex_file = WrapScope(env, dex ? dex->ToJavaDexFile(env) : jobject{nullptr});
+            java_dex_file = ScopedLocalRef(env, dex ? dex->ToJavaDexFile(env) : nullptr);
         }
     }
 

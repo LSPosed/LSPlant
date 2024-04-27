@@ -1,9 +1,10 @@
 #pragma once
 
 #include <concepts>
+#include <android/log.h>
 
-#include "jni_helper.hpp"
 #include "lsplant.hpp"
+#include "type_traits.hpp"
 
 #if defined(__LP64__)
 #define LP_SELECT(lp32, lp64) lp64
