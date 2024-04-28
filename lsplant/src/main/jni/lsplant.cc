@@ -1,8 +1,5 @@
-#include "lsplant.hpp"
-
 #include <android/api-level.h>
 #include <bits/sysconf.h>
-#include <dex_builder.h>
 #include <sys/mman.h>
 #include <sys/system_properties.h>
 
@@ -10,9 +7,10 @@
 #include <atomic>
 
 #include "logging.hpp"
-#include "lsplant.hpp"
-
 #include "utils/hook_helper.hpp"
+
+import dex_builder;
+import lsplant;
 
 import common;
 import art_method;
