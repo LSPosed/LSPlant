@@ -45,6 +45,8 @@ using art::jni::JniIdManager;
 using art::mirror::Class;
 using art::thread_list::ScopedSuspendAll;
 
+using namespace std::string_view_literals;
+
 namespace {
 template <typename T, T... chars>
 inline consteval auto operator""_uarr() {
@@ -397,7 +399,7 @@ std::tuple<jclass, jfieldID, jmethodID, jmethodID> BuildDex(JNIEnv *env, jobject
                              .Encode();
 
     auto hook_builder{cbuilder.CreateMethod(
-        generated_method_name == "{target}" ? method_name.data() : generated_method_name,
+        generated_method_name == "{target}"sv ? method_name.data() : generated_method_name,
         Prototype{return_type, parameter_types})};
     // allocate tmp first because of wide
     auto tmp{hook_builder.AllocRegister()};
