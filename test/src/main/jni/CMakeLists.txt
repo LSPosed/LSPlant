@@ -1,11 +1,11 @@
 cmake_minimum_required(VERSION 3.18.1)
 project("lsplant_test")
 
-set(CMAKE_CXX_STANDARD 20)
-set(CMAKE_CXX_SCAN_FOR_MODULES ON)
+set(CMAKE_CXX_STANDARD 23)
 
 add_subdirectory(external/lsparself)
 add_library(test SHARED test.cpp)
+set_target_properties(test PROPERTIES CXX_SCAN_FOR_MODULES ON)
 find_package(dobby REQUIRED CONFIG)
 find_package(lsplant REQUIRED CONFIG)
 

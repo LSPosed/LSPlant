@@ -4,12 +4,42 @@ module;
 
 export module jni_helper;
 
+export {
+    using ::jboolean;
+    using ::jbooleanArray;
+    using ::jbyte;
+    using ::jbyteArray;
+    using ::jchar;
+    using ::jcharArray;
+    using ::jclass;
+    using ::jdouble;
+    using ::jdoubleArray;
+    using ::jfieldID;
+    using ::jfloat;
+    using ::jfloatArray;
+    using ::jint;
+    using ::jintArray;
+    using ::jlong;
+    using ::jlongArray;
+    using ::jmethodID;
+    using ::JNIEnv;
+    using ::jobject;
+    using ::jobjectArray;
+    using ::jshort;
+    using ::jshortArray;
+    using ::jsize;
+    using ::jstring;
+    using ::jthrowable;
+    using ::jvalue;
+}
+
 export namespace lsplant {
 using lsplant::JNIMonitor;
 using lsplant::JNIScopeFrame;
 using lsplant::JUTFString;
 using lsplant::ScopedLocalRef;
 
+using lsplant::UnwrapScope;
 using lsplant::WrapScope;
 
 using lsplant::JNI_GetBooleanField;

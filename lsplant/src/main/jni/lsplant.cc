@@ -5,6 +5,7 @@
 
 #include <array>
 #include <atomic>
+#include <bit>
 
 #include "logging.hpp"
 #include "utils/hook_helper.hpp"
