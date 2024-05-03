@@ -441,7 +441,6 @@ std::tuple<jclass, jfieldID, jmethodID, jmethodID> BuildDex(JNIEnv *env, jobject
         backup_builder.BuildReturn(zero, /*is_object=*/false, true);
     } else {
         LiveRegister zero = backup_builder.AllocRegister();
-        LiveRegister zero_wide = backup_builder.AllocRegister();
         backup_builder.BuildConst(zero, 0);
         backup_builder.BuildReturn(zero, /*is_object=*/!return_type.is_primitive(), false);
     }
