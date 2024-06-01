@@ -8,9 +8,7 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.MethodSorters;
 
-import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
 
 @RunWith(AndroidJUnit4.class)
@@ -124,7 +122,7 @@ public class UnitTest {
         var proxyInterface = Class.forName("org.lsposed.lsplant.LSPTest$ForProxy");
         var proxy = Proxy.newProxyInstance(proxyInterface.getClassLoader(), new Class[]{proxyInterface}, (proxy1, method, args) -> {
             if (method.getName().equals("abstractMethod")) {
-                return (String) args[0] + (boolean) args[1] + (byte) args[2] + (short) args[3] + (int) args[4] + (long) args[5] + (float) args[6] + (double) args[7] + (Integer) args[8] + (Long) args[9];
+                return (String) args[0] + args[1] + args[2] + args[3] + args[4] + args[5] + args[6] + args[7] + args[8] + args[9];
             }
             return method.invoke(proxy1, args);
         });

@@ -79,7 +79,6 @@ cmaker {
         val flags = arrayOf(
             "-Werror",
             "-Wno-gnu-string-literal-operator-template",
-            "-Wno-c++2b-extensions",
         )
         abiFilters("armeabi-v7a", "arm64-v8a", "x86", "x86_64", "riscv64")
         cppFlags += flags
