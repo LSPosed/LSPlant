@@ -22,8 +22,15 @@ jobs:
           cache: 'gradle'
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+      - uses: seanmiddleditch/gha-setup-ninja@master
+        with:
+          version: 1.12.0
       - name: Build with Gradle
-        run: ./gradlew :lsplant:publish
+        run: |
+          rm -rf $ANDROID_HOME/cmake
+          ./gradlew :lsplant:publish
         env:
           ORG_GRADLE_PROJECT_signingKey: ${{ secrets.maven_pgp_signingKey }}
           ORG_GRADLE_PROJECT_signingPassword: ${{ secrets.maven_pgp_signingPassword }}
