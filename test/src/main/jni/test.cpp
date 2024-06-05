@@ -1,10 +1,11 @@
 #include <jni.h>
 #include <dobby.h>
 #include <sys/mman.h>
-#include <lsparself.hpp>
+#include <string_view>
 #include "logging.h"
 
 import lsplant;
+import lsparself;
 
 #define _uintval(p)               reinterpret_cast<uintptr_t>(p)
 #define _ptr(p)                   reinterpret_cast<void *>(p)
