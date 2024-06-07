@@ -33,9 +33,19 @@ export class JitCodeCache {
                                    backup(thiz, self);
                                });
 
+    CREATE_MEM_HOOK_STUB_ENTRY("_ZN3art3jit3Jit19MapBootImageMethodsEv", void,
+        MapBootImageMethods, (void * jit), {
+            LOGD("SKIP MapBootImageMethods");
+        });
+
 public:
     static bool Init(const HookHandler &handler) {
         auto sdk_int = GetAndroidApiLevel();
+        if (sdk_int >= __ANDROID_API_R__) [[likely]] {
+            if (!HookSyms(handler, MapBootImageMethods)) [[unlikely]] {
+                return false;
+            }
+        }
         if (sdk_int >= __ANDROID_API_O__) [[likely]] {
             if (!RETRIEVE_MEM_FUNC_SYMBOL(
                     MoveObsoleteMethod,
