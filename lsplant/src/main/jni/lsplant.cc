@@ -25,6 +25,7 @@ import scope_gc_critical_section;
 import jit_code_cache;
 import jni_id_manager;
 import dex_file;
+import jit;
 
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wunknown-pragmas"
@@ -42,6 +43,7 @@ using art::Runtime;
 using art::Thread;
 using art::gc::ScopedGCCriticalSection;
 using art::jit::JitCodeCache;
+using art::jit::Jit;
 using art::jni::JniIdManager;
 using art::mirror::Class;
 using art::thread_list::ScopedSuspendAll;
@@ -284,6 +286,10 @@ bool InitNative(JNIEnv *env, const HookHandler &handler) {
     }
     if (!JitCodeCache::Init(handler)) {
         LOGE("Failed to init jit code cache");
+        return false;
+    }
+    if (!Jit::Init(handler)) {
+        LOGE("Failed to init jit");
         return false;
     }
     if (!DexFile::Init(env, handler)) {

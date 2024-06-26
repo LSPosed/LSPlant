@@ -69,7 +69,7 @@ export {
         return v + size - 1 - ((v + size - 1) & (size - 1));
     }
 
-    inline auto GetAndroidApiLevel() {
+    [[gnu::const]] inline auto GetAndroidApiLevel() {
         static auto kApiLevel = []() {
             std::array<char, PROP_VALUE_MAX> prop_value;
             __system_property_get("ro.build.version.sdk", prop_value.data());
