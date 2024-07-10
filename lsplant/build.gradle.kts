@@ -107,15 +107,15 @@ dependencies {
 val symbolsReleaseTask = tasks.register<Jar>("generateReleaseSymbolsJar") {
     from(project.layout.buildDirectory.file("symbols/release"))
     exclude("**/dex_builder")
-    archiveClassifier.set("symbols")
-    archiveBaseName.set("release")
+    archiveClassifier = "symbols"
+    archiveBaseName = "release"
 }
 
 val symbolsStandaloneTask = tasks.register<Jar>("generateStandaloneSymbolsJar") {
     from(project.layout.buildDirectory.file("symbols/standalone"))
     exclude("**/dex_builder")
-    archiveClassifier.set("symbols")
-    archiveBaseName.set("standalone")
+    archiveClassifier = "symbols"
+    archiveBaseName = "standalone"
 }
 
 val repo = jgit.repo(true)
@@ -129,24 +129,24 @@ publish {
             group = "org.lsposed.lsplant"
             version = ver
             pom {
-                name.set("LSPlant")
-                description.set("A hook framework for Android Runtime (ART)")
-                url.set("https://github.com/LSPosed/LSPlant")
+                name = "LSPlant"
+                description = "A hook framework for Android Runtime (ART)"
+                url = "https://github.com/LSPosed/LSPlant"
                 licenses {
                     license {
-                        name.set("GNU Lesser General Public License v3.0")
-                        url.set("https://github.com/LSPosed/LSPlant/blob/master/LICENSE")
+                        name = "GNU Lesser General Public License v3.0"
+                        url = "https://github.com/LSPosed/LSPlant/blob/master/LICENSE"
                     }
                 }
                 developers {
                     developer {
-                        name.set("Lsposed")
-                        url.set("https://lsposed.org")
+                        name = "Lsposed"
+                        url = "https://lsposed.org"
                     }
                 }
                 scm {
-                    connection.set("scm:git:https://github.com/LSPosed/LSPlant.git")
-                    url.set("https://github.com/LSPosed/LSPlant")
+                    connection = "scm:git:https://github.com/LSPosed/LSPlant.git"
+                    url = "https://github.com/LSPosed/LSPlant"
                 }
             }
         }
