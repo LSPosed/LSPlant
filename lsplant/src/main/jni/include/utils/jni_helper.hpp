@@ -1057,6 +1057,18 @@ public:
         return *this;
     }
 
+    template<JObject T>
+    JObjectArrayElement &operator=(ScopedLocalRef<T> &&s) {
+        reset(s.release());
+        return *this;
+    }
+
+    template<JObject T>
+    JObjectArrayElement &operator=(ScopedLocalRef<T> &s) {
+        reset(s.clone());
+        return *this;
+    }
+
     JObjectArrayElement &operator=(jobject s) {
         reset(env_->NewLocalRef(s));
         return *this;
@@ -1215,9 +1227,7 @@ public:
     jobjectArray get() const { return local_ref_; }
 
     JObjectArrayElement operator[](size_t index) {
-        return JObjectArrayElement(
-            env_, local_ref_, index,
-            JNI_SafeInvoke(env_, &JNIEnv::GetObjectArrayElement, local_ref_, index));
+        return JObjectArrayElement(env_, local_ref_, index, size_);
     }
 
     const ScopedLocalRef<jobject> operator[](size_t index) const {
