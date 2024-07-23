@@ -58,8 +58,6 @@ public:
         return ScopedLocalRef<T>(env_, (T)env_->NewLocalRef(local_ref_));
     }
 
-    operator T() const { return local_ref_; }
-
     ScopedLocalRef &operator=(ScopedLocalRef &&s) noexcept {
         reset(s.release());
         env_ = s.env_;
@@ -126,10 +124,11 @@ concept ScopeOrObject = ScopeOrRaw<T, jobject>;
 inline ScopedLocalRef<jstring> ClearException(JNIEnv *env) {
     if (auto exception = env->ExceptionOccurred()) {
         env->ExceptionClear();
-        static jclass log = (jclass)env->NewGlobalRef(env->FindClass("android/util/Log"));
+        jclass log = (jclass)env->FindClass("android/util/Log");
         static jmethodID toString = env->GetStaticMethodID(
             log, "getStackTraceString", "(Ljava/lang/Throwable;)Ljava/lang/String;");
         auto str = (jstring)env->CallStaticObjectMethod(log, toString, exception);
+        env->DeleteLocalRef(log);
         env->DeleteLocalRef(exception);
         return {env, str};
     }
@@ -506,6 +505,13 @@ template <ScopeOrClass Class>
                           isStatic);
 }
 
+template <ScopeOrClass Class>
+[[maybe_unused]] inline auto JNI_ToReflectedField(JNIEnv *env, Class &&clazz, jfieldID field,
+                                                   jboolean isStatic = JNI_FALSE) {
+    return JNI_SafeInvoke(env, &JNIEnv::ToReflectedField, std::forward<Class>(clazz), field,
+                          isStatic);
+}
+
 // functions to method
 
 // virtual methods
@@ -763,6 +769,12 @@ template <ScopeOrObject Object, ScopeOrClass Class>
                           std::forward<Class>(clazz));
 }
 
+template <ScopeOrObject Object1, ScopeOrObject Object2>
+[[maybe_unused]] inline auto JNI_IsSameObject(JNIEnv *env, Object1 &&a, Object2 &&b) {
+    return JNI_SafeInvoke(env, &JNIEnv::IsSameObject, std::forward<Object1>(a),
+                          std::forward<Object2>(b));
+}
+
 template <ScopeOrObject Object>
 [[maybe_unused]] inline auto JNI_NewGlobalRef(JNIEnv *env, Object &&x) {
     return (decltype(UnwrapScope(std::forward<Object>(x))))env->NewGlobalRef(
@@ -941,8 +953,6 @@ public:
 
     T get() const { return local_ref_; }
 
-    explicit operator T() const { return local_ref_; }
-
     JArrayUnderlyingType<T> &operator[](size_t index) {
         modified_ = true;
         return elements_[index];
@@ -1064,7 +1074,7 @@ public:
     }
 
     template<JObject T>
-    JObjectArrayElement &operator=(ScopedLocalRef<T> &s) {
+    JObjectArrayElement &operator=(const ScopedLocalRef<T> &s) {
         reset(s.clone());
         return *this;
     }
@@ -1080,8 +1090,6 @@ public:
     }
 
     ScopedLocalRef<jobject> clone() const { return item_.clone(); }
-
-    operator jobject() const { return item_; }
 
     jobject get() const { return item_.get(); }
 

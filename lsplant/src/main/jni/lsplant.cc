@@ -664,15 +664,15 @@ std::string GetProxyMethodShorty(JNIEnv *env, jobject proxy_method) {
 
     std::string out;
     auto type_to_shorty = [&](const ScopedLocalRef<jobject> &type) {
-        if (env->IsSameObject(type, int_type)) return 'I';
-        if (env->IsSameObject(type, long_type)) return 'J';
-        if (env->IsSameObject(type, float_type)) return 'F';
-        if (env->IsSameObject(type, double_type)) return 'D';
-        if (env->IsSameObject(type, boolean_type)) return 'Z';
-        if (env->IsSameObject(type, byte_type)) return 'B';
-        if (env->IsSameObject(type, char_type)) return 'C';
-        if (env->IsSameObject(type, short_type)) return 'S';
-        if (env->IsSameObject(type, void_type)) return 'V';
+        if (JNI_IsSameObject(env, type, int_type)) return 'I';
+        if (JNI_IsSameObject(env, type, long_type)) return 'J';
+        if (JNI_IsSameObject(env, type, float_type)) return 'F';
+        if (JNI_IsSameObject(env, type, double_type)) return 'D';
+        if (JNI_IsSameObject(env, type, boolean_type)) return 'Z';
+        if (JNI_IsSameObject(env, type, byte_type)) return 'B';
+        if (JNI_IsSameObject(env, type, char_type)) return 'C';
+        if (JNI_IsSameObject(env, type, short_type)) return 'S';
+        if (JNI_IsSameObject(env, type, void_type)) return 'V';
         return 'L';
     };
     out += type_to_shorty(return_type);
@@ -740,7 +740,7 @@ using ::lsplant::IsHooked;
         }
         std::tie(built_class, hooker_field, hook_method, backup_method) = WrapScope(
             env,
-            BuildDex(env, callback_class_loader,
+            BuildDex(env, callback_class_loader.get(),
                      __builtin_expect(is_proxy, 0) ? GetProxyMethodShorty(env, target_method)
                                                    : ArtMethod::GetMethodShorty(env, target_method),
                      is_static, target->IsConstructor() ? "constructor" : target_method_name.get(),
@@ -756,8 +756,8 @@ using ::lsplant::IsHooked;
 
     JNI_CallVoidMethod(env, reflected_backup, set_accessible, JNI_TRUE);
 
-    auto *hook = ArtMethod::FromReflectedMethod(env, reflected_hook);
-    auto *backup = ArtMethod::FromReflectedMethod(env, reflected_backup);
+    auto *hook = ArtMethod::FromReflectedMethod(env, reflected_hook.get());
+    auto *backup = ArtMethod::FromReflectedMethod(env, reflected_backup.get());
 
     JNI_SetStaticObjectField(env, built_class, hooker_field, hooker_object);
 

@@ -115,6 +115,7 @@ using lsplant::JNI_CallVoidMethod;
 using lsplant::JNI_GetMethodID;
 using lsplant::JNI_GetStaticMethodID;
 using lsplant::JNI_ToReflectedMethod;
+using lsplant::JNI_ToReflectedField;
 
 using lsplant::JNI_NewBooleanArray;
 using lsplant::JNI_NewByteArray;
@@ -134,6 +135,7 @@ using lsplant::JNI_GetArrayLength;
 using lsplant::JNI_GetObjectClass;
 using lsplant::JNI_GetObjectFieldOf;
 using lsplant::JNI_IsInstanceOf;
+using lsplant::JNI_IsSameObject;
 using lsplant::JNI_NewGlobalRef;
 using lsplant::JNI_NewStringUTF;
 using lsplant::JNI_RegisterNatives;

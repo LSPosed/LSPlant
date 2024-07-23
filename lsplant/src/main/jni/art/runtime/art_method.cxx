@@ -228,7 +228,7 @@ public:
                     env,
                     JNI_GetObjectField(
                         env,
-                        env->ToReflectedField(executable,
+                        JNI_ToReflectedField(env, executable,
                                               JNI_GetFieldID(env, executable, name, sig), false),
                         art_field_field),
                     field_offset);
@@ -284,7 +284,7 @@ public:
                 RETRIEVE_MEM_FUNC_SYMBOL(ThrowInvocationTimeError,
                                          "_ZN3art9ArtMethod24ThrowInvocationTimeErrorEv");
                 auto abstract_method = FromReflectedMethod(
-                    env, JNI_ToReflectedMethod(env, executable, executable_get_name, false));
+                    env, JNI_ToReflectedMethod(env, executable, executable_get_name, false).get());
                 uint32_t access_flags = abstract_method->GetAccessFlags();
                 abstract_method->SetAccessFlags(access_flags | kAccDefaultConflict);
                 abstract_method->ThrowInvocationTimeError();
