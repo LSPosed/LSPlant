@@ -20,10 +20,6 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
           cache: 'gradle'
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
       - uses: seanmiddleditch/gha-setup-ninja@master
         with:
           version: 1.12.0
