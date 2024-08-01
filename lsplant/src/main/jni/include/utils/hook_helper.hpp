@@ -1,7 +1,8 @@
 #pragma once
 
-#include <concepts>
 #include <android/log.h>
+
+#include <concepts>
 
 #include "lsplant.hpp"
 #include "type_traits.hpp"
@@ -12,15 +13,12 @@
 #define LP_SELECT(lp32, lp64) lp32
 #endif
 
-#define CONCATENATE(a, b) a##b
-
 #define CREATE_HOOK_STUB_ENTRY(SYM, RET, FUNC, PARAMS, DEF)                                        \
-    inline static struct : public lsplant::Hooker<RET PARAMS, decltype(CONCATENATE(SYM, _tstr))>{  \
+    inline static struct : public lsplant::Hooker<RET PARAMS, SYM>{                                \
                                inline static RET replace PARAMS DEF} FUNC
 
 #define CREATE_MEM_HOOK_STUB_ENTRY(SYM, RET, FUNC, PARAMS, DEF)                                    \
-    inline static struct : public lsplant::MemHooker<RET PARAMS,                                   \
-                                                     decltype(CONCATENATE(SYM, _tstr))>{           \
+    inline static struct : public lsplant::MemHooker<RET PARAMS, SYM>{                             \
                                inline static RET replace PARAMS DEF} FUNC
 
 #define RETRIEVE_FUNC_SYMBOL(name, ...)                                                            \
@@ -46,37 +44,11 @@ namespace lsplant {
 
 using HookHandler = InitInfo;
 
-template <char... chars>
-struct tstring : public std::integer_sequence<char, chars...> {
-    inline constexpr static const char *c_str() { return str_; }
-
-    inline constexpr operator std::string_view() const { return {c_str(), sizeof...(chars)}; }
-
-private:
-    inline static constexpr char str_[]{chars..., '\0'};
+template <size_t N>
+struct FixedString {
+    consteval inline FixedString(const char (&str)[N]) { std::copy_n(str, N, data); }
+    char data[N] = {};
 };
-
-template <typename T, T... chars>
-inline constexpr tstring<chars...> operator""_tstr() {
-    return {};
-}
-
-template <char... as, char... bs>
-inline constexpr tstring<as..., bs...> operator+(const tstring<as...> &, const tstring<bs...> &) {
-    return {};
-}
-
-template <char... as>
-inline constexpr auto operator+(const std::string &a, const tstring<as...> &) {
-    char b[]{as..., '\0'};
-    return a + b;
-}
-
-template <char... as>
-inline constexpr auto operator+(const tstring<as...> &, const std::string &b) {
-    char a[]{as..., '\0'};
-    return a + b;
-}
 
 inline void *Dlsym(const HookHandler &handle, const char *name, bool match_prefix = false) {
     if (auto match = handle.art_symbol_resolver(name); match) {
@@ -88,8 +60,8 @@ inline void *Dlsym(const HookHandler &handle, const char *name, bool match_prefi
 }
 
 template <typename Class, typename Return, typename T, typename... Args>
-requires(std::is_same_v<T, void> ||
-         std::is_same_v<Class, T>) inline static auto memfun_cast(Return (*func)(T *, Args...)) {
+    requires(std::is_same_v<T, void> || std::is_same_v<Class, T>)
+inline static auto memfun_cast(Return (*func)(T *, Args...)) {
     union {
         Return (Class::*f)(Args...);
 
@@ -143,22 +115,22 @@ MemberFunction(Return (*f)(This *, Args...)) -> MemberFunction<Return(Args...), 
 template <typename This, typename Return, typename... Args>
 MemberFunction(Return (This::*f)(Args...)) -> MemberFunction<Return(Args...), This>;
 
-template <typename, typename>
+template <typename, FixedString>
 struct Hooker;
 
-template <typename Ret, typename... Args, char... cs>
-struct Hooker<Ret(Args...), tstring<cs...>> {
+template <typename Ret, FixedString Sym, typename... Args>
+struct Hooker<Ret(Args...), Sym> {
     inline static Ret (*backup)(Args...) = nullptr;
 
-    inline static constexpr std::string_view sym = tstring<cs...>{};
+    inline static constexpr std::string_view sym = Sym.data;
 };
 
-template <typename, typename>
+template <typename, FixedString>
 struct MemHooker;
-template <typename Ret, typename This, typename... Args, char... cs>
-struct MemHooker<Ret(This, Args...), tstring<cs...>> {
+template <typename Ret, typename This, FixedString Sym, typename... Args>
+struct MemHooker<Ret(This, Args...), Sym> {
     inline static MemberFunction<Ret(Args...)> backup;
-    inline static constexpr std::string_view sym = tstring<cs...>{};
+    inline static constexpr std::string_view sym = Sym.data;
 };
 
 template <typename T>
