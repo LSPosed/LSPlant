@@ -5,11 +5,11 @@ module;
 #include <vector>
 
 #include "logging.hpp"
-#include "utils/hook_helper.hpp"
 
 export module dex_file;
 
 import common;
+import hook_helper;
 
 namespace lsplant::art {
 export class DexFile {
@@ -17,70 +17,59 @@ export class DexFile {
         [[maybe_unused]] uint8_t magic_[8];
         uint32_t checksum_;  // See also location_checksum_
     };
-    CREATE_FUNC_SYMBOL_ENTRY(std::unique_ptr<DexFile>, OpenMemory, const uint8_t* dex_file,
-                             size_t size, const std::string& location, uint32_t location_checksum,
-                             void* mem_map, const void* oat_dex_file, std::string* error_msg) {
-        if (OpenMemorySym) [[likely]] {
-            return OpenMemorySym(dex_file, size, location, location_checksum, mem_map, oat_dex_file,
-                                 error_msg);
-        }
-        if (error_msg) *error_msg = "null sym";
-        return nullptr;
-    }
 
-    CREATE_FUNC_SYMBOL_ENTRY(const DexFile*, OpenMemoryRaw, const uint8_t* dex_file, size_t size,
-                             const std::string& location, uint32_t location_checksum, void* mem_map,
-                             const void* oat_dex_file, std::string* error_msg) {
-        if (OpenMemoryRawSym) [[likely]] {
-            return OpenMemoryRawSym(dex_file, size, location, location_checksum, mem_map,
-                                    oat_dex_file, error_msg);
-        }
-        if (error_msg) *error_msg = "null sym";
-        return nullptr;
-    }
+    inline static Function<
+        {"_ZN3art7DexFile10OpenMemoryEPKhjRKNSt3__112basic_stringIcNS3_11char_traitsIcEENS3_9allocatorIcEEEEjPNS_6MemMapEPKNS_10OatDexFileEPS9_",
+         "_ZN3art7DexFile10OpenMemoryEPKhmRKNSt3__112basic_stringIcNS3_11char_traitsIcEENS3_9allocatorIcEEEEjPNS_6MemMapEPKNS_10OatDexFileEPS9_"},
+        std::unique_ptr<DexFile>(const uint8_t* dex_file, size_t size, const std::string& location,
+                                 uint32_t location_checksum, void* mem_map,
+                                 const void* oat_dex_file, std::string* error_msg)>
+        OpenMemory_;
 
-    CREATE_FUNC_SYMBOL_ENTRY(const DexFile*, OpenMemoryWithoutOdex, const uint8_t* dex_file,
-                             size_t size, const std::string& location, uint32_t location_checksum,
-                             void* mem_map, std::string* error_msg) {
-        if (OpenMemoryWithoutOdexSym) [[likely]] {
-            return OpenMemoryWithoutOdexSym(dex_file, size, location, location_checksum, mem_map,
-                                            error_msg);
-        }
-        if (error_msg) *error_msg = "null sym";
-        return nullptr;
-    }
+    inline static Function<
+        {"_ZN3art7DexFile10OpenMemoryEPKhjRKNSt3__112basic_stringIcNS3_11char_traitsIcEENS3_9allocatorIcEEEEjPNS_6MemMapEPKNS_7OatFileEPS9_",
+         "_ZN3art7DexFile10OpenMemoryEPKhmRKNSt3__112basic_stringIcNS3_11char_traitsIcEENS3_9allocatorIcEEEEjPNS_6MemMapEPKNS_7OatFileEPS9_"},
+        const DexFile*(const uint8_t* dex_file, size_t size, const std::string& location,
+                       uint32_t location_checksum, void* mem_map, const void* oat_dex_file,
+                       std::string* error_msg)>
+        OpenMemoryRaw_;
 
-    CREATE_FUNC_SYMBOL_ENTRY(void, DexFile_setTrusted, JNIEnv* env, jclass clazz,
-                             jobject j_cookie) {
-        if (DexFile_setTrustedSym != nullptr) [[likely]] {
-            DexFile_setTrustedSym(env, clazz, j_cookie);
-        }
-    }
+    inline static Function<
+        {"_ZN3art7DexFile10OpenMemoryEPKhjRKNSt3__112basic_stringIcNS3_11char_traitsIcEENS3_9allocatorIcEEEEjPNS_6MemMapEPS9_",
+         "_ZN3art7DexFile10OpenMemoryEPKhmRKNSt3__112basic_stringIcNS3_11char_traitsIcEENS3_9allocatorIcEEEEjPNS_6MemMapEPS9_"},
+        const DexFile*(const uint8_t* dex_file, size_t size, const std::string& location,
+                       uint32_t location_checksum, void* mem_map, std::string* error_msg)>
+        OpenMemoryWithoutOdex_;
+
+    inline static Function<"_ZN3artL18DexFile_setTrustedEP7_JNIEnvP7_jclassP8_jobject",
+                           void(JNIEnv* env, jclass clazz, jobject j_cookie)>
+        DexFile_setTrusted_;
 
 public:
-    static const DexFile* OpenMemory(const void* dex_file, size_t size, std::string location,
+    static const DexFile* OpenMemory(const uint8_t* dex_file, size_t size, std::string location,
                                      std::string* error_msg) {
-        if (OpenMemorySym) [[likely]] {
-            return OpenMemory(reinterpret_cast<const uint8_t*>(dex_file), size, location,
-                              reinterpret_cast<const Header*>(dex_file)->checksum_, nullptr,
-                              nullptr, error_msg)
+        if (OpenMemory_) [[likely]] {
+            return OpenMemory_(dex_file, size, location,
+                               reinterpret_cast<const Header*>(dex_file)->checksum_, nullptr,
+                               nullptr, error_msg)
                 .release();
-        } else if (OpenMemoryRawSym) [[likely]] {
-            return OpenMemoryRaw(reinterpret_cast<const uint8_t*>(dex_file), size, location,
-                                 reinterpret_cast<const Header*>(dex_file)->checksum_, nullptr,
-                                 nullptr, error_msg);
-        } else if (OpenMemoryWithoutOdexSym) [[likely]] {
-            return OpenMemoryWithoutOdex(reinterpret_cast<const uint8_t*>(dex_file), size, location,
-                                         reinterpret_cast<const Header*>(dex_file)->checksum_,
-                                         nullptr, error_msg);
-        } else {
-            if (error_msg) *error_msg = "no sym";
-            return nullptr;
         }
+        if (OpenMemoryRaw_) [[likely]] {
+            return OpenMemoryRaw_(dex_file, size, location,
+                                  reinterpret_cast<const Header*>(dex_file)->checksum_, nullptr,
+                                  nullptr, error_msg);
+        }
+        if (OpenMemoryWithoutOdex_) [[likely]] {
+            return OpenMemoryWithoutOdex_(dex_file, size, location,
+                                          reinterpret_cast<const Header*>(dex_file)->checksum_,
+                                          nullptr, error_msg);
+        }
+        if (error_msg) *error_msg = "null sym";
+        return nullptr;
     }
 
     jobject ToJavaDexFile(JNIEnv* env) const {
-        auto java_dex_file = env->AllocObject(dex_file_class);
+        auto* java_dex_file = env->AllocObject(dex_file_class);
         auto cookie = JNI_NewLongArray(env, dex_file_start_index + 1);
         if (dex_file_start_index != size_t(-1)) [[likely]] {
             cookie[oat_file_index] = 0;
@@ -100,41 +89,23 @@ public:
     }
 
     static bool SetTrusted(JNIEnv* env, jobject cookie) {
-        if (!DexFile_setTrustedSym) return false;
-        DexFile_setTrusted(env, nullptr, cookie);
+        if (!DexFile_setTrusted_) return false;
+        DexFile_setTrusted_(env, nullptr, cookie);
         return true;
     }
 
     static bool Init(JNIEnv* env, const HookHandler& handler) {
         auto sdk_int = GetAndroidApiLevel();
         if (sdk_int >= __ANDROID_API_P__) [[likely]] {
-            if (!RETRIEVE_FUNC_SYMBOL(DexFile_setTrusted,
-                                      "_ZN3artL18DexFile_setTrustedEP7_JNIEnvP7_jclassP8_jobject",
-                                      true)) {
+            if (!handler.dlsym(DexFile_setTrusted_, true)) {
                 LOGW("DexFile.setTrusted not found, MakeDexFileTrusted will not work.");
             }
         }
         if (sdk_int >= __ANDROID_API_O__) [[likely]] {
             return true;
         }
-        if (!RETRIEVE_FUNC_SYMBOL(
-                OpenMemory,
-                LP_SELECT("_ZN3art7DexFile10OpenMemoryEPKhjRKNSt3__112basic_stringIcNS3_11char_"
-                          "traitsIcEENS3_9allocatorIcEEEEjPNS_6MemMapEPKNS_10OatDexFileEPS9_",
-                          "_ZN3art7DexFile10OpenMemoryEPKhmRKNSt3__112basic_stringIcNS3_11char_"
-                          "traitsIcEENS3_9allocatorIcEEEEjPNS_6MemMapEPKNS_10OatDexFileEPS9_")) &&
-            !RETRIEVE_FUNC_SYMBOL(
-                OpenMemoryRaw,
-                LP_SELECT("_ZN3art7DexFile10OpenMemoryEPKhjRKNSt3__112basic_stringIcNS3_11char_"
-                          "traitsIcEENS3_9allocatorIcEEEEjPNS_6MemMapEPKNS_7OatFileEPS9_",
-                          "_ZN3art7DexFile10OpenMemoryEPKhmRKNSt3__112basic_stringIcNS3_11char_"
-                          "traitsIcEENS3_9allocatorIcEEEEjPNS_6MemMapEPKNS_7OatFileEPS9_")) &&
-            !RETRIEVE_FUNC_SYMBOL(
-                OpenMemoryWithoutOdex,
-                LP_SELECT("_ZN3art7DexFile10OpenMemoryEPKhjRKNSt3__112basic_stringIcNS3_11char_"
-                          "traitsIcEENS3_9allocatorIcEEEEjPNS_6MemMapEPS9_",
-                          "_ZN3art7DexFile10OpenMemoryEPKhmRKNSt3__112basic_stringIcNS3_11char_"
-                          "traitsIcEENS3_9allocatorIcEEEEjPNS_6MemMapEPS9_"))) [[unlikely]] {
+        if (!handler.dlsym(OpenMemory_) && !handler.dlsym(OpenMemoryRaw_) &&
+            !handler.dlsym(OpenMemoryWithoutOdex_)) [[unlikely]] {
             LOGE("Failed to find OpenMemory");
             return false;
         }

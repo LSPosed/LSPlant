@@ -1,24 +1,22 @@
 module;
 
-#include "utils/hook_helper.hpp"
-
 export module thread;
+
+import hook_helper;
 
 namespace lsplant::art {
 export class Thread {
-    CREATE_FUNC_SYMBOL_ENTRY(Thread *, CurrentFromGdb) {
-        if (CurrentFromGdbSym) [[likely]]
-            return CurrentFromGdbSym();
-        else
-            return nullptr;
-    }
+    inline static Function<"_ZN3art6Thread14CurrentFromGdbEv", Thread *()> CurrentFromGdb_;
 
 public:
-    static Thread *Current() { return CurrentFromGdb(); }
+    static Thread *Current() {
+        if (CurrentFromGdb_) [[likely]]
+            return CurrentFromGdb_();
+        return nullptr;
+    }
 
     static bool Init(const HookHandler &handler) {
-        if (!RETRIEVE_FUNC_SYMBOL(CurrentFromGdb, "_ZN3art6Thread14CurrentFromGdbEv"))
-            [[unlikely]] {
+        if (!handler.dlsym(CurrentFromGdb_)) [[unlikely]] {
             return false;
         }
         return true;

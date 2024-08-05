@@ -1,11 +1,12 @@
 module;
 
-#include "utils/hook_helper.hpp"
+#include <android/api-level.h>
 
 export module scope_gc_critical_section;
 
 import thread;
 import common;
+import hook_helper;
 
 namespace lsplant::art::gc {
 // Which types of collections are able to be performed.
@@ -97,35 +98,30 @@ private:
 };
 
 export class ScopedGCCriticalSection {
-    CREATE_MEM_FUNC_SYMBOL_ENTRY(void, constructor, ScopedGCCriticalSection *thiz, Thread *self,
-                                 GcCause cause, CollectorType collector_type) {
-        if (thiz && constructorSym) [[likely]]
-            return constructorSym(thiz, self, cause, collector_type);
-    }
-
-    CREATE_MEM_FUNC_SYMBOL_ENTRY(void, destructor, ScopedGCCriticalSection *thiz) {
-        if (thiz && destructorSym) [[likely]]
-            destructorSym(thiz);
-    }
+    inline static MemberFunction<
+        "_ZN3art2gc23ScopedGCCriticalSectionC2EPNS_6ThreadENS0_7GcCauseENS0_13CollectorTypeE",
+        ScopedGCCriticalSection, void(Thread *, GcCause, CollectorType)>
+        constructor_;
+    inline static MemberFunction<"_ZN3art2gc23ScopedGCCriticalSectionD2Ev", ScopedGCCriticalSection,
+                                 void()>
+        destructor_;
 
 public:
     ScopedGCCriticalSection(Thread *self, GcCause cause, CollectorType collector_type) {
-        constructor(this, self, cause, collector_type);
+        if (constructor_) {
+            constructor_(this, self, cause, collector_type);
+        }
     }
 
-    ~ScopedGCCriticalSection() { destructor(this); }
+    ~ScopedGCCriticalSection() {
+        if (destructor_) destructor_(this);
+    }
 
     static bool Init(const HookHandler &handler) {
         // for Android M, it's safe to not found since we have suspendVM & resumeVM
         auto sdk_int = GetAndroidApiLevel();
         if (sdk_int >= __ANDROID_API_N__) [[likely]] {
-            if (!RETRIEVE_MEM_FUNC_SYMBOL(constructor,
-                                          "_ZN3art2gc23ScopedGCCriticalSectionC2EPNS_6ThreadENS0_"
-                                          "7GcCauseENS0_13CollectorTypeE")) [[unlikely]] {
-                return false;
-            }
-            if (!RETRIEVE_MEM_FUNC_SYMBOL(destructor, "_ZN3art2gc23ScopedGCCriticalSectionD2Ev"))
-                [[unlikely]] {
+            if (!handler.dlsym(constructor_) || !handler.dlsym(destructor_)) {
                 return false;
             }
         }

@@ -1,60 +1,57 @@
 module;
 
 #include "logging.hpp"
-#include "utils/hook_helper.hpp"
 
 export module jit_code_cache;
 
 import art_method;
 import common;
 import thread;
+import hook_helper;
 
 namespace lsplant::art::jit {
 export class JitCodeCache {
-    CREATE_MEM_FUNC_SYMBOL_ENTRY(void, MoveObsoleteMethod, JitCodeCache *thiz,
-                                 ArtMethod *old_method, ArtMethod *new_method) {
-        if (MoveObsoleteMethodSym) [[likely]] {
-            MoveObsoleteMethodSym(thiz, old_method, new_method);
-        } else {
-            // fallback to set data
-            new_method->SetData(old_method->GetData());
-            old_method->SetData(nullptr);
-        }
-    }
+    inline static MemberFunction<"_ZN3art3jit12JitCodeCache18MoveObsoleteMethodEPNS_9ArtMethodES3_",
+                                 JitCodeCache, void(ArtMethod *, ArtMethod *)>
+        MoveObsoleteMethod_;
 
-    void MoveObsoleteMethods() {
+    static void MoveObsoleteMethods(JitCodeCache *thiz) {
         auto movements = GetJitMovements();
         LOGD("Before jit cache collection, moving %zu hooked methods", movements.size());
         for (auto [target, backup] : movements) {
-            MoveObsoleteMethod(this, target, backup);
+            if (MoveObsoleteMethod_) [[likely]]
+                MoveObsoleteMethod_(thiz, target, backup);
+            else {
+                backup->SetData(backup->GetData());
+                target->SetData(nullptr);
+            }
         }
     }
 
-    CREATE_MEM_HOOK_STUB_ENTRY("_ZN3art3jit12JitCodeCache19GarbageCollectCacheEPNS_6ThreadE", void,
-                               GarbageCollectCache, (JitCodeCache * thiz, Thread *self), {
-                                   thiz->MoveObsoleteMethods();
-                                   backup(thiz, self);
-                               });
+    inline static MemberHooker<"_ZN3art3jit12JitCodeCache19GarbageCollectCacheEPNS_6ThreadE",
+                               JitCodeCache, void(Thread *)>
+        GarbageCollectCache_ = +[](JitCodeCache *thiz, Thread *self) {
+            MoveObsoleteMethods(thiz);
+            GarbageCollectCache_(thiz, self);
+        };
 
-    CREATE_MEM_HOOK_STUB_ENTRY("_ZN3art3jit12JitCodeCache12DoCollectionEPNS_6ThreadE", void,
-                               DoCollection, (JitCodeCache * thiz, Thread *self), {
-                                   thiz->MoveObsoleteMethods();
-                                   backup(thiz, self);
-                               });
+    inline static MemberHooker<"_ZN3art3jit12JitCodeCache12DoCollectionEPNS_6ThreadE", JitCodeCache,
+                               void(Thread *)>
+        DoCollection_ = +[](JitCodeCache *thiz, Thread *self) {
+            MoveObsoleteMethods(thiz);
+            DoCollection_(thiz, self);
+        };
 
 public:
     static bool Init(const HookHandler &handler) {
         auto sdk_int = GetAndroidApiLevel();
         if (sdk_int >= __ANDROID_API_O__) [[likely]] {
-            if (!RETRIEVE_MEM_FUNC_SYMBOL(
-                    MoveObsoleteMethod,
-                    "_ZN3art3jit12JitCodeCache18MoveObsoleteMethodEPNS_9ArtMethodES3_"))
-                [[unlikely]] {
+            if (!handler.dlsym(MoveObsoleteMethod_)) [[unlikely]] {
                 return false;
             }
         }
         if (sdk_int >= __ANDROID_API_N__) [[likely]] {
-            if (!HookSyms(handler, GarbageCollectCache, DoCollection)) [[unlikely]] {
+            if (!handler.hook(GarbageCollectCache_, DoCollection_)) [[unlikely]] {
                 return false;
             }
         }

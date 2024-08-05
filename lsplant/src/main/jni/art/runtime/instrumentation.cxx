@@ -1,12 +1,12 @@
 module;
 
 #include "logging.hpp"
-#include "utils/hook_helper.hpp"
 
 export module instrumentation;
 
 import art_method;
 import common;
+import hook_helper;
 
 namespace lsplant::art {
 
@@ -21,29 +21,32 @@ export class Instrumentation {
         return art_method;
     }
 
-    CREATE_MEM_HOOK_STUB_ENTRY(
+    inline static MemberHooker<
         "_ZN3art15instrumentation15Instrumentation40UpdateMethodsCodeToInterpreterEntryPointEPNS_9ArtMethodE",
-        void, UpdateMethodsCodeToInterpreterEntryPoint,
-        (Instrumentation * thiz, ArtMethod *art_method), {
-            if (IsDeoptimized(art_method)) {
-                LOGV("skip update entrypoint on deoptimized method %s",
-                     art_method->PrettyMethod(true).c_str());
-                return;
-            }
-            backup(thiz, MaybeUseBackupMethod(art_method, nullptr));
-        });
+        Instrumentation, void(ArtMethod *)>
+        UpdateMethodsCodeToInterpreterEntryPoint_ =
+            +[](Instrumentation *thiz, ArtMethod *art_method) {
+                if (IsDeoptimized(art_method)) {
+                    LOGV("skip update entrypoint on deoptimized method %s",
+                         art_method->PrettyMethod(true).c_str());
+                    return;
+                }
+                UpdateMethodsCodeToInterpreterEntryPoint_(
+                    thiz, MaybeUseBackupMethod(art_method, nullptr));
+            };
 
-    CREATE_MEM_HOOK_STUB_ENTRY(
-        "_ZN3art15instrumentation15Instrumentation21InitializeMethodsCodeEPNS_9ArtMethodEPKv", void,
-        InitializeMethodsCode,
-        (Instrumentation * thiz, ArtMethod *art_method, const void *quick_code), {
+    inline static MemberHooker<
+        "_ZN3art15instrumentation15Instrumentation21InitializeMethodsCodeEPNS_9ArtMethodEPKv",
+        Instrumentation, void(ArtMethod *, const void *)>
+        InitializeMethodsCode_ = +[](Instrumentation *thiz, ArtMethod *art_method,
+                                     const void *quick_code) {
             if (IsDeoptimized(art_method)) {
                 LOGV("skip update entrypoint on deoptimized method %s",
                      art_method->PrettyMethod(true).c_str());
                 return;
             }
-            backup(thiz, MaybeUseBackupMethod(art_method, quick_code), quick_code);
-        });
+            InitializeMethodsCode_(thiz, MaybeUseBackupMethod(art_method, quick_code), quick_code);
+        };
 
 public:
     static bool Init(JNIEnv *env, const HookHandler &handler) {
@@ -52,8 +55,7 @@ public:
         }
         int sdk_int = GetAndroidApiLevel();
         if (sdk_int >= __ANDROID_API_P__) [[likely]] {
-            if (!HookSyms(handler, InitializeMethodsCode,
-                          UpdateMethodsCodeToInterpreterEntryPoint)) {
+            if (!handler.hook(InitializeMethodsCode_, UpdateMethodsCodeToInterpreterEntryPoint_)) {
                 return false;
             }
         }

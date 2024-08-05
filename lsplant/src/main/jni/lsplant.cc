@@ -1,14 +1,16 @@
 #include <android/api-level.h>
 #include <bits/sysconf.h>
+#include <jni.h>
 #include <sys/mman.h>
 #include <sys/system_properties.h>
 
 #include <array>
 #include <atomic>
 #include <bit>
+#include <string_view>
+#include <tuple>
 
 #include "logging.hpp"
-#include "utils/hook_helper.hpp"
 
 import dex_builder;
 import lsplant;
@@ -26,6 +28,7 @@ import jit_code_cache;
 import jni_id_manager;
 import dex_file;
 import jit;
+import hook_helper;
 
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wunknown-pragmas"
@@ -42,8 +45,8 @@ using art::Instrumentation;
 using art::Runtime;
 using art::Thread;
 using art::gc::ScopedGCCriticalSection;
-using art::jit::JitCodeCache;
 using art::jit::Jit;
+using art::jit::JitCodeCache;
 using art::jni::JniIdManager;
 using art::mirror::Class;
 using art::thread_list::ScopedSuspendAll;
@@ -256,9 +259,6 @@ inline void UpdateTrampoline(uint8_t offset) {
 }
 
 bool InitNative(JNIEnv *env, const HookHandler &handler) {
-    if (!handler.inline_hooker || !handler.inline_unhooker || !handler.art_symbol_resolver) {
-        return false;
-    }
     if (!ArtMethod::Init(env, handler)) {
         LOGE("Failed to init art method");
         return false;
@@ -482,8 +482,8 @@ std::tuple<jclass, jfieldID, jmethodID, jmethodID> BuildDex(JNIEnv *env, jobject
         mprotect(target, image.size(), PROT_READ);
         std::string err_msg;
         const auto *dex = DexFile::OpenMemory(
-            target, image.size(), generated_source_name.empty() ? "lsplant" : generated_source_name,
-            &err_msg);
+            reinterpret_cast<const uint8_t *>(target), image.size(),
+            generated_source_name.empty() ? "lsplant" : generated_source_name, &err_msg);
         if (!dex) {
             LOGE("Failed to open memory dex: %s", err_msg.data());
         } else {
@@ -694,6 +694,10 @@ inline namespace v2 {
 using ::lsplant::IsHooked;
 
 [[maybe_unused]] bool Init(JNIEnv *env, const InitInfo &info) {
+    if (!info.inline_hooker || !info.inline_unhooker || !info.art_symbol_resolver ||
+        !info.art_symbol_prefix_resolver) {
+        return false;
+    }
     bool static kInit = InitConfig(info) && InitJNI(env) && InitNative(env, info);
     return kInit;
 }

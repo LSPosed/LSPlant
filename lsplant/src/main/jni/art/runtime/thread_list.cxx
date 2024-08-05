@@ -1,55 +1,43 @@
 module;
 
-#include "include/utils/hook_helper.hpp"
-
 export module thread_list;
+
+import hook_helper;
 
 namespace lsplant::art::thread_list {
 
 export class ScopedSuspendAll {
-    CREATE_MEM_FUNC_SYMBOL_ENTRY(void, constructor, ScopedSuspendAll *thiz, const char *cause,
-                                 bool long_suspend) {
-        if (thiz && constructorSym) [[likely]] {
-            return constructorSym(thiz, cause, long_suspend);
-        } else {
-            SuspendVM();
-        }
-    }
+    inline static MemberFunction<"_ZN3art16ScopedSuspendAllC2EPKcb", ScopedSuspendAll,
+                                 void(const char *, bool)>
+        constructor_;
+    inline static MemberFunction<"_ZN3art16ScopedSuspendAllD2Ev", ScopedSuspendAll, void()>
+        destructor_;
 
-    CREATE_MEM_FUNC_SYMBOL_ENTRY(void, destructor, ScopedSuspendAll *thiz) {
-        if (thiz && destructorSym) [[likely]] {
-            return destructorSym(thiz);
-        } else {
-            ResumeVM();
-        }
-    }
-
-    CREATE_FUNC_SYMBOL_ENTRY(void, SuspendVM) {
-        if (SuspendVMSym) [[likely]] {
-            SuspendVMSym();
-        }
-    }
-
-    CREATE_FUNC_SYMBOL_ENTRY(void, ResumeVM) {
-        if (ResumeVMSym) [[likely]] {
-            ResumeVMSym();
-        }
-    }
+    inline static Function<"_ZN3art3Dbg9SuspendVMEv", void()> SuspendVM_;
+    inline static Function<"_ZN3art3Dbg8ResumeVMEv", void()> ResumeVM_;
 
 public:
     ScopedSuspendAll(const char *cause, bool long_suspend) {
-        constructor(this, cause, long_suspend);
+        if (constructor_) {
+            constructor_(this, cause, long_suspend);
+        } else if (SuspendVM_) {
+            SuspendVM_();
+        }
     }
 
-    ~ScopedSuspendAll() { destructor(this); }
+    ~ScopedSuspendAll() {
+        if (destructor_) {
+            destructor_(this);
+        } else if (ResumeVM_) {
+            ResumeVM_();
+        }
+    }
 
     static bool Init(const HookHandler &handler) {
-        if (!RETRIEVE_MEM_FUNC_SYMBOL(constructor, "_ZN3art16ScopedSuspendAllC2EPKcb") &&
-            !RETRIEVE_FUNC_SYMBOL(SuspendVM, "_ZN3art3Dbg9SuspendVMEv")) [[unlikely]] {
+        if (!handler.dlsym(constructor_) && !handler.dlsym(SuspendVM_)) [[unlikely]] {
             return false;
         }
-        if (!RETRIEVE_MEM_FUNC_SYMBOL(destructor, "_ZN3art16ScopedSuspendAllD2Ev") &&
-            !RETRIEVE_FUNC_SYMBOL(ResumeVM, "_ZN3art3Dbg8ResumeVMEv")) [[unlikely]] {
+        if (!handler.dlsym(destructor_) && !handler.dlsym(ResumeVM_)) [[unlikely]] {
             return false;
         }
         return true;
