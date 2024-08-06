@@ -155,6 +155,17 @@ public:
             reinterpret_cast<uintptr_t>(this) + declaring_class_offset));
     }
 
+    void BackupTo(ArtMethod *backup) {
+        SetNonCompilable();
+
+        // copy after setNonCompilable
+        backup->CopyFrom(this);
+
+        ClearFastInterpretFlag();
+
+        if (!backup->IsStatic()) backup->SetPrivate();
+    }
+
     static art::ArtMethod *FromReflectedMethod(JNIEnv *env, jobject method) {
         if (art_method_field) [[likely]] {
             return reinterpret_cast<art::ArtMethod *>(

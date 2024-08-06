@@ -592,17 +592,11 @@ bool DoHook(ArtMethod *target, ArtMethod *hook, ArtMethod *backup) {
     } else {
         LOGV("Generated trampoline %p", entrypoint);
 
-        target->SetNonCompilable();
         hook->SetNonCompilable();
 
-        // copy after setNonCompilable
-        backup->CopyFrom(target);
-
-        target->ClearFastInterpretFlag();
+        target->BackupTo(backup);
 
         target->SetEntryPoint(entrypoint);
-
-        if (!backup->IsStatic()) backup->SetPrivate();
 
         LOGV("Done hook: target(%p:0x%x) -> %p; backup(%p:0x%x) -> %p; hook(%p:0x%x) -> %p", target,
              target->GetAccessFlags(), target->GetEntryPoint(), backup, backup->GetAccessFlags(),
