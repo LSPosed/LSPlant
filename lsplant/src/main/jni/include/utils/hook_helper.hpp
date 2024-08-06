@@ -49,7 +49,7 @@ template <typename Class, typename Return, typename T, typename... Args>
     requires(std::is_same_v<T, void> || std::is_same_v<Class, T>)
 inline auto memfun_cast(Return (*func)(T *, Args...)) {
     union {
-        Return (Class::*f)(Args...);
+        Return (Class::*f)(Args...) const;
 
         struct {
             decltype(func) p;
@@ -145,7 +145,7 @@ struct MemberFunction<Sym, This, Ret(Args...)> {
 private:
     friend struct HookHandler;
     using ThisType = std::conditional_t<std::is_same_v<This, void>, MemberFunction, This>;
-    Ret (ThisType::*function_)(Args...) = nullptr;
+    Ret (ThisType::*function_)(Args...) const = nullptr;
 };
 
 template <FixedString Sym, typename Ret, typename... Args>
