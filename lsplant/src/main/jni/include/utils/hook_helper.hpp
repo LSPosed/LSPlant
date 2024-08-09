@@ -97,9 +97,9 @@ struct HookHandler {
                    hook(dlsym<Sym>(), reinterpret_cast<void *>(hooker.replace_))));
     }
 
-    template <typename... T>
-    [[gnu::always_inline]] bool hook(T &...args) const {
-        return (hook(args) || ...);
+    template <typename T1, typename T2, typename... U>
+    [[gnu::always_inline]] bool hook(T1 &arg1, T2 &arg2, U &...args) const {
+        return ((hook(arg1) || hook(arg2)) || ... || hook(args));
     }
 
 private:
