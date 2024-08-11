@@ -143,7 +143,7 @@ export {
         hooked_methods_.if_contains(art_method, [&backup](const auto &it) {
             if (!it.second.first) backup = it.second.second;
         });
-        return nullptr;
+        return backup;
     }
 
     inline bool IsDeoptimized(art::ArtMethod * art_method) {
