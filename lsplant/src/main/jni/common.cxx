@@ -133,7 +133,7 @@ export {
     inline art::ArtMethod *IsHooked(art::ArtMethod * art_method, bool including_backup = false) {
         art::ArtMethod *backup = nullptr;
         hooked_methods_.if_contains(art_method, [&backup, &including_backup](const auto &it) {
-            if (!including_backup || it.second.first) backup = it.second.second;
+            if (including_backup || it.second.first) backup = it.second.second;
         });
         return backup;
     }
