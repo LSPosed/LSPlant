@@ -236,6 +236,8 @@ jobs:
           save: false
       - name: Setup Cuttlefish environment
         run: |
+          .github/cuttlefish.sh setup
+          .github/cuttlefish.sh download ${{ matrix.branch }} ${{ matrix.device }}
           curl -LO https://github.com/ninja-build/ninja/releases/download/v1.12.1/ninja-linux.zip
           unzip ninja-linux.zip -d $ANDROID_HOME/platform-tools
           chmod +x $ANDROID_HOME/platform-tools/ninja
@@ -243,8 +245,6 @@ jobs:
           ccache -o cache_dir=${{ github.workspace }}/.ccache
           ccache -o hash_dir=false
           ccache -o compiler_check='%compiler% -dumpmachine; %compiler% -dumpversion'
-          .github/cuttlefish.sh setup
-          .github/cuttlefish.sh download ${{ matrix.branch }} ${{ matrix.device }}
       - name: Run Cuttlefish test
         timeout-minutes: 10
         run: su $USER -c '.github/cuttlefish.sh test'
