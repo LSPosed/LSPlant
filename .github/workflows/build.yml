@@ -24,15 +24,15 @@ jobs:
           submodules: 'recursive'
           ssh-key: ${{ secrets.SSH_KEY }}
           fetch-depth: 0
-      - name: Set up JDK 17
+      - name: Set up JDK 21
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
-          java-version: '17'
+          java-version: '21'
           cache: 'gradle'
       - uses: seanmiddleditch/gha-setup-ninja@master
         with:
-          version: 1.12.0
+          version: 1.12.1
       - name: ccache
         uses: hendrikmuhs/ccache-action@v1
         with:
@@ -58,6 +58,7 @@ jobs:
         with:
           name: ${{ matrix.os }}-library
           path: ~/.m2
+          include-hidden-files: true
 
   test:
     needs: build
@@ -157,15 +158,15 @@ jobs:
         with:
           submodules: 'recursive'
           ssh-key: ${{ secrets.SSH_KEY }}
-      - name: Set up JDK 17
+      - name: Set up JDK 21
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
-          java-version: '17'
+          java-version: '21'
           cache: 'gradle'
       - uses: seanmiddleditch/gha-setup-ninja@master
         with:
-          version: 1.12.0
+          version: 1.12.1
       - name: ccache
         uses: hendrikmuhs/ccache-action@v1
         with:
@@ -200,3 +201,57 @@ jobs:
           path: |
             test/build/outputs
             !test/build/outputs/apk
+
+  cf-test:
+    name: Test ${{ matrix.device }}
+    runs-on: ubuntu-24.04
+    needs: build
+    env:
+      CF_HOME: /home/runner/aosp_cf_phone
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - branch: "aosp-main"
+            device: "aosp_cf_x86_64_phone"
+
+    steps:
+      - name: checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: 'recursive'
+          ssh-key: ${{ secrets.SSH_KEY }}
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+          cache: 'gradle'
+      - uses: seanmiddleditch/gha-setup-ninja@master
+        with:
+          version: 1.12.1
+      - name: ccache
+        uses: hendrikmuhs/ccache-action@v1
+        with:
+          key: ${{ runner.os }}-${{ github.sha }}
+          restore-keys: ${{ runner.os }}
+          save: false
+      - name: Setup Cuttlefish environment
+        run: |
+          rm -rf $ANDROID_HOME/cmake
+          ccache -o cache_dir=${{ github.workspace }}/.ccache
+          ccache -o hash_dir=false
+          ccache -o compiler_check='%compiler% -dumpmachine; %compiler% -dumpversion'
+          .github/cuttlefish.sh setup
+          .github/cuttlefish.sh download ${{ matrix.branch }} ${{ matrix.device }}
+      - name: Run Cuttlefish test
+        timeout-minutes: 10
+        run: su $USER -c '.github/cuttlefish.sh test'
+      - name: Upload logs on error
+        if: ${{ failure() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: "cvd-logs-${{ matrix.device }}"
+          path: |
+            /home/runner/aosp_cf_phone/cuttlefish/instances/cvd-1/logs
+            /home/runner/aosp_cf_phone/cuttlefish/instances/cvd-1/cuttlefish_config.json
