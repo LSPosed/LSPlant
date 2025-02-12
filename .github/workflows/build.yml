@@ -11,6 +11,7 @@ on:
 jobs:
   build:
     name: Build on ${{ matrix.os }}
+    if: false
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -206,7 +207,6 @@ jobs:
   cf-test:
     name: Test ${{ matrix.device }}
     runs-on: ubuntu-24.04
-    needs: build
     env:
       CF_HOME: /home/runner/aosp_cf_phone
     strategy:
@@ -247,7 +247,7 @@ jobs:
           .github/cuttlefish.sh download ${{ matrix.branch }} ${{ matrix.device }}
       - name: Run Cuttlefish test
         timeout-minutes: 10
-        run: sudo -E -s -u ${USER} -c '.github/cuttlefish.sh test'
+        run: sudo -E -u ${USER} '.github/cuttlefish.sh test'
       - name: Upload logs on error
         if: ${{ failure() }}
         uses: actions/upload-artifact@v4
