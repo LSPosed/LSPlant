@@ -5,6 +5,14 @@ export PATH="$PATH:$ANDROID_HOME/platform-tools"
 sdk="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
 cvd_args="-daemon -enable_sandbox=false -memory_mb=8192 -report_anonymous_usage_stats=n"
 
+print_title() {
+  echo -e "\n\033[44;39m${1}\033[0m\n"
+}
+
+print_error() {
+  echo -e "\n\033[41;39m${1}\033[0m\n"
+}
+
 cleanup() {
   print_error "! An error occurred"
   run_cvd_bin stop_cvd || true
