@@ -17,7 +17,11 @@ if (LSPLANT_STANDALONE)
     link_libraries(cxx::cxx)
 endif()
 
-set(SOURCES lsplant.cc lsplant_asm.S)
+set(SOURCES lsplant.cc)
+if (CMAKE_ANDROID_ARCH_ABI MATCHES "^(arm64-v8a|riscv64)$")
+    set(SOURCES ${SOURCES} lsplant_asm.S)
+endif ()
+
 file(GLOB_RECURSE MODULE_SOURCES CONFIGURE_DEPENDS "*.cxx")
 file(GLOB_RECURSE MODULE_INTERFACES CONFIGURE_DEPENDS "*.ixx")
 list(FILTER MODULE_SOURCES EXCLUDE REGEX "${PROJECT_SOURCE_DIR}.external.+")
