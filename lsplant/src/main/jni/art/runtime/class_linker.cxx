@@ -2,6 +2,8 @@ module;
 
 #include <sys/types.h>
 
+#include <array>
+
 #include "logging.hpp"
 
 export module class_linker;
