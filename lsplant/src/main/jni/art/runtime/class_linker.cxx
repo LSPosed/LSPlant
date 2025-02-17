@@ -14,6 +14,14 @@ import handle;
 import hook_helper;
 
 namespace lsplant::art {
+
+export class ClassLinker;
+
+extern "C" {
+void *lsplant_get_trampoline_address(const ClassLinker *class_linker,
+                                     bool (*checker)(const ClassLinker *, const void *));
+}
+
 export class ClassLinker {
 private:
     inline static MemberFunction<
@@ -34,6 +42,13 @@ private:
         art_quick_to_interpreter_bridge_;
     inline static Function<"art_quick_generic_jni_trampoline", void(void *)>
         art_quick_generic_jni_trampoline_;
+
+    inline static Function<"_ZNK3art11ClassLinker26IsQuickToInterpreterBridgeEPKv",
+                           bool(const ClassLinker *, const void *)>
+        IsQuickToInterpreterBridge_;
+    inline static Function<"_ZNK3art11ClassLinker21IsQuickGenericJniStubEPKv",
+                           bool(const ClassLinker *, const void *)>
+        IsQuickGenericJniStub_;
 
     inline static art::ArtMethod *MayGetBackup(art::ArtMethod *method) {
         if (auto backup = IsHooked(method); backup) [[unlikely]] {
@@ -188,14 +203,32 @@ public:
         }
 
         if (!handler.dlsym(SetEntryPointsToInterpreter_)) [[unlikely]] {
-            if (!handler.dlsym(art_quick_to_interpreter_bridge_)) [[unlikely]] {
+            if (!handler.dlsym(art_quick_to_interpreter_bridge_) ||
+                !handler.dlsym(art_quick_generic_jni_trampoline_)) [[unlikely]] {
+                if constexpr (kArch == Arch::kArm64 || kArch == Arch::kRiscv64) {
+                    if (handler.dlsym(IsQuickToInterpreterBridge_) &&
+                        handler.dlsym(IsQuickGenericJniStub_)) [[likely]] {
+
+                        static constexpr size_t kLargeEnoughSizeForClassLinker = 4096;
+                        std::array<uint8_t, kLargeEnoughSizeForClassLinker> code;
+                        code.fill(uint8_t{0});
+                        auto *const fake_class_linker =
+                            reinterpret_cast<ClassLinker *>(code.data());
+
+                        art_quick_to_interpreter_bridge_.update(lsplant_get_trampoline_address(
+                            fake_class_linker, &IsQuickToInterpreterBridge_));
+                        art_quick_generic_jni_trampoline_.update(lsplant_get_trampoline_address(
+                            fake_class_linker, &IsQuickGenericJniStub_));
+                    }
+                }
+            }
+
+            if (art_quick_to_interpreter_bridge_ && art_quick_generic_jni_trampoline_) {
+                LOGD("art_quick_to_interpreter_bridge = %p", &art_quick_to_interpreter_bridge_);
+                LOGD("art_quick_generic_jni_trampoline = %p", &art_quick_generic_jni_trampoline_);
+            } else {
                 return false;
             }
-            if (!handler.dlsym(art_quick_generic_jni_trampoline_)) [[unlikely]] {
-                return false;
-            }
-            LOGD("art_quick_to_interpreter_bridge = %p", &art_quick_to_interpreter_bridge_);
-            LOGD("art_quick_generic_jni_trampoline = %p", &art_quick_generic_jni_trampoline_);
         }
         return true;
     }
