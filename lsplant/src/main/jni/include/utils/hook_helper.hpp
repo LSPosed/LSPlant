@@ -130,6 +130,8 @@ struct Function<Sym, Ret(Args...)> {
     [[gnu::always_inline]] operator bool() { return function_ != nullptr; }
     auto operator&() const { return function_; }
 
+    void update(void *new_value) { function_ = reinterpret_cast<Ret (*)(Args...)>(new_value); }
+
 private:
     friend struct HookHandler;
     Ret (*function_)(Args...) = nullptr;
