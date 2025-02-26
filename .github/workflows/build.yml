@@ -149,7 +149,10 @@ jobs:
           - api-level: 34
             target: android-tv
             arch: x86
-          - api-level: VanillaIceCream
+          - api-level: 35
+            target: default
+            arch: x86_64
+          - api-level: Baklava
             target: google_apis
             arch: x86_64
     steps:
@@ -179,7 +182,7 @@ jobs:
             sudo udevadm control --reload-rules
             sudo udevadm trigger --name-match=kvm
       - name: run tests
-        uses: yujincheng08/android-emulator-runner@v2
+        uses: reactivecircus/android-emulator-runner@b683a061eaff4aac4d0b585bfd0cf714a40aee93
         with:
           api-level: ${{ matrix.api-level }}
           arch: ${{ matrix.arch }}
