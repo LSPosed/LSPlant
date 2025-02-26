@@ -2,6 +2,7 @@ module;
 
 #include <atomic>
 #include <string>
+#include <memory>
 
 #include "logging.hpp"
 
@@ -98,6 +99,18 @@ public:
         SetAccessFlags(access_flags);
     }
 
+    void SetNative() {
+        auto access_flags = GetAccessFlags();
+        access_flags |= kAccNative;
+        SetAccessFlags(access_flags);
+    }
+
+    void SetNonNative() {
+        auto access_flags = GetAccessFlags();
+        access_flags &= ~kAccNative;
+        SetAccessFlags(access_flags);
+    }
+
     bool IsPrivate() { return GetAccessFlags() & kAccPrivate; }
     bool IsProtected() { return GetAccessFlags() & kAccProtected; }
     bool IsPublic() { return GetAccessFlags() & kAccPublic; }
@@ -153,6 +166,12 @@ public:
     mirror::Class *GetDeclaringClass() {
         return reinterpret_cast<mirror::Class *>(*reinterpret_cast<uint32_t *>(
             reinterpret_cast<uintptr_t>(this) + declaring_class_offset));
+    }
+
+    std::unique_ptr<ArtMethod> Clone() {
+        auto *method = reinterpret_cast<ArtMethod*>(::operator new(art_method_size));
+        method->CopyFrom(this);
+        return std::unique_ptr<ArtMethod>(method);
     }
 
     void BackupTo(ArtMethod *backup) {

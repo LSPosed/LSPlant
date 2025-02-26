@@ -129,6 +129,10 @@ struct Function<Sym, Ret(Args...)> {
     [[gnu::always_inline]] constexpr Ret operator()(Args... args) { return function_(args...); }
     [[gnu::always_inline]] operator bool() { return function_ != nullptr; }
     auto operator&() const { return function_; }
+    Function &operator=(void *function) {
+        function_ = reinterpret_cast<decltype(function_)>(function);
+        return *this;
+    }
 
 private:
     friend struct HookHandler;

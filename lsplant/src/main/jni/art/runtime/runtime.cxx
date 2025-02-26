@@ -1,6 +1,7 @@
 module;
 
 #include <array>
+#include <atomic>
 
 #include "logging.hpp"
 
@@ -86,5 +87,57 @@ public:
         }
         return true;
     }
+};
+
+export struct JavaDebuggableGuard {
+    JavaDebuggableGuard() {
+        while (true) {
+            size_t expected = 0;
+            if (count.compare_exchange_strong(expected, 1, std::memory_order_acq_rel,
+                                              std::memory_order_acquire)) {
+                Runtime::Current()->SetJavaDebuggable(
+                        Runtime::RuntimeDebugState::kJavaDebuggableAtInit);
+                count.fetch_add(1, std::memory_order_release);
+                count.notify_all();
+                break;
+            }
+            if (expected == 1) {
+                count.wait(expected, std::memory_order_acquire);
+                continue;
+            }
+            if (count.compare_exchange_strong(expected, expected + 1, std::memory_order_acq_rel,
+                                              std::memory_order_relaxed)) {
+                break;
+            }
+        }
+    }
+
+    ~JavaDebuggableGuard() {
+        while (true) {
+            size_t expected = 2;
+            if (count.compare_exchange_strong(expected, 1, std::memory_order_acq_rel,
+                                              std::memory_order_acquire)) {
+                Runtime::Current()->SetJavaDebuggable(
+                        Runtime::RuntimeDebugState::kNonJavaDebuggable);
+                count.fetch_sub(1, std::memory_order_release);
+                count.notify_all();
+                break;
+            }
+            if (expected == 1) {
+                count.wait(expected, std::memory_order_acquire);
+                continue;
+            }
+            if (count.compare_exchange_strong(expected, expected - 1, std::memory_order_acq_rel,
+                                              std::memory_order_relaxed)) {
+                break;
+            }
+        }
+    }
+
+private:
+    inline static std::atomic_size_t count{0};
+    static_assert(std::atomic_size_t::is_always_lock_free, "Unsupported architecture");
+    static_assert(std::is_same_v<std::atomic_size_t::value_type, size_t>,
+                  "Unsupported architecture");
 };
 }  // namespace lsplant::art

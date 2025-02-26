@@ -12,6 +12,7 @@ import common;
 import clazz;
 import handle;
 import hook_helper;
+import runtime;
 
 namespace lsplant::art {
 export class ClassLinker {
@@ -34,6 +35,9 @@ private:
         art_quick_to_interpreter_bridge_;
     inline static Function<"art_quick_generic_jni_trampoline", void(void *)>
         art_quick_generic_jni_trampoline_;
+
+    inline static Function<"_ZN3art15instrumentationL19GetOptimizedCodeForEPNS_9ArtMethodE",
+        void *(ArtMethod *)> GetOptimizedCodeFor_;
 
     inline static art::ArtMethod *MayGetBackup(art::ArtMethod *method) {
         if (auto backup = IsHooked(method); backup) [[unlikely]] {
@@ -161,7 +165,7 @@ private:
         };
 
 public:
-    static bool Init(const HookHandler &handler) {
+    static bool Init(JNIEnv *env, const HookHandler &handler) {
         int sdk_int = GetAndroidApiLevel();
 
         if (sdk_int >= __ANDROID_API_N__ && sdk_int < __ANDROID_API_T__) {
@@ -187,16 +191,32 @@ public:
             }
         }
 
-        if (!handler.dlsym(SetEntryPointsToInterpreter_)) [[unlikely]] {
+        if (handler.dlsym(GetOptimizedCodeFor_, true)) [[likely]] {
+            auto obj = JNI_FindClass(env, "java/lang/Object");
+            if (!obj) {
+                return false;
+            }
+            auto method = JNI_GetMethodID(env, obj, "equals", "(Ljava/lang/Object;)Z");
+            if (!method) {
+                return false;
+            }
+            auto dummy = ArtMethod::FromReflectedMethod(
+                    env, JNI_ToReflectedMethod(env, obj, method, false).get())->Clone();
+            JavaDebuggableGuard guard;
+            dummy->SetNonNative();
+            art_quick_to_interpreter_bridge_ = GetOptimizedCodeFor_(dummy.get());
+            dummy->SetNative();
+            art_quick_generic_jni_trampoline_ = GetOptimizedCodeFor_(dummy.get());
+        } else if (!handler.dlsym(SetEntryPointsToInterpreter_)) [[unlikely]] {
             if (!handler.dlsym(art_quick_to_interpreter_bridge_)) [[unlikely]] {
                 return false;
             }
             if (!handler.dlsym(art_quick_generic_jni_trampoline_)) [[unlikely]] {
                 return false;
             }
-            LOGD("art_quick_to_interpreter_bridge = %p", &art_quick_to_interpreter_bridge_);
-            LOGD("art_quick_generic_jni_trampoline = %p", &art_quick_generic_jni_trampoline_);
         }
+        LOGD("art_quick_to_interpreter_bridge = %p", &art_quick_to_interpreter_bridge_);
+        LOGD("art_quick_generic_jni_trampoline = %p", &art_quick_generic_jni_trampoline_);
         return true;
     }
 
