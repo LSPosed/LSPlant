@@ -268,12 +268,12 @@ bool InitNative(JNIEnv *env, const HookHandler &handler) {
         LOGE("Failed to init thread");
         return false;
     }
-    if (!ClassLinker::Init(handler)) {
-        LOGE("Failed to init class linker");
-        return false;
-    }
     if (!Class::Init(handler)) {
         LOGE("Failed to init mirror class");
+        return false;
+    }
+    if (!ClassLinker::Init(handler)) {
+        LOGE("Failed to init class linker");
         return false;
     }
     if (!ScopedSuspendAll::Init(handler)) {
