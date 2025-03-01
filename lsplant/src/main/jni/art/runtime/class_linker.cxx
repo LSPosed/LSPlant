@@ -39,6 +39,9 @@ private:
     inline static Function<"_ZN3art15instrumentationL19GetOptimizedCodeForEPNS_9ArtMethodE",
         void *(ArtMethod *)> GetOptimizedCodeFor_;
 
+    inline static MemberFunction<"_ZNK3art11ClassLinker29GetRuntimeQuickGenericJniStubEv",
+        ClassLinker, void *()> GetRuntimeQuickGenericJniStub_;
+
     inline static art::ArtMethod *MayGetBackup(art::ArtMethod *method) {
         if (auto backup = IsHooked(method); backup) [[unlikely]] {
             method = backup;
@@ -191,27 +194,30 @@ public:
             }
         }
 
-        if (handler.dlsym(GetOptimizedCodeFor_, true)) [[likely]] {
-            auto obj = JNI_FindClass(env, "java/lang/Object");
-            if (!obj) {
+        if (!handler.dlsym(SetEntryPointsToInterpreter_)) [[unlikely]] {
+            if (handler.dlsym(GetOptimizedCodeFor_, true)) [[likely]] {
+                auto obj = JNI_FindClass(env, "java/lang/Object");
+                if (!obj) {
+                    return false;
+                }
+                auto method = JNI_GetMethodID(env, obj, "equals", "(Ljava/lang/Object;)Z");
+                if (!method) {
+                    return false;
+                }
+                auto dummy = ArtMethod::FromReflectedMethod(
+                        env, JNI_ToReflectedMethod(env, obj, method, false).get())->Clone();
+                JavaDebuggableGuard guard;
+                // just in case
+                dummy->SetNonNative();
+                art_quick_to_interpreter_bridge_ = GetOptimizedCodeFor_(dummy.get());
+            }
+            if (!art_quick_to_interpreter_bridge_ && !handler.dlsym(art_quick_to_interpreter_bridge_)) [[unlikely]] {
                 return false;
             }
-            auto method = JNI_GetMethodID(env, obj, "equals", "(Ljava/lang/Object;)Z");
-            if (!method) {
-                return false;
+            if (handler.dlsym(GetRuntimeQuickGenericJniStub_)) [[likely]] {
+                art_quick_generic_jni_trampoline_ = GetRuntimeQuickGenericJniStub_(nullptr);
             }
-            auto dummy = ArtMethod::FromReflectedMethod(
-                    env, JNI_ToReflectedMethod(env, obj, method, false).get())->Clone();
-            JavaDebuggableGuard guard;
-            dummy->SetNonNative();
-            art_quick_to_interpreter_bridge_ = GetOptimizedCodeFor_(dummy.get());
-            dummy->SetNative();
-            art_quick_generic_jni_trampoline_ = GetOptimizedCodeFor_(dummy.get());
-        } else if (!handler.dlsym(SetEntryPointsToInterpreter_)) [[unlikely]] {
-            if (!handler.dlsym(art_quick_to_interpreter_bridge_)) [[unlikely]] {
-                return false;
-            }
-            if (!handler.dlsym(art_quick_generic_jni_trampoline_)) [[unlikely]] {
+            if (!art_quick_generic_jni_trampoline_ && !handler.dlsym(art_quick_generic_jni_trampoline_)) [[unlikely]] {
                 return false;
             }
         }
