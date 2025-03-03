@@ -8,7 +8,7 @@
 /// \namespace lsplant
 namespace lsplant {
 
-inline namespace v2 {
+inline namespace v3 {
 /// \struct InitInfo
 /// \brief Information and configuration that are needed to call #Init()
 struct InitInfo {
@@ -49,6 +49,9 @@ struct InitInfo {
 
     /// \brief The symbol prefix resolver to \p libart.so. May be null.
     ArtSymbolPrefixResolver art_symbol_prefix_resolver;
+
+    /// \brief The base address of \p libart.so . May be null.
+    void* art_base = nullptr;
 
     /// \brief The generated class name. Must not be empty. It contains a field and a method
     /// and they could be set by \p generated_field_name and \p generated_method_name respectively.
@@ -179,5 +182,5 @@ struct InitInfo {
 /// \return Indicate whether the operation has succeed.
 [[nodiscard, maybe_unused, gnu::visibility("default")]] bool MakeDexFileTrusted(JNIEnv *env,
                                                                                 jobject cookie);
-}  // namespace v1
+}  // namespace v3
 }  // namespace lsplant

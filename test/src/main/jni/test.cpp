@@ -68,6 +68,7 @@ JNI_OnLoad(JavaVM* vm, void* reserved) {
             .art_symbol_prefix_resolver = [&art](auto symbol) {
                 return art.getSymbPrefixFirstAddress(symbol);
             },
+            .art_base = reinterpret_cast<void*>(art.GetLoadBase()),
     };
     init_result = lsplant::Init(env, initInfo);
     return JNI_VERSION_1_6;

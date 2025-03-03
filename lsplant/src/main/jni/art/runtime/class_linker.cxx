@@ -1,6 +1,8 @@
 module;
 
 #include <sys/types.h>
+#include <array>
+#include <link.h>
 
 #include "logging.hpp"
 
@@ -41,6 +43,12 @@ private:
 
     inline static MemberFunction<"_ZNK3art11ClassLinker29GetRuntimeQuickGenericJniStubEv",
         ClassLinker, void *()> GetRuntimeQuickGenericJniStub_;
+
+    inline static MemberFunction<"_ZNK3art11ClassLinker26IsQuickToInterpreterBridgeEPKv",
+            ClassLinker, bool *(void*)> IsQuickToInterpreterBridge_;
+
+    inline static MemberFunction<"_ZNK3art11ClassLinker21IsQuickGenericJniStubEPKv",
+            ClassLinker, bool *(void*)> IsQuickGenericJniStub_;
 
     inline static art::ArtMethod *MayGetBackup(art::ArtMethod *method) {
         if (auto backup = IsHooked(method); backup) [[unlikely]] {
@@ -195,32 +203,81 @@ public:
         }
 
         if (!handler.dlsym(SetEntryPointsToInterpreter_)) [[unlikely]] {
-            if (handler.dlsym(GetOptimizedCodeFor_, true)) [[likely]] {
-                auto obj = JNI_FindClass(env, "java/lang/Object");
-                if (!obj) {
-                    return false;
+            if (!handler.dlsym(art_quick_to_interpreter_bridge_)) [[unlikely]] {
+                if (handler.dlsym(GetOptimizedCodeFor_, true)) [[likely]] {
+                    auto obj = JNI_FindClass(env, "java/lang/Object");
+                    if (!obj) {
+                        return false;
+                    }
+                    auto method = JNI_GetMethodID(env, obj, "equals", "(Ljava/lang/Object;)Z");
+                    if (!method) {
+                        return false;
+                    }
+                    auto dummy = ArtMethod::FromReflectedMethod(
+                            env, JNI_ToReflectedMethod(env, obj, method, false).get())->Clone();
+                    JavaDebuggableGuard guard;
+                    // just in case
+                    dummy->SetNonNative();
+                    art_quick_to_interpreter_bridge_ = GetOptimizedCodeFor_(dummy.get());
                 }
-                auto method = JNI_GetMethodID(env, obj, "equals", "(Ljava/lang/Object;)Z");
-                if (!method) {
-                    return false;
+            }
+            if (!handler.dlsym(art_quick_generic_jni_trampoline_)) [[unlikely]] {
+                if (handler.dlsym(GetRuntimeQuickGenericJniStub_)) [[likely]] {
+                    art_quick_generic_jni_trampoline_ = GetRuntimeQuickGenericJniStub_(nullptr);
                 }
-                auto dummy = ArtMethod::FromReflectedMethod(
-                        env, JNI_ToReflectedMethod(env, obj, method, false).get())->Clone();
-                JavaDebuggableGuard guard;
-                // just in case
-                dummy->SetNonNative();
-                art_quick_to_interpreter_bridge_ = GetOptimizedCodeFor_(dummy.get());
             }
-            if (!art_quick_to_interpreter_bridge_ && !handler.dlsym(art_quick_to_interpreter_bridge_)) [[unlikely]] {
-                return false;
-            }
-            if (handler.dlsym(GetRuntimeQuickGenericJniStub_)) [[likely]] {
-                art_quick_generic_jni_trampoline_ = GetRuntimeQuickGenericJniStub_(nullptr);
-            }
-            if (!art_quick_generic_jni_trampoline_ && !handler.dlsym(art_quick_generic_jni_trampoline_)) [[unlikely]] {
-                return false;
+            bool need_quick_to_interpreter_bridge = !art_quick_to_interpreter_bridge_ && handler.dlsym(IsQuickToInterpreterBridge_);
+            bool need_quick_generic_jni_trampoline = !art_quick_generic_jni_trampoline_ && handler.dlsym(IsQuickGenericJniStub_);
+            if (need_quick_to_interpreter_bridge || need_quick_generic_jni_trampoline) [[unlikely]] {
+                if (auto *art_base = handler.art_base(); art_base) {
+                    static constexpr const auto kEnoughSizeForClassLinker = 4096;
+                    // https://cs.android.com/android/platform/superproject/main/+/main:art/runtime/arch/riscv64/asm_support_riscv64.S;l=32
+                    // https://cs.android.com/android/platform/superproject/main/+/main:art/runtime/arch/arm64/asm_support_arm64.S;l=117
+                    static constexpr const uintptr_t kAlign = 16;
+                    // thumb
+                    static constexpr const auto kOff = kArch == Arch::kArm ? 1 : 0;
+                    std::array<uint8_t, kEnoughSizeForClassLinker> fake_class_linker_buf{};
+                    fake_class_linker_buf.fill(0);
+                    auto *fake_class_linker = reinterpret_cast<ClassLinker*>(fake_class_linker_buf.data());
+                    auto *ehdr = reinterpret_cast<ElfW(Ehdr)*>(art_base);
+                    auto *phdrs = reinterpret_cast<ElfW(Phdr)*>(reinterpret_cast<uintptr_t>(art_base) + ehdr->e_phoff);
+
+                    uintptr_t min_vaddr = UINTPTR_MAX;
+                    for (ElfW(Half) i = 0; i < ehdr->e_phnum; i++) {
+                        auto &phdr = phdrs[i];
+                        if (phdr.p_type == PT_LOAD) {
+                            min_vaddr = std::min(static_cast<uintptr_t>(phdr.p_vaddr), min_vaddr);
+                        }
+                    }
+
+                    for (ElfW(Half) i = 0; i < ehdr->e_phnum; i++) {
+                        auto &phdr = phdrs[i];
+                        if (phdr.p_type == PT_LOAD && (phdr.p_flags & PF_X) != 0) {
+                            auto start = reinterpret_cast<uintptr_t>(art_base) - min_vaddr + phdr.p_vaddr;
+                            auto end = start + phdr.p_memsz;
+                            start = (start + kAlign - 1) & ~(kAlign - 1);
+                            end = (end + kAlign - 1) & ~(kAlign - 1);
+                            for (uintptr_t addr = start; addr < end; addr += kAlign) {
+                                auto *try_addr = reinterpret_cast<void*>(addr + kOff);
+                                if (need_quick_to_interpreter_bridge &&
+                                    IsQuickToInterpreterBridge_(fake_class_linker, try_addr)) {
+                                    need_quick_to_interpreter_bridge = false;
+                                    art_quick_to_interpreter_bridge_ = try_addr;
+                                }
+                                if (need_quick_generic_jni_trampoline &&
+                                    IsQuickGenericJniStub_(fake_class_linker, try_addr)) {
+                                    need_quick_generic_jni_trampoline = false;
+                                    art_quick_generic_jni_trampoline_ = try_addr;
+                                }
+                                if (!need_quick_to_interpreter_bridge && !need_quick_generic_jni_trampoline) break;
+                            }
+                            if (!need_quick_to_interpreter_bridge && !need_quick_generic_jni_trampoline) break;
+                        }
+                    }
+                }
             }
         }
+        if (!art_quick_to_interpreter_bridge_ || !art_quick_generic_jni_trampoline_) [[unlikely]] return false;
         LOGD("art_quick_to_interpreter_bridge = %p", &art_quick_to_interpreter_bridge_);
         LOGD("art_quick_generic_jni_trampoline = %p", &art_quick_generic_jni_trampoline_);
         return true;

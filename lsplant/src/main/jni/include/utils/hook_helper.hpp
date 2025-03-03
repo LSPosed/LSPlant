@@ -102,6 +102,10 @@ struct HookHandler {
         return ((hook(arg1) || hook(arg2)) || ... || hook(args));
     }
 
+    [[gnu::always_inline]] void* art_base() const {
+        return info_.art_base;
+    }
+
 private:
     const InitInfo &info_;
 

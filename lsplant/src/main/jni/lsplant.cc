@@ -632,7 +632,7 @@ std::string GetProxyMethodShorty(JNIEnv *env, jobject proxy_method) {
 }
 }  // namespace
 
-inline namespace v2 {
+inline namespace v3 {
 
 using ::lsplant::IsHooked;
 
@@ -835,7 +835,7 @@ using ::lsplant::IsHooked;
     if (!cookie) return false;
     return DexFile::SetTrusted(env, cookie);
 }
-}  // namespace v2
+}  // namespace v3
 
 }  // namespace lsplant
 
