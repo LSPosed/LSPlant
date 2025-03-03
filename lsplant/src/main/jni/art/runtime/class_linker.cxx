@@ -33,8 +33,6 @@ private:
 
     inline static Function<"art_quick_to_interpreter_bridge", void(void *)>
         art_quick_to_interpreter_bridge_;
-    inline static Function<"art_quick_generic_jni_trampoline", void(void *)>
-        art_quick_generic_jni_trampoline_;
 
     inline static Function<"_ZN3art15instrumentationL19GetOptimizedCodeForEPNS_9ArtMethodE",
         void *(ArtMethod *)> GetOptimizedCodeFor_;
@@ -117,8 +115,7 @@ private:
                     backup_method->SetEntryPoint(new_trampoline);
                 }
             } else if (deoptimized) {
-                if (new_trampoline != &art_quick_to_interpreter_bridge_ &&
-                    new_trampoline != &art_quick_generic_jni_trampoline_) {
+                if (new_trampoline != &art_quick_to_interpreter_bridge_ && !art_method->IsNative()) {
                     LOGV("re-deoptimize for %p", art_method);
                     SetEntryPointsToInterpreter(art_method);
                 }
@@ -194,7 +191,7 @@ public:
             }
         }
 
-        if (!handler.dlsym(SetEntryPointsToInterpreter_)) [[unlikely]] {
+        if (!handler.dlsym(SetEntryPointsToInterpreter_)) [[likely]] {
             if (handler.dlsym(GetOptimizedCodeFor_, true)) [[likely]] {
                 auto obj = JNI_FindClass(env, "java/lang/Object");
                 if (!obj) {
@@ -210,41 +207,28 @@ public:
                 // just in case
                 dummy->SetNonNative();
                 art_quick_to_interpreter_bridge_ = GetOptimizedCodeFor_(dummy.get());
-            }
-            if (!art_quick_to_interpreter_bridge_ && !handler.dlsym(art_quick_to_interpreter_bridge_)) [[unlikely]] {
-                return false;
-            }
-            if (handler.dlsym(GetRuntimeQuickGenericJniStub_)) [[likely]] {
-                art_quick_generic_jni_trampoline_ = GetRuntimeQuickGenericJniStub_(nullptr);
-            }
-            if (!art_quick_generic_jni_trampoline_ && !handler.dlsym(art_quick_generic_jni_trampoline_)) [[unlikely]] {
+            } else if (!handler.dlsym(art_quick_to_interpreter_bridge_)) [[unlikely]] {
                 return false;
             }
         }
         LOGD("art_quick_to_interpreter_bridge = %p", &art_quick_to_interpreter_bridge_);
-        LOGD("art_quick_generic_jni_trampoline = %p", &art_quick_generic_jni_trampoline_);
         return true;
     }
 
     [[gnu::always_inline]] static bool SetEntryPointsToInterpreter(ArtMethod *art_method) {
+        if (art_method->IsNative()) {
+            return false;
+        }
         if (SetEntryPointsToInterpreter_) [[likely]] {
             SetEntryPointsToInterpreter_(nullptr, art_method);
             return true;
         }
         // Android 13
-        if (art_quick_to_interpreter_bridge_ && art_quick_generic_jni_trampoline_) [[likely]] {
-            if (art_method->GetAccessFlags() & ArtMethod::kAccNative) [[unlikely]] {
-                LOGV("deoptimize native method %s from %p to %p",
-                     art_method->PrettyMethod(true).data(), art_method->GetEntryPoint(),
-                     &art_quick_generic_jni_trampoline_);
-                art_method->SetEntryPoint(
-                    reinterpret_cast<void *>(&art_quick_generic_jni_trampoline_));
-            } else {
-                LOGV("deoptimize method %s from %p to %p", art_method->PrettyMethod(true).data(),
-                     art_method->GetEntryPoint(), &art_quick_to_interpreter_bridge_);
-                art_method->SetEntryPoint(
-                    reinterpret_cast<void *>(&art_quick_to_interpreter_bridge_));
-            }
+        if (art_quick_to_interpreter_bridge_) [[likely]] {
+            LOGV("deoptimize method %s from %p to %p", art_method->PrettyMethod(true).data(),
+                 art_method->GetEntryPoint(), &art_quick_to_interpreter_bridge_);
+            art_method->SetEntryPoint(
+                reinterpret_cast<void *>(&art_quick_to_interpreter_bridge_));
             return true;
         }
         return false;

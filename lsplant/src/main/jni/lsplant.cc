@@ -793,7 +793,7 @@ using ::lsplant::IsHooked;
     if (auto *backup = IsHooked(art_method); backup) {
         art_method = backup;
     }
-    if (!art_method) {
+    if (!art_method || art_method->IsNative()) {
         return false;
     }
     return ClassLinker::SetEntryPointsToInterpreter(art_method);
