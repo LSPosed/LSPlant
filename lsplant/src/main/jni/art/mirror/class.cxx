@@ -16,14 +16,11 @@ namespace lsplant::art::mirror {
 
 export class Class {
 private:
-    inline static MemberFunction<
-        "_ZN3art6mirror5Class13GetDescriptorEPNSt3__112basic_stringIcNS2_11char_traitsIcEENS2_9allocatorIcEEEE",
-        Class, const char *(std::string *)>
-        GetDescriptor_;
+    inline static auto GetDescriptor_ =
+        "_ZN3art6mirror5Class13GetDescriptorEPNSt3__112basic_stringIcNS2_11char_traitsIcEENS2_9allocatorIcEEEE"_sym.as<const char *(Class::*)(std::string *)>;
 
-    inline static MemberFunction<"_ZN3art6mirror5Class11GetClassDefEv", Class,
-                                 const dex::ClassDef *()>
-        GetClassDef_;
+    inline static auto GetClassDef_ =
+            "_ZN3art6mirror5Class11GetClassDefEv"_sym.as<const dex::ClassDef *(Class::*)()>;
 
     using BackupMethods = phmap::flat_hash_map<art::ArtMethod *, void *>;
     inline static phmap::flat_hash_map<const art::Thread *,
@@ -62,41 +59,44 @@ private:
         }
     }
 
-    inline static Hooker<
-        "_ZN3art6mirror5Class9SetStatusENS_6HandleIS1_EENS_11ClassStatusEPNS_6ThreadE",
-        void(TrivialHandle<Class>, uint8_t, Thread *)>
-        SetClassStatus_ = +[](TrivialHandle<Class> h, uint8_t new_status, Thread *self) {
+    inline static auto SetClassStatus_ =
+            "_ZN3art6mirror5Class9SetStatusENS_6HandleIS1_EENS_11ClassStatusEPNS_6ThreadE"_sym.hook->*[]
+        <Backup auto backup>
+        (TrivialHandle<Class> h, uint8_t new_status, Thread *self) static -> void {
             if (new_status == initialized_status) {
                 BackupClassMethods(GetClassDef_(h.Get()), self);
             }
-            return SetClassStatus_(h, new_status, self);
+            return backup(h, new_status, self);
         };
 
-    inline static Hooker<"_ZN3art6mirror5Class9SetStatusENS_6HandleIS1_EENS1_6StatusEPNS_6ThreadE",
-                         void(Handle<Class>, int, Thread *)>
-        SetStatus_ = +[](Handle<Class> h, int new_status, Thread *self) {
+    inline static auto SetStatus_ =
+        "_ZN3art6mirror5Class9SetStatusENS_6HandleIS1_EENS1_6StatusEPNS_6ThreadE"_sym.hook->*[]
+        <Backup auto backup>
+         (Handle<Class> h, int new_status, Thread *self) static -> void {
             if (new_status == static_cast<int>(initialized_status)) {
                 BackupClassMethods(GetClassDef_(h.Get()), self);
             }
-            return SetStatus_(h, new_status, self);
+            return backup(h, new_status, self);
         };
 
-    inline static Hooker<"_ZN3art6mirror5Class9SetStatusENS_6HandleIS1_EENS1_6StatusEPNS_6ThreadE",
-                         void(TrivialHandle<Class>, uint32_t, Thread *)>
-        TrivialSetStatus_ = +[](TrivialHandle<Class> h, uint32_t new_status, Thread *self) {
+    inline static auto TrivialSetStatus_ =
+        "_ZN3art6mirror5Class9SetStatusENS_6HandleIS1_EENS1_6StatusEPNS_6ThreadE"_sym.hook->*[]
+        <Backup auto backup>
+        (TrivialHandle<Class> h, uint32_t new_status, Thread *self) static -> void {
             if (new_status == initialized_status) {
                 BackupClassMethods(GetClassDef_(h.Get()), self);
             }
-            return TrivialSetStatus_(h, new_status, self);
+            return backup(h, new_status, self);
         };
 
-    inline static Hooker<"_ZN3art6mirror5Class9SetStatusENS1_6StatusEPNS_6ThreadE",
-                         void(Class *, int, Thread *)>
-        ClassSetStatus_ = +[](Class *thiz, int new_status, Thread *self) {
+    inline static auto ClassSetStatus_ =
+        "_ZN3art6mirror5Class9SetStatusENS1_6StatusEPNS_6ThreadE"_sym.hook->*[]
+        <MemBackup auto backup>
+        (Class *thiz, int new_status, Thread *self) static -> void {
             if (new_status == static_cast<int>(initialized_status)) {
                 BackupClassMethods(GetClassDef_(thiz), self);
             }
-            return ClassSetStatus_(thiz, new_status, self);
+            return backup(thiz, new_status, self);
         };
 
 public:

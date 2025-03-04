@@ -22,79 +22,139 @@ struct FixedString {
     char data[N] = {};
 };
 
-template <FixedString, typename>
+template<typename T>
+concept FuncType = std::is_function_v<T> || std::is_member_function_pointer_v<T>;
+
+template <FixedString, FuncType>
 struct Function;
 
-template <FixedString, typename, typename>
-struct MemberFunction;
+template <FixedString Sym, typename Ret, typename... Args>
+struct Function<Sym, Ret(Args...)> {
+    [[gnu::always_inline]] static Ret operator()(Args... args) {
+        return inner_.function_(args...);
+    }
+    [[gnu::always_inline]] operator bool() { return inner_.raw_function_; }
+    [[gnu::always_inline]] auto operator&() const { return inner_.function_; }
+    [[gnu::always_inline]] Function &operator=(void *function) {
+        inner_.raw_function_ = function;
+        return *this;
+    }
+
+private:
+    inline static union {
+        Ret (*function_)(Args...);
+        void *raw_function_ = nullptr;
+    } inner_;
+
+    static_assert(sizeof(inner_.function_) == sizeof(inner_.raw_function_));
+};
+
+template <FixedString Sym, class This, typename Ret, typename... Args>
+struct Function<Sym, Ret(This::*)(Args...)> {
+    [[gnu::always_inline]] static Ret operator()(This *thiz, Args... args) {
+        return (reinterpret_cast<ThisType *>(thiz)->*inner_.function_)(args...);
+    }
+    [[gnu::always_inline]] operator bool() { return inner_.raw_function_; }
+    [[gnu::always_inline]] auto operator&() const { return inner_.function_; }
+    [[gnu::always_inline]] Function &operator=(void *function) {
+        inner_.raw_function_ = function;
+        return *this;
+    }
+
+private:
+    using ThisType = std::conditional_t<std::is_same_v<This, void>, Function, This>;
+    inline static union {
+        Ret (ThisType::*function_)(Args...) const;
+
+        struct {
+            void *raw_function_ = nullptr;
+            [[maybe_unused]] std::ptrdiff_t adj = 0;
+        };
+    } inner_;
+
+    static_assert(sizeof(inner_.function_) == sizeof(inner_.raw_function_) + sizeof(inner_.adj));
+};
 
 template <FixedString, typename T>
 struct Field {
-    [[gnu::always_inline]] T *operator->() { return field_; }
-    [[gnu::always_inline]] T &operator*() { return *field_; }
-    [[gnu::always_inline]] operator bool() { return field_ != nullptr; }
-
+    [[gnu::always_inline]] T *operator->() { return inner_.field_; }
+    [[gnu::always_inline]] T &operator*() { return *inner_.field_; }
+    [[gnu::always_inline]] operator bool() { return inner_.raw_field_ != nullptr; }
+    [[gnu::always_inline]] Field &operator=(void *field) {
+        inner_.raw_field_ = field;
+        return *this;
+    }
 private:
-    friend struct HookHandler;
-    T *field_;
+    inline static union {
+        void *raw_field_ = nullptr;
+        T *field_;
+    } inner_;
+
+    static_assert(sizeof(inner_.field_) == sizeof(inner_.raw_field_));
 };
 
-template <FixedString, typename>
+template <FixedString, FuncType>
 struct Hooker;
 
-template <FixedString, typename, typename>
-struct MemberHooker;
+template <FixedString Sym, typename Ret, typename... Args>
+struct Hooker<Sym, Ret(Args...)> : Function<Sym, Ret(Args...)> {
+    [[gnu::always_inline]] Hooker &operator=(void *function) {
+        Function<Sym, Ret(Args...)>::operator=(function);
+        return *this;
+    }
+private:
+    [[gnu::always_inline]] constexpr Hooker(Ret (*replace)(Args...)) {
+        replace_ = replace;
+    };
+    friend struct HookHandler;
+    template<FixedString S>
+    friend struct Symbol;
+    inline static Ret (*replace_)(Args...) = nullptr;
+};
 
-template <typename Class, typename Return, typename T, typename... Args>
-    requires(std::is_same_v<T, void> || std::is_same_v<Class, T>)
-inline auto memfun_cast(Return (*func)(T *, Args...)) {
-    union {
-        Return (Class::*f)(Args...) const;
-
-        struct {
-            decltype(func) p;
-            std::ptrdiff_t adj;
-        } data;
-    } u{.data = {func, 0}};
-    static_assert(sizeof(u.f) == sizeof(u.data), "Try different T");
-    return u.f;
-}
-
-template <std::same_as<void> T, typename Return, typename... Args>
-inline auto memfun_cast(Return (*func)(T *, Args...)) {
-    return memfun_cast<T>(func);
-}
+template <FixedString Sym, class This, typename Ret, typename... Args>
+struct Hooker<Sym, Ret(This::*)(Args...)> : Function<Sym, Ret(This::*)(Args...)> {
+    [[gnu::always_inline]] Hooker &operator=(void *function) {
+        Function<Sym, Ret(This::*)(Args...)>::operator=(function);
+        return *this;
+    }
+private:
+    [[gnu::always_inline]] constexpr Hooker(Ret (*replace)(This *, Args...)) {
+        replace_ = replace;
+    };
+    friend struct HookHandler;
+    template<FixedString S>
+    friend struct Symbol;
+    inline static Ret (*replace_)(This *, Args...) = nullptr;
+};
 
 struct HookHandler {
     HookHandler(const InitInfo &info) : info_(info) {}
     template <FixedString Sym, typename This, typename Ret, typename... Args>
-    [[gnu::always_inline]] bool dlsym(MemberFunction<Sym, This, Ret(Args...)> &function,
+    [[gnu::always_inline]] bool dlsym(Function<Sym, Ret(This::*)(Args...)> &function,
                                       bool match_prefix = false) const {
-        return function.function_ = memfun_cast<This>(
-                   reinterpret_cast<Ret (*)(This *, Args...)>(dlsym<Sym>(match_prefix)));
+        return function = dlsym<Sym>(match_prefix);
     }
 
     template <FixedString Sym, typename Ret, typename... Args>
     [[gnu::always_inline]] bool dlsym(Function<Sym, Ret(Args...)> &function,
                                       bool match_prefix = false) const {
-        return function.function_ = reinterpret_cast<Ret (*)(Args...)>(dlsym<Sym>(match_prefix));
+        return function = dlsym<Sym>(match_prefix);
     }
 
     template <FixedString Sym, typename T>
     [[gnu::always_inline]] bool dlsym(Field<Sym, T> &field, bool match_prefix = false) const {
-        return field.field_ = reinterpret_cast<T *>(dlsym<Sym>(match_prefix));
+        return field = dlsym<Sym>(match_prefix);
     }
 
     template <FixedString Sym, typename Ret, typename... Args>
     [[gnu::always_inline]] bool hook(Hooker<Sym, Ret(Args...)> &hooker) const {
-        return hooker.function_ = reinterpret_cast<Ret (*)(Args...)>(
-                   hook(dlsym<Sym>(), reinterpret_cast<void *>(hooker.replace_)));
+        return hooker = hook(dlsym<Sym>(), reinterpret_cast<void *>(hooker.replace_));
     }
 
     template <FixedString Sym, typename This, typename Ret, typename... Args>
-    [[gnu::always_inline]] bool hook(MemberHooker<Sym, This, Ret(Args...)> &hooker) const {
-        return hooker.function_ = memfun_cast<This>(reinterpret_cast<Ret (*)(This *, Args...)>(
-                   hook(dlsym<Sym>(), reinterpret_cast<void *>(hooker.replace_))));
+    [[gnu::always_inline]] bool hook(Hooker<Sym, Ret(This::*)(Args...)> &hooker) const {
+        return hooker = hook(dlsym<Sym>(), reinterpret_cast<void *>(hooker.replace_));
     }
 
     template <typename T1, typename T2, typename... U>
@@ -124,51 +184,77 @@ private:
     }
 };
 
-template <FixedString Sym, typename Ret, typename... Args>
-struct Function<Sym, Ret(Args...)> {
-    [[gnu::always_inline]] constexpr Ret operator()(Args... args) { return function_(args...); }
-    [[gnu::always_inline]] operator bool() { return function_ != nullptr; }
-    auto operator&() const { return function_; }
-    Function &operator=(void *function) {
-        function_ = reinterpret_cast<decltype(function_)>(function);
-        return *this;
+
+struct Dummy;
+
+template<typename F>
+concept Backup = std::is_function_v<std::remove_pointer_t<F>> || requires(F&& f) { { f(std::declval<Dummy*>()) } -> std::same_as<Dummy*>; };
+
+template<typename F>
+concept MemBackup = std::is_function_v<std::remove_pointer_t<F>> || requires(F&& f) { { f(std::declval<Dummy*>()) } -> std::same_as<Dummy**>; };
+
+template <typename T>
+T return_t();
+
+// for ndk 29+, use decltype(F::template operator()<&decltype([] static {})::operator()>)
+// and remove Dummy, set MemBackup as std::is_member_function_pointer_v<F>
+template<typename F, bool mem>
+using Signature = decltype(F::template operator()<[](auto...a) static {
+    using D = std::conditional_t<mem, Dummy**, Dummy*>;
+    if constexpr ((false || ... || std::is_same_v<decltype(a), Dummy*>)) {
+        return return_t<D>();
+    } else {
+        return return_t<decltype(F::template operator()<[](auto...) -> D {}>(std::declval<decltype(a)>()...))>();
     }
+}>);
 
-private:
-    friend struct HookHandler;
-    Ret (*function_)(Args...) = nullptr;
+template<FixedString S>
+struct Symbol {
+    template<typename T>
+    inline static decltype([]{
+        if constexpr (FuncType<T>) {
+            return Function<S, T>{};
+        } else {
+            return Field<S, T>{};
+        }
+    }()) as{};
+
+    [[no_unique_address]] struct Hook {
+        template<typename F>
+        requires(requires { std::declval<Signature<F, false>>(); })
+        auto operator->*(F&&) const {
+            using HookerType = Hooker<S, Signature<F, false>>;
+            return HookerType{static_cast<decltype(HookerType::replace_)>(&F::template operator()<HookerType::operator()>)};
+        };
+        template<typename F>
+        requires(requires { std::declval<Signature<F, true>>(); })
+        auto operator->*(F&&) const {
+            constexpr auto c = []<class This, typename Ret, typename... Args>(Ret(*f)(This*, Args...)) -> Ret(This::*)(Args...) {
+                return {};
+            };
+            using HookerType = Hooker<S, decltype(c.template operator()(std::declval<Signature<F, true>>()))>;
+            return HookerType{static_cast<decltype(HookerType::replace_)>(&F::template operator()<HookerType::operator()>)};
+        };
+
+    } hook;
 };
 
-template <FixedString Sym, typename This, typename Ret, typename... Args>
-struct MemberFunction<Sym, This, Ret(Args...)> {
-    [[gnu::always_inline]] constexpr Ret operator()(This *thiz, Args... args) {
-        return (reinterpret_cast<ThisType *>(thiz)->*function_)(args...);
-    }
-    [[gnu::always_inline]] operator bool() { return function_ != nullptr; }
+template <FixedString S> constexpr Symbol<S> operator""_sym() {
+    return {};
+}
 
-private:
-    friend struct HookHandler;
-    using ThisType = std::conditional_t<std::is_same_v<This, void>, MemberFunction, This>;
-    Ret (ThisType::*function_)(Args...) const = nullptr;
-};
+template<FixedString S, FixedString P>
+consteval auto operator|([[maybe_unused]] Symbol<S> a, [[maybe_unused]] Symbol<P> b) {
+#if defined(__LP64__)
+    return b;
+#else
+    return a;
+#endif
+}
 
-template <FixedString Sym, typename Ret, typename... Args>
-struct Hooker<Sym, Ret(Args...)> : Function<Sym, Ret(Args...)> {
-    [[gnu::always_inline]] constexpr Hooker(Ret (*replace)(Args...)) : replace_(replace) {};
-
-private:
-    friend struct HookHandler;
-    [[maybe_unused]] Ret (*replace_)(Args...) = nullptr;
-};
-
-template <FixedString Sym, typename This, typename Ret, typename... Args>
-struct MemberHooker<Sym, This, Ret(Args...)> : MemberFunction<Sym, This, Ret(Args...)> {
-    [[gnu::always_inline]] constexpr MemberHooker(Ret (*replace)(This *, Args...))
-        : replace_(replace) {};
-
-private:
-    friend struct HookHandler;
-    [[maybe_unused]] Ret (*replace_)(This *, Args...) = nullptr;
-};
-
+void test() {
+    "test"_sym.hook->*[]<MemBackup auto backup>(std::string *x) static -> char {
+        return backup(x);
+    };
+}
 }  // namespace lsplant

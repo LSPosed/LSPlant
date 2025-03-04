@@ -21,31 +21,28 @@ export class Instrumentation {
         return art_method;
     }
 
-    inline static MemberHooker<
-        "_ZN3art15instrumentation15Instrumentation40UpdateMethodsCodeToInterpreterEntryPointEPNS_9ArtMethodE",
-        Instrumentation, void(ArtMethod *)>
-        UpdateMethodsCodeToInterpreterEntryPoint_ =
-            +[](Instrumentation *thiz, ArtMethod *art_method) {
-                if (IsDeoptimized(art_method)) {
-                    LOGV("skip update entrypoint on deoptimized method %s",
-                         art_method->PrettyMethod(true).c_str());
-                    return;
-                }
-                UpdateMethodsCodeToInterpreterEntryPoint_(
-                    thiz, MaybeUseBackupMethod(art_method, nullptr));
-            };
-
-    inline static MemberHooker<
-        "_ZN3art15instrumentation15Instrumentation21InitializeMethodsCodeEPNS_9ArtMethodEPKv",
-        Instrumentation, void(ArtMethod *, const void *)>
-        InitializeMethodsCode_ = +[](Instrumentation *thiz, ArtMethod *art_method,
-                                     const void *quick_code) {
+    inline static auto UpdateMethodsCodeToInterpreterEntryPoint_ =
+        "_ZN3art15instrumentation15Instrumentation40UpdateMethodsCodeToInterpreterEntryPointEPNS_9ArtMethodE"_sym.hook->*[]
+        <MemBackup auto backup>
+        (Instrumentation *thiz, ArtMethod *art_method) static -> void {
             if (IsDeoptimized(art_method)) {
                 LOGV("skip update entrypoint on deoptimized method %s",
                      art_method->PrettyMethod(true).c_str());
                 return;
             }
-            InitializeMethodsCode_(thiz, MaybeUseBackupMethod(art_method, quick_code), quick_code);
+            backup(thiz, MaybeUseBackupMethod(art_method, nullptr));
+        };
+
+    inline static auto InitializeMethodsCode_ =
+        "_ZN3art15instrumentation15Instrumentation21InitializeMethodsCodeEPNS_9ArtMethodEPKv"_sym.hook->*[]
+         <MemBackup auto backup>
+         (Instrumentation *thiz, ArtMethod *art_method, const void *quick_code) static -> void {
+            if (IsDeoptimized(art_method)) {
+                LOGV("skip update entrypoint on deoptimized method %s",
+                     art_method->PrettyMethod(true).c_str());
+                return;
+            }
+            backup(thiz, MaybeUseBackupMethod(art_method, quick_code), quick_code);
         };
 
 public:

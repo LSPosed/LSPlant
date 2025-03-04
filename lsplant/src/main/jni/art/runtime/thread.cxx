@@ -6,7 +6,7 @@ import hook_helper;
 
 namespace lsplant::art {
 export class Thread {
-    inline static Function<"_ZN3art6Thread14CurrentFromGdbEv", Thread *()> CurrentFromGdb_;
+    inline static auto CurrentFromGdb_ = "_ZN3art6Thread14CurrentFromGdbEv"_sym.as<Thread *()>;
 
 public:
     static Thread *Current() {

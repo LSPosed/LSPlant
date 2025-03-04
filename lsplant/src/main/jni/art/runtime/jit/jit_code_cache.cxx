@@ -11,9 +11,8 @@ import hook_helper;
 
 namespace lsplant::art::jit {
 export class JitCodeCache {
-    inline static MemberFunction<"_ZN3art3jit12JitCodeCache18MoveObsoleteMethodEPNS_9ArtMethodES3_",
-                                 JitCodeCache, void(ArtMethod *, ArtMethod *)>
-        MoveObsoleteMethod_;
+    inline static auto MoveObsoleteMethod_ =
+            "_ZN3art3jit12JitCodeCache18MoveObsoleteMethodEPNS_9ArtMethodES3_"_sym.as<void(JitCodeCache::*)(ArtMethod *, ArtMethod *)>;
 
     static void MoveObsoleteMethods(JitCodeCache *thiz) {
         auto movements = GetJitMovements();
@@ -28,18 +27,20 @@ export class JitCodeCache {
         }
     }
 
-    inline static MemberHooker<"_ZN3art3jit12JitCodeCache19GarbageCollectCacheEPNS_6ThreadE",
-                               JitCodeCache, void(Thread *)>
-        GarbageCollectCache_ = +[](JitCodeCache *thiz, Thread *self) {
+    inline static auto GarbageCollectCache_ =
+            "_ZN3art3jit12JitCodeCache19GarbageCollectCacheEPNS_6ThreadE"_sym.hook->*[]
+        <MemBackup auto backup>
+        (JitCodeCache *thiz, Thread *self) static -> void {
             MoveObsoleteMethods(thiz);
-            GarbageCollectCache_(thiz, self);
+            backup(thiz, self);
         };
 
-    inline static MemberHooker<"_ZN3art3jit12JitCodeCache12DoCollectionEPNS_6ThreadE", JitCodeCache,
-                               void(Thread *)>
-        DoCollection_ = +[](JitCodeCache *thiz, Thread *self) {
+    inline static auto DoCollection_ =
+            "_ZN3art3jit12JitCodeCache12DoCollectionEPNS_6ThreadE"_sym.hook->*[]
+        <MemBackup auto backup>
+        (JitCodeCache *thiz, Thread *self) static -> void {
             MoveObsoleteMethods(thiz);
-            DoCollection_(thiz, self);
+            backup(thiz, self);
         };
 
 public:

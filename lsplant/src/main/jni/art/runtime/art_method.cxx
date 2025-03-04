@@ -17,30 +17,26 @@ class Class;
 }
 
 export class ArtMethod {
-    inline static MemberFunction<"_ZN3art9ArtMethod12PrettyMethodEPS0_b", ArtMethod,
-                                 std::string(bool)>
-        PrettyMethod_;
+    inline static auto PrettyMethod_ =
+            "_ZN3art9ArtMethod12PrettyMethodEPS0_b"_sym.as<std::string(ArtMethod::*)(bool)>;
 
-    inline static Function<"_ZN3art12PrettyMethodEPNS_9ArtMethodEb",
-                           std::string(ArtMethod *thiz, bool with_signature)>
-        PrettyMethodStatic_;
+    inline static auto PrettyMethodStatic_ =
+            "_ZN3art12PrettyMethodEPNS_9ArtMethodEb"_sym.as<std::string(ArtMethod *thiz, bool with_signature)>;
 
-    inline static Function<"_ZN3art12PrettyMethodEPNS_6mirror9ArtMethodEb",
-                           std::string(ArtMethod *thiz, bool with_signature)>
-        PrettyMethodMirror_;
+    inline static auto PrettyMethodMirror_ =
+            "_ZN3art12PrettyMethodEPNS_6mirror9ArtMethodEb"_sym.as<std::string(ArtMethod *thiz, bool with_signature)>;
 
-    inline static Function<"_ZN3artL15GetMethodShortyEP7_JNIEnvP10_jmethodID",
-                           const char *(JNIEnv *env, jmethodID method)>
-        GetMethodShortyL_;
-    inline static Function<"_ZN3art15GetMethodShortyEP7_JNIEnvP10_jmethodID",
-                           const char *(JNIEnv *env, jmethodID mid)>
-        GetMethodShorty_;
+    inline static auto GetMethodShortyL_ =
+            "_ZN3artL15GetMethodShortyEP7_JNIEnvP10_jmethodID"_sym.as<const char *(JNIEnv *env, jmethodID method)>;
 
-    inline static MemberFunction<"_ZN3art9ArtMethod24ThrowInvocationTimeErrorEv", ArtMethod, void()>
-        ThrowInvocationTimeError_;
+    inline static auto GetMethodShorty_ =
+            "_ZN3art15GetMethodShortyEP7_JNIEnvP10_jmethodID"_sym.as<const char *(JNIEnv *env, jmethodID mid)>;
 
-    inline static Function<"artInterpreterToCompiledCodeBridge", void()>
-        art_interpreter_to_compiled_code_bridge_;
+    inline static auto ThrowInvocationTimeError_ =
+            "_ZN3art9ArtMethod24ThrowInvocationTimeErrorEv"_sym.as<void(ArtMethod::*)()>;
+
+    inline static auto art_interpreter_to_compiled_code_bridge_ =
+            "artInterpreterToCompiledCodeBridge"_sym.as<void()>;
 
     inline void ThrowInvocationTimeError() {
         if (ThrowInvocationTimeError_) {

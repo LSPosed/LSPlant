@@ -17,28 +17,27 @@ import runtime;
 namespace lsplant::art {
 export class ClassLinker {
 private:
-    inline static MemberFunction<
-        "_ZNK3art11ClassLinker27SetEntryPointsToInterpreterEPNS_9ArtMethodE", ClassLinker,
-        void(ArtMethod *)>
-        SetEntryPointsToInterpreter_;
+    inline static auto SetEntryPointsToInterpreter_ =
+        "_ZNK3art11ClassLinker27SetEntryPointsToInterpreterEPNS_9ArtMethodE"_sym.as<void(ClassLinker::*)(ArtMethod *)>;
 
-    inline static Hooker<"_ZN3art11ClassLinker30ShouldUseInterpreterEntrypointEPNS_9ArtMethodEPKv",
-                         bool(ArtMethod *, const void *)>
-        ShouldUseInterpreterEntrypoint_ = +[](ArtMethod *art_method, const void *quick_code) {
+    inline static auto ShouldUseInterpreterEntrypoint_ =
+        "_ZN3art11ClassLinker30ShouldUseInterpreterEntrypointEPNS_9ArtMethodEPKv"_sym.hook->*[]
+        <Backup auto backup>
+        (ArtMethod *art_method, const void *quick_code)static -> bool {
             if (quick_code != nullptr && IsHooked(art_method)) [[unlikely]] {
                 return false;
             }
-            return ShouldUseInterpreterEntrypoint_(art_method, quick_code);
+            return backup(art_method, quick_code);
         };
 
-    inline static Function<"art_quick_to_interpreter_bridge", void(void *)>
-        art_quick_to_interpreter_bridge_;
+    inline static auto art_quick_to_interpreter_bridge_ =
+            "art_quick_to_interpreter_bridge"_sym.as<void(void *)>;
 
-    inline static Function<"_ZN3art15instrumentationL19GetOptimizedCodeForEPNS_9ArtMethodE",
-        void *(ArtMethod *)> GetOptimizedCodeFor_;
+    inline static auto GetOptimizedCodeFor_ =
+            "_ZN3art15instrumentationL19GetOptimizedCodeForEPNS_9ArtMethodE"_sym.as<void *(ArtMethod *)>;
 
-    inline static MemberFunction<"_ZNK3art11ClassLinker29GetRuntimeQuickGenericJniStubEv",
-        ClassLinker, void *()> GetRuntimeQuickGenericJniStub_;
+    inline static auto GetRuntimeQuickGenericJniStub_=
+            "_ZNK3art11ClassLinker29GetRuntimeQuickGenericJniStubEv"_sym.as<void *(ClassLinker::*)()>;
 
     inline static art::ArtMethod *MayGetBackup(art::ArtMethod *method) {
         if (auto backup = IsHooked(method); backup) [[unlikely]] {
@@ -48,57 +47,60 @@ private:
         return method;
     }
 
-    inline static MemberHooker<"_ZN3art6mirror9ArtMethod14RegisterNativeEPNS_6ThreadEPKvb",
-                               ClassLinker, void(ArtMethod *, Thread *, const void *, bool)>
-        RegisterNativeThread_ = +[](ClassLinker *thiz, ArtMethod *method, Thread *thread,
-                                    const void *native_method, bool is_fast) {
-            return RegisterNativeThread_(thiz, MayGetBackup(method), thread, native_method,
-                                         is_fast);
+    inline static auto RegisterNativeThread_ =
+        "_ZN3art6mirror9ArtMethod14RegisterNativeEPNS_6ThreadEPKvb"_sym.hook->*[]
+        <MemBackup auto backup>
+        (ClassLinker *thiz, ArtMethod *method, Thread *thread, const void *native_method, bool is_fast) static -> void {
+            return backup(thiz, MayGetBackup(method), thread, native_method, is_fast);
         };
 
-    inline static MemberHooker<"_ZN3art6mirror9ArtMethod16UnregisterNativeEPNS_6ThreadE",
-                               ClassLinker, void(ArtMethod *, Thread *)>
-        UnregisterNativeThread_ = +[](ClassLinker *thiz, ArtMethod *method, Thread *thread) {
-            return UnregisterNativeThread_(thiz, MayGetBackup(method), thread);
+    inline static auto UnregisterNativeThread_ =
+        "_ZN3art6mirror9ArtMethod16UnregisterNativeEPNS_6ThreadE"_sym.hook->*[]
+        <MemBackup auto backup>
+        (ClassLinker *thiz, ArtMethod *method, Thread *thread) static -> void {
+            return backup(thiz, MayGetBackup(method), thread);
         };
 
-    inline static MemberHooker<"_ZN3art9ArtMethod14RegisterNativeEPKvb", ClassLinker,
-                               void(ArtMethod *, const void *, bool)>
-        RegisterNativeFast_ =
-            +[](ClassLinker *thiz, ArtMethod *method, const void *native_method, bool is_fast) {
-                return RegisterNativeFast_(thiz, MayGetBackup(method), native_method, is_fast);
-            };
-
-    inline static MemberHooker<"_ZN3art9ArtMethod16UnregisterNativeEv", ClassLinker,
-                               void(ArtMethod *)>
-        UnregisterNativeFast_ = +[](ClassLinker *thiz, ArtMethod *method) {
-            return UnregisterNativeFast_(thiz, MayGetBackup(method));
+    inline static auto RegisterNativeFast_ =
+        "_ZN3art9ArtMethod14RegisterNativeEPKvb"_sym.hook->*[]
+        <MemBackup auto backup>
+        (ClassLinker *thiz, ArtMethod *method, const void *native_method, bool is_fast) static -> void {
+            return backup(thiz, MayGetBackup(method), native_method, is_fast);
         };
 
-    inline static MemberHooker<"_ZN3art9ArtMethod14RegisterNativeEPKv", ClassLinker,
-                               const void *(ArtMethod *, const void *)>
-        RegisterNative_ = +[](ClassLinker *thiz, ArtMethod *method, const void *native_method) {
-            return RegisterNative_(thiz, MayGetBackup(method), native_method);
+    inline static auto UnregisterNativeFast_ =
+        "_ZN3art9ArtMethod16UnregisterNativeEv"_sym.hook->*[]
+        <MemBackup auto backup>
+        (ClassLinker *thiz, ArtMethod *method) static -> void{
+            return backup(thiz, MayGetBackup(method));
         };
 
-    inline static MemberHooker<"_ZN3art9ArtMethod16UnregisterNativeEv", ClassLinker,
-                               const void *(ArtMethod *)>
-        UnregisterNative_ = +[](ClassLinker *thiz, ArtMethod *method) {
-            return UnregisterNative_(thiz, MayGetBackup(method));
+    inline static auto RegisterNative_ =
+        "_ZN3art9ArtMethod14RegisterNativeEPKv"_sym.hook->*[]
+        <MemBackup auto backup>
+        (ClassLinker *thiz, ArtMethod *method, const void *native_method) static -> const void * {
+            return backup(thiz, MayGetBackup(method), native_method);
         };
 
-    inline static MemberHooker<
-        "_ZN3art11ClassLinker14RegisterNativeEPNS_6ThreadEPNS_9ArtMethodEPKv", ClassLinker,
-        const void *(Thread *, ArtMethod *, const void *)>
-        RegisterNativeClassLinker_ =
-            +[](ClassLinker *thiz, Thread *self, ArtMethod *method, const void *native_method) {
-                return RegisterNativeClassLinker_(thiz, self, MayGetBackup(method), native_method);
-            };
+    inline static auto UnregisterNative_ =
+        "_ZN3art9ArtMethod16UnregisterNativeEv"_sym.hook->*[]
+        <MemBackup auto backup>
+        (ClassLinker *thiz, ArtMethod *method) static -> const void * {
+            return backup(thiz, MayGetBackup(method));
+        };
 
-    inline static MemberHooker<"_ZN3art11ClassLinker16UnregisterNativeEPNS_6ThreadEPNS_9ArtMethodE",
-                               ClassLinker, const void *(Thread *, ArtMethod *)>
-        UnregisterNativeClassLinker_ = +[](ClassLinker *thiz, Thread *self, ArtMethod *method) {
-            return UnregisterNativeClassLinker_(thiz, self, MayGetBackup(method));
+    inline static auto RegisterNativeClassLinker_ =
+        "_ZN3art11ClassLinker14RegisterNativeEPNS_6ThreadEPNS_9ArtMethodEPKv"_sym.hook->*[]
+        <MemBackup auto backup>
+        (ClassLinker *thiz, Thread *self, ArtMethod *method, const void *native_method) static -> const void *{
+            return backup(thiz, self, MayGetBackup(method), native_method);
+        };
+
+    inline static auto UnregisterNativeClassLinker_ =
+        "_ZN3art11ClassLinker16UnregisterNativeEPNS_6ThreadEPNS_9ArtMethodE"_sym.hook->*[]
+        <MemBackup auto backup>
+        (ClassLinker *thiz, Thread *self, ArtMethod *method) static -> const void * {
+            return backup(thiz, self, MayGetBackup(method));
         };
 
     static void RestoreBackup(const dex::ClassDef *class_def, art::Thread *self) {
@@ -123,44 +125,44 @@ private:
         }
     }
 
-    inline static MemberHooker<
-        "_ZN3art11ClassLinker22FixupStaticTrampolinesENS_6ObjPtrINS_6mirror5ClassEEE", ClassLinker,
-        void(ObjPtr<mirror::Class>)>
-        FixupStaticTrampolines_ = +[](ClassLinker *thiz, ObjPtr<mirror::Class> mirror_class) {
-            FixupStaticTrampolines_(thiz, mirror_class);
+    inline static auto FixupStaticTrampolines_ =
+        "_ZN3art11ClassLinker22FixupStaticTrampolinesENS_6ObjPtrINS_6mirror5ClassEEE"_sym.hook->*[]
+        <MemBackup auto backup>
+        (ClassLinker *thiz, ObjPtr<mirror::Class> mirror_class) static -> void {
+            backup(thiz, mirror_class);
             RestoreBackup(mirror_class->GetClassDef(), nullptr);
         };
 
-    inline static MemberHooker<
-        "_ZN3art11ClassLinker22FixupStaticTrampolinesEPNS_6ThreadENS_6ObjPtrINS_6mirror5ClassEEE",
-        ClassLinker, void(Thread *, ObjPtr<mirror::Class>)>
-        FixupStaticTrampolinesWithThread_ =
-            +[](ClassLinker *thiz, Thread *self, ObjPtr<mirror::Class> mirror_class) {
-                FixupStaticTrampolinesWithThread_(thiz, self, mirror_class);
-                RestoreBackup(mirror_class->GetClassDef(), self);
-            };
+    inline static auto FixupStaticTrampolinesWithThread_ =
+        "_ZN3art11ClassLinker22FixupStaticTrampolinesEPNS_6ThreadENS_6ObjPtrINS_6mirror5ClassEEE"_sym.hook->*[]
+        <MemBackup auto backup>
+        (ClassLinker *thiz, Thread *self, ObjPtr<mirror::Class> mirror_class) static -> void {
+            backup(thiz, self, mirror_class);
+            RestoreBackup(mirror_class->GetClassDef(), self);
+        };
 
-    inline static MemberHooker<"_ZN3art11ClassLinker22FixupStaticTrampolinesEPNS_6mirror5ClassE",
-                               ClassLinker, void(mirror::Class *)>
-        FixupStaticTrampolinesRaw_ = +[](ClassLinker *thiz, mirror::Class *mirror_class) {
-            FixupStaticTrampolinesRaw_(thiz, mirror_class);
+    inline static auto FixupStaticTrampolinesRaw_ =
+        "_ZN3art11ClassLinker22FixupStaticTrampolinesEPNS_6mirror5ClassE"_sym.hook->*[]
+        <MemBackup auto backup>
+        (ClassLinker *thiz, mirror::Class *mirror_class)static -> void {
+            backup(thiz, mirror_class);
             RestoreBackup(mirror_class->GetClassDef(), nullptr);
         };
 
-    inline static MemberHooker<
-        {"_ZN3art11ClassLinker26VisiblyInitializedCallback29AdjustThreadVisibilityCounterEPNS_6ThreadEi",
-         "_ZN3art11ClassLinker26VisiblyInitializedCallback29AdjustThreadVisibilityCounterEPNS_6ThreadEl"},
-        ClassLinker, void(Thread *, ssize_t)>
-        AdjustThreadVisibilityCounter_ = +[](ClassLinker *thiz, Thread *self, ssize_t adjustment) {
-            AdjustThreadVisibilityCounter_(thiz, self, adjustment);
+    inline static auto AdjustThreadVisibilityCounter_ =
+        ("_ZN3art11ClassLinker26VisiblyInitializedCallback29AdjustThreadVisibilityCounterEPNS_6ThreadEi"_sym |
+         "_ZN3art11ClassLinker26VisiblyInitializedCallback29AdjustThreadVisibilityCounterEPNS_6ThreadEl"_sym).hook->*[]
+         <MemBackup auto backup>
+         (ClassLinker *thiz, Thread *self, ssize_t adjustment) static -> void {
+            backup(thiz, self, adjustment);
             RestoreBackup(nullptr, self);
         };
 
-    inline static MemberHooker<
-        "_ZN3art11ClassLinker26VisiblyInitializedCallback22MarkVisiblyInitializedEPNS_6ThreadE",
-        ClassLinker, void(Thread *)>
-        MarkVisiblyInitialized_ = +[](ClassLinker *thiz, Thread *self) {
-            MarkVisiblyInitialized_(thiz, self);
+    inline static auto MarkVisiblyInitialized_ =
+        "_ZN3art11ClassLinker26VisiblyInitializedCallback22MarkVisiblyInitializedEPNS_6ThreadE"_sym.hook->*[]
+        <MemBackup auto backup>
+        (ClassLinker *thiz, Thread *self) static -> void {
+            backup(thiz, self);
             RestoreBackup(nullptr, self);
         };
 
