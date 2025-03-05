@@ -5,12 +5,10 @@ module;
 export module hook_helper;
 
 export namespace lsplant {
-using lsplant::Field;
 using lsplant::FixedString;
-using lsplant::Function;
-using lsplant::Hooker;
 using lsplant::HookHandler;
-using lsplant::MemberFunction;
-using lsplant::MemberHooker;
-using lsplant::memfun_cast;
+using lsplant::operator""_sym;
+using lsplant::Backup;
+using lsplant::MemBackup;
+using lsplant::operator|;
 }  // namespace lsplant

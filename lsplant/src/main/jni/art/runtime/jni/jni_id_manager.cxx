@@ -13,16 +13,15 @@ namespace lsplant::art::jni {
 
 export class JniIdManager {
 private:
-    inline static MemberHooker<
-        "_ZN3art3jni12JniIdManager15EncodeGenericIdINS_9ArtMethodEEEmNS_16ReflectiveHandleIT_EE",
-        JniIdManager, uintptr_t(ReflectiveHandle<ArtMethod>)>
-        EncodeGenericId_ =
-            +[](JniIdManager *thiz, ReflectiveHandle<ArtMethod> method) -> uintptr_t {
+    inline static auto EncodeGenericId_ =
+        "_ZN3art3jni12JniIdManager15EncodeGenericIdINS_9ArtMethodEEEmNS_16ReflectiveHandleIT_EE"_sym.hook->*[]
+        <MemBackup auto backup>
+        (JniIdManager *thiz, ReflectiveHandle<ArtMethod> method) static -> uintptr_t {
         if (auto target = IsBackup(method.Get()); target) {
             LOGD("get generic id for %s", method.Get()->PrettyMethod().c_str());
             method.Set(target);
         }
-        return EncodeGenericId_(thiz, method);
+        return backup(thiz, method);
     };
 
 public:

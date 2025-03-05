@@ -18,32 +18,28 @@ export class DexFile {
         uint32_t checksum_;  // See also location_checksum_
     };
 
-    inline static Function<
-        {"_ZN3art7DexFile10OpenMemoryEPKhjRKNSt3__112basic_stringIcNS3_11char_traitsIcEENS3_9allocatorIcEEEEjPNS_6MemMapEPKNS_10OatDexFileEPS9_",
-         "_ZN3art7DexFile10OpenMemoryEPKhmRKNSt3__112basic_stringIcNS3_11char_traitsIcEENS3_9allocatorIcEEEEjPNS_6MemMapEPKNS_10OatDexFileEPS9_"},
+    inline static auto OpenMemory_ =
+        ("_ZN3art7DexFile10OpenMemoryEPKhjRKNSt3__112basic_stringIcNS3_11char_traitsIcEENS3_9allocatorIcEEEEjPNS_6MemMapEPKNS_10OatDexFileEPS9_"_sym |
+         "_ZN3art7DexFile10OpenMemoryEPKhmRKNSt3__112basic_stringIcNS3_11char_traitsIcEENS3_9allocatorIcEEEEjPNS_6MemMapEPKNS_10OatDexFileEPS9_"_sym).as<
         std::unique_ptr<DexFile>(const uint8_t* dex_file, size_t size, const std::string& location,
                                  uint32_t location_checksum, void* mem_map,
-                                 const void* oat_dex_file, std::string* error_msg)>
-        OpenMemory_;
+                                 const void* oat_dex_file, std::string* error_msg)>;
 
-    inline static Function<
-        {"_ZN3art7DexFile10OpenMemoryEPKhjRKNSt3__112basic_stringIcNS3_11char_traitsIcEENS3_9allocatorIcEEEEjPNS_6MemMapEPKNS_7OatFileEPS9_",
-         "_ZN3art7DexFile10OpenMemoryEPKhmRKNSt3__112basic_stringIcNS3_11char_traitsIcEENS3_9allocatorIcEEEEjPNS_6MemMapEPKNS_7OatFileEPS9_"},
+    inline static auto OpenMemoryRaw_ =
+        ("_ZN3art7DexFile10OpenMemoryEPKhjRKNSt3__112basic_stringIcNS3_11char_traitsIcEENS3_9allocatorIcEEEEjPNS_6MemMapEPKNS_7OatFileEPS9_"_sym |
+         "_ZN3art7DexFile10OpenMemoryEPKhmRKNSt3__112basic_stringIcNS3_11char_traitsIcEENS3_9allocatorIcEEEEjPNS_6MemMapEPKNS_7OatFileEPS9_"_sym).as<
         const DexFile*(const uint8_t* dex_file, size_t size, const std::string& location,
                        uint32_t location_checksum, void* mem_map, const void* oat_dex_file,
-                       std::string* error_msg)>
-        OpenMemoryRaw_;
+                       std::string* error_msg)>;
 
-    inline static Function<
-        {"_ZN3art7DexFile10OpenMemoryEPKhjRKNSt3__112basic_stringIcNS3_11char_traitsIcEENS3_9allocatorIcEEEEjPNS_6MemMapEPS9_",
-         "_ZN3art7DexFile10OpenMemoryEPKhmRKNSt3__112basic_stringIcNS3_11char_traitsIcEENS3_9allocatorIcEEEEjPNS_6MemMapEPS9_"},
+    inline static auto OpenMemoryWithoutOdex_ =
+            ("_ZN3art7DexFile10OpenMemoryEPKhjRKNSt3__112basic_stringIcNS3_11char_traitsIcEENS3_9allocatorIcEEEEjPNS_6MemMapEPS9_"_sym |
+         "_ZN3art7DexFile10OpenMemoryEPKhmRKNSt3__112basic_stringIcNS3_11char_traitsIcEENS3_9allocatorIcEEEEjPNS_6MemMapEPS9_"_sym).as<
         const DexFile*(const uint8_t* dex_file, size_t size, const std::string& location,
-                       uint32_t location_checksum, void* mem_map, std::string* error_msg)>
-        OpenMemoryWithoutOdex_;
+                       uint32_t location_checksum, void* mem_map, std::string* error_msg)>;
 
-    inline static Function<"_ZN3artL18DexFile_setTrustedEP7_JNIEnvP7_jclassP8_jobject",
-                           void(JNIEnv* env, jclass clazz, jobject j_cookie)>
-        DexFile_setTrusted_;
+    inline static auto DexFile_setTrusted_ =
+            "_ZN3artL18DexFile_setTrustedEP7_JNIEnvP7_jclassP8_jobject"_sym.as<void(JNIEnv* env, jclass clazz, jobject j_cookie)>;
 
 public:
     static const DexFile* OpenMemory(const uint8_t* dex_file, size_t size, std::string location,

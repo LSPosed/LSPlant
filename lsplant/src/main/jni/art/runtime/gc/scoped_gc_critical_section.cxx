@@ -98,13 +98,10 @@ private:
 };
 
 export class ScopedGCCriticalSection {
-    inline static MemberFunction<
-        "_ZN3art2gc23ScopedGCCriticalSectionC2EPNS_6ThreadENS0_7GcCauseENS0_13CollectorTypeE",
-        ScopedGCCriticalSection, void(Thread *, GcCause, CollectorType)>
-        constructor_;
-    inline static MemberFunction<"_ZN3art2gc23ScopedGCCriticalSectionD2Ev", ScopedGCCriticalSection,
-                                 void()>
-        destructor_;
+    inline static auto constructor_ =
+            "_ZN3art2gc23ScopedGCCriticalSectionC2EPNS_6ThreadENS0_7GcCauseENS0_13CollectorTypeE"_sym.as<void(ScopedGCCriticalSection::*)(Thread *, GcCause, CollectorType)>;
+    inline static auto destructor_ =
+            "_ZN3art2gc23ScopedGCCriticalSectionD2Ev"_sym.as<void(ScopedGCCriticalSection::*)()>;
 
 public:
     ScopedGCCriticalSection(Thread *self, GcCause cause, CollectorType collector_type) {

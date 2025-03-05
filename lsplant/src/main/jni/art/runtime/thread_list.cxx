@@ -7,14 +7,14 @@ import hook_helper;
 namespace lsplant::art::thread_list {
 
 export class ScopedSuspendAll {
-    inline static MemberFunction<"_ZN3art16ScopedSuspendAllC2EPKcb", ScopedSuspendAll,
-                                 void(const char *, bool)>
-        constructor_;
-    inline static MemberFunction<"_ZN3art16ScopedSuspendAllD2Ev", ScopedSuspendAll, void()>
-        destructor_;
+    inline static auto constructor_ =
+            "_ZN3art16ScopedSuspendAllC2EPKcb"_sym.as<void(ScopedSuspendAll::*)(const char *, bool)>;
 
-    inline static Function<"_ZN3art3Dbg9SuspendVMEv", void()> SuspendVM_;
-    inline static Function<"_ZN3art3Dbg8ResumeVMEv", void()> ResumeVM_;
+    inline static auto destructor_ =
+            "_ZN3art16ScopedSuspendAllD2Ev"_sym.as<void(ScopedSuspendAll::*)()>;
+
+    inline static auto SuspendVM_ = "_ZN3art3Dbg9SuspendVMEv"_sym.as<void()>;
+    inline static auto ResumeVM_ = "_ZN3art3Dbg8ResumeVMEv"_sym.as<void()>;
 
 public:
     ScopedSuspendAll(const char *cause, bool long_suspend) {
