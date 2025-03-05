@@ -171,17 +171,17 @@ public:
         int sdk_int = GetAndroidApiLevel();
 
         if (sdk_int >= __ANDROID_API_N__ && sdk_int < __ANDROID_API_T__) {
-            handler.hook(ShouldUseInterpreterEntrypoint_);
+            handler(ShouldUseInterpreterEntrypoint_);
         }
 
-        if (!handler.hook(FixupStaticTrampolinesWithThread_, FixupStaticTrampolines_,
+        if (!handler(FixupStaticTrampolinesWithThread_, FixupStaticTrampolines_,
                           FixupStaticTrampolinesRaw_)) {
             return false;
         }
 
-        if (!handler.hook(RegisterNativeClassLinker_, RegisterNative_, RegisterNativeFast_,
+        if (!handler(RegisterNativeClassLinker_, RegisterNative_, RegisterNativeFast_,
                           RegisterNativeThread_) ||
-            !handler.hook(UnregisterNativeClassLinker_, UnregisterNative_, UnregisterNativeFast_,
+            !handler(UnregisterNativeClassLinker_, UnregisterNative_, UnregisterNativeFast_,
                           UnregisterNativeThread_)) {
             return false;
         }
@@ -189,12 +189,12 @@ public:
         if (sdk_int >= __ANDROID_API_R__) {
             if constexpr (kArch != Arch::kX86 && kArch != Arch::kX86_64) {
                 // fixup static trampoline may have been inlined
-                handler.hook(AdjustThreadVisibilityCounter_, MarkVisiblyInitialized_);
+                handler(AdjustThreadVisibilityCounter_, MarkVisiblyInitialized_);
             }
         }
 
-        if (!handler.dlsym(SetEntryPointsToInterpreter_)) [[likely]] {
-            if (handler.dlsym(GetOptimizedCodeFor_, true)) [[likely]] {
+        if (!handler(SetEntryPointsToInterpreter_)) [[likely]] {
+            if (handler(GetOptimizedCodeFor_, true)) [[likely]] {
                 auto obj = JNI_FindClass(env, "java/lang/Object");
                 if (!obj) {
                     return false;
@@ -209,7 +209,7 @@ public:
                 // just in case
                 dummy->SetNonNative();
                 art_quick_to_interpreter_bridge_ = GetOptimizedCodeFor_(dummy.get());
-            } else if (!handler.dlsym(art_quick_to_interpreter_bridge_)) [[unlikely]] {
+            } else if (!handler(art_quick_to_interpreter_bridge_)) [[unlikely]] {
                 return false;
             }
         }

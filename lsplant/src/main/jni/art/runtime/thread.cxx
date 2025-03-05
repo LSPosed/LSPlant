@@ -16,7 +16,7 @@ public:
     }
 
     static bool Init(const HookHandler &handler) {
-        if (!handler.dlsym(CurrentFromGdb_)) [[unlikely]] {
+        if (!handler(CurrentFromGdb_)) [[unlikely]] {
             return false;
         }
         return true;

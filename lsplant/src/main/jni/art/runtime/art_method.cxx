@@ -299,13 +299,12 @@ public:
         }
         if (sdk_int < __ANDROID_API_Q__) kAccFastInterpreterToInterpreterInvoke = 0;
 
-        if (!handler.dlsym(GetMethodShortyL_, true) && !handler.dlsym(GetMethodShorty_)) {
+        if (!handler(GetMethodShortyL_, true, GetMethodShorty_)) {
             LOGE("Failed to find GetMethodShorty");
             return false;
         }
 
-        handler.dlsym(PrettyMethod_) || handler.dlsym(PrettyMethodStatic_) ||
-            handler.dlsym(PrettyMethodMirror_);
+        handler(PrettyMethod_, PrettyMethodStatic_, PrettyMethodMirror_);
 
         if (sdk_int <= __ANDROID_API_O__) [[unlikely]] {
             auto abstract_method_error = JNI_FindClass(env, "java/lang/AbstractMethodError");
@@ -320,7 +319,7 @@ public:
                     LOGE("Failed to find Executable.getName");
                     return false;
                 }
-                handler.dlsym(ThrowInvocationTimeError_);
+                handler(ThrowInvocationTimeError_);
                 auto abstract_method = FromReflectedMethod(
                     env, JNI_ToReflectedMethod(env, executable, executable_get_name, false).get());
                 uint32_t access_flags = abstract_method->GetAccessFlags();
@@ -339,7 +338,7 @@ public:
             kAccCompileDontBother = 0;
         }
         if (sdk_int <= __ANDROID_API_M__) [[unlikely]] {
-            if (!handler.dlsym(art_interpreter_to_compiled_code_bridge_)) {
+            if (!handler(art_interpreter_to_compiled_code_bridge_)) {
                 return false;
             }
             if (sdk_int >= __ANDROID_API_L_MR1__) {

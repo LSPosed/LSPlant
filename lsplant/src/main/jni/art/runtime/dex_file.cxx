@@ -93,15 +93,14 @@ public:
     static bool Init(JNIEnv* env, const HookHandler& handler) {
         auto sdk_int = GetAndroidApiLevel();
         if (sdk_int >= __ANDROID_API_P__) [[likely]] {
-            if (!handler.dlsym(DexFile_setTrusted_, true)) {
+            if (!handler(DexFile_setTrusted_, true)) {
                 LOGW("DexFile.setTrusted not found, MakeDexFileTrusted will not work.");
             }
         }
         if (sdk_int >= __ANDROID_API_O__) [[likely]] {
             return true;
         }
-        if (!handler.dlsym(OpenMemory_) && !handler.dlsym(OpenMemoryRaw_) &&
-            !handler.dlsym(OpenMemoryWithoutOdex_)) [[unlikely]] {
+        if (!handler(OpenMemory_, OpenMemoryRaw_, OpenMemoryWithoutOdex_)) [[unlikely]] {
             LOGE("Failed to find OpenMemory");
             return false;
         }

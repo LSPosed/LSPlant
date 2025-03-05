@@ -34,10 +34,10 @@ public:
     }
 
     static bool Init(const HookHandler &handler) {
-        if (!handler.dlsym(constructor_) && !handler.dlsym(SuspendVM_)) [[unlikely]] {
+        if (!handler(constructor_, SuspendVM_)) [[unlikely]] {
             return false;
         }
-        if (!handler.dlsym(destructor_) && !handler.dlsym(ResumeVM_)) [[unlikely]] {
+        if (!handler(destructor_, ResumeVM_)) [[unlikely]] {
             return false;
         }
         return true;

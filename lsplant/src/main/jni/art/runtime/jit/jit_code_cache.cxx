@@ -47,12 +47,12 @@ public:
     static bool Init(const HookHandler &handler) {
         auto sdk_int = GetAndroidApiLevel();
         if (sdk_int >= __ANDROID_API_O__) [[likely]] {
-            if (!handler.dlsym(MoveObsoleteMethod_)) [[unlikely]] {
+            if (!handler(MoveObsoleteMethod_)) [[unlikely]] {
                 return false;
             }
         }
         if (sdk_int >= __ANDROID_API_N__) [[likely]] {
-            if (!handler.hook(GarbageCollectCache_, DoCollection_)) [[unlikely]] {
+            if (!handler(GarbageCollectCache_, DoCollection_)) [[unlikely]] {
                 return false;
             }
         }

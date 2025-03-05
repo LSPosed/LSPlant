@@ -54,12 +54,12 @@ public:
 
     static bool Init(const HookHandler &handler) {
         int sdk_int = GetAndroidApiLevel();
-        if (!handler.dlsym(instance_) || !*instance_) {
+        if (!handler(instance_) || !*instance_) {
             return false;
         }
         LOGD("runtime instance = %p", *instance_);
         if (sdk_int >= __ANDROID_API_O__) {
-            if (!handler.dlsym(SetJavaDebuggable_) && !handler.dlsym(SetRuntimeDebugState_)) {
+            if (!handler(SetJavaDebuggable_, SetRuntimeDebugState_)) {
                 return false;
             }
         }

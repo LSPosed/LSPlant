@@ -46,8 +46,8 @@ public:
         auto sdk_int = GetAndroidApiLevel();
 
         if (sdk_int <= __ANDROID_API_U__) [[likely]] {
-            handler.hook(EnqueueOptimizedCompilation_);
-            handler.hook(AddCompileTask_);
+            handler(EnqueueOptimizedCompilation_);
+            handler(AddCompileTask_);
         }
         return true;
     }

@@ -101,18 +101,18 @@ private:
 
 public:
     static bool Init(const HookHandler &handler) {
-        if (!handler.dlsym(GetDescriptor_) || !handler.dlsym(GetClassDef_)) {
+        if (!handler(GetDescriptor_) || !handler(GetClassDef_)) {
             return false;
         }
 
         int sdk_int = GetAndroidApiLevel();
 
         if (sdk_int < __ANDROID_API_O__) {
-            if (!handler.hook(SetStatus_, ClassSetStatus_)) {
+            if (!handler(SetStatus_, ClassSetStatus_)) {
                 return false;
             }
         } else {
-            if (!handler.hook(SetClassStatus_, TrivialSetStatus_)) {
+            if (!handler(SetClassStatus_, TrivialSetStatus_)) {
                 return false;
             }
         }

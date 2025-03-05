@@ -52,7 +52,7 @@ public:
         }
         int sdk_int = GetAndroidApiLevel();
         if (sdk_int >= __ANDROID_API_P__) [[likely]] {
-            if (!handler.hook(InitializeMethodsCode_, UpdateMethodsCodeToInterpreterEntryPoint_)) {
+            if (!handler(InitializeMethodsCode_, UpdateMethodsCodeToInterpreterEntryPoint_)) {
                 return false;
             }
         }

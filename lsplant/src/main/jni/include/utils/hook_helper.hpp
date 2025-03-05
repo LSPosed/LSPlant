@@ -130,54 +130,51 @@ private:
 
 struct HookHandler {
     HookHandler(const InitInfo &info) : info_(info) {}
-    template <FixedString Sym, typename This, typename Ret, typename... Args>
-    [[gnu::always_inline]] bool dlsym(Function<Sym, Ret(This::*)(Args...)> &function,
-                                      bool match_prefix = false) const {
-        return function = dlsym<Sym>(match_prefix);
-    }
 
-    template <FixedString Sym, typename Ret, typename... Args>
-    [[gnu::always_inline]] bool dlsym(Function<Sym, Ret(Args...)> &function,
-                                      bool match_prefix = false) const {
-        return function = dlsym<Sym>(match_prefix);
-    }
-
-    template <FixedString Sym, typename T>
-    [[gnu::always_inline]] bool dlsym(Field<Sym, T> &field, bool match_prefix = false) const {
-        return field = dlsym<Sym>(match_prefix);
-    }
-
-    template <FixedString Sym, typename Ret, typename... Args>
-    [[gnu::always_inline]] bool hook(Hooker<Sym, Ret(Args...)> &hooker) const {
-        return hooker = hook(dlsym<Sym>(), reinterpret_cast<void *>(hooker.replace_));
-    }
-
-    template <FixedString Sym, typename This, typename Ret, typename... Args>
-    [[gnu::always_inline]] bool hook(Hooker<Sym, Ret(This::*)(Args...)> &hooker) const {
-        return hooker = hook(dlsym<Sym>(), reinterpret_cast<void *>(hooker.replace_));
+    template <typename T>
+    [[gnu::always_inline]] bool operator()(T &&arg) const {
+        return handle(std::forward<T>(arg), false);
     }
 
     template <typename T1, typename T2, typename... U>
-    [[gnu::always_inline]] bool hook(T1 &arg1, T2 &arg2, U &...args) const {
-        return ((hook(arg1) || hook(arg2)) || ... || hook(args));
+    [[gnu::always_inline]] bool operator()(T1 &&arg1, T2 &&arg2, U &&...args) const {
+        if constexpr(std::is_same_v<T2, bool>)
+            return handle(std::forward<T1>(arg1), std::forward<T2>(arg2)) || this->operator()(std::forward<U>(args)...);
+        else
+            return handle(std::forward<T1>(arg1), false) || this->operator()(std::forward<T2>(arg2), std::forward<U>(args)...);
     }
 
 private:
+    [[gnu::always_inline]] bool operator()() const {
+        return false;
+    }
+
     const InitInfo &info_;
+    template<FixedString Sym, typename ...Us, template<FixedString, typename...> typename T>
+    requires(!requires { T<Sym, Us...>::replace_; })
+    [[gnu::always_inline]] bool handle(T<Sym, Us...> &target, bool match_prefix) const {
+        return target = dlsym<Sym>(match_prefix);
+    }
+
+    template<FixedString Sym, typename ...Us, template<FixedString, typename...> typename T>
+    requires(requires { T<Sym, Us...>::replace_; })
+    [[gnu::always_inline]] bool handle(T<Sym, Us...> &hooker, bool match_prefix) const {
+        return hooker = hook(dlsym<Sym>(match_prefix), reinterpret_cast<void *>(hooker.replace_));
+    }
 
     template <FixedString Sym>
     [[gnu::always_inline]] void *dlsym(bool match_prefix = false) const {
         if (auto match = info_.art_symbol_resolver(Sym.data); match) {
             return match;
         }
-        if (match_prefix && info_.art_symbol_prefix_resolver) {
+        if (match_prefix && info_.art_symbol_prefix_resolver) [[likely]] {
             return info_.art_symbol_prefix_resolver(Sym.data);
         }
         return nullptr;
     }
 
-    void *hook(void *original, void *replace) const {
-        if (original) {
+    [[gnu::always_inline]] void *hook(void *original, void *replace) const {
+        if (original) [[likely]] {
             return info_.inline_hooker(original, replace);
         }
         return nullptr;
