@@ -2,10 +2,10 @@ module;
 
 #include <android/api-level.h>
 
-export module scope_gc_critical_section;
+export module lsplant:scope_gc_critical_section;
 
-import thread;
-import common;
+import :thread;
+import :common;
 import hook_helper;
 
 namespace lsplant::art::gc {

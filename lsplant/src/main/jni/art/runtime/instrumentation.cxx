@@ -2,10 +2,10 @@ module;
 
 #include "logging.hpp"
 
-export module instrumentation;
+export module lsplant:instrumentation;
 
-import art_method;
-import common;
+import :art_method;
+import :common;
 import hook_helper;
 
 namespace lsplant::art {

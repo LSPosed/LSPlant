@@ -5,9 +5,9 @@ module;
 
 #include "logging.hpp"
 
-export module runtime;
+export module lsplant:runtime;
 
-import common;
+import :common;
 import hook_helper;
 
 namespace lsplant::art {

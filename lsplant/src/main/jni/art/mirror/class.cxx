@@ -4,17 +4,17 @@ module;
 
 #include "logging.hpp"
 
-export module clazz;
+export module lsplant:clazz;
 
-import common;
-import art_method;
-import thread;
-import handle;
+import :common;
+import :art_method;
+import :thread;
+import :handle;
 import hook_helper;
 
-namespace lsplant::art::mirror {
+export namespace lsplant::art::mirror {
 
-export class Class {
+class Class {
 private:
     inline static auto GetDescriptor_ =
         "_ZN3art6mirror5Class13GetDescriptorEPNSt3__112basic_stringIcNS2_11char_traitsIcEENS2_9allocatorIcEEEE"_sym.as<const char *(Class::*)(std::string *)>;

@@ -2,11 +2,11 @@ module;
 
 #include "logging.hpp"
 
-export module jni_id_manager;
+export module lsplant:jni_id_manager;
 
-import art_method;
-import common;
-import handle;
+import :art_method;
+import :common;
+import :handle;
 import hook_helper;
 
 namespace lsplant::art::jni {

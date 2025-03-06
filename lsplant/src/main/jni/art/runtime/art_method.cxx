@@ -6,17 +6,13 @@ module;
 
 #include "logging.hpp"
 
-export module art_method;
+export module lsplant:art_method;
 
-import common;
+import :common;
 import hook_helper;
 
-namespace lsplant::art {
-namespace mirror {
-class Class;
-}
-
-export class ArtMethod {
+export namespace lsplant::art {
+class ArtMethod {
     inline static auto PrettyMethod_ =
             "_ZN3art9ArtMethod12PrettyMethodEPS0_b"_sym.as<std::string(ArtMethod::*)(bool)>;
 

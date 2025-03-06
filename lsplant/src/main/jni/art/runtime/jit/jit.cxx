@@ -2,11 +2,11 @@ module;
 
 #include "logging.hpp"
 
-export module jit;
+export module lsplant:jit;
 
-import art_method;
-import common;
-import thread;
+import :art_method;
+import :common;
+import :thread;
 import hook_helper;
 
 namespace lsplant::art::jit {

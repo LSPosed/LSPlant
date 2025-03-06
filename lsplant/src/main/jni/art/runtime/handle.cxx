@@ -3,9 +3,9 @@ module;
 #include <cstdint>
 #include <type_traits>
 
-export module handle;
+export module lsplant:handle;
 
-import art_method;
+import :art_method;
 
 namespace lsplant::art {
 

@@ -4,15 +4,15 @@ module;
 
 #include "logging.hpp"
 
-export module class_linker;
+export module lsplant:class_linker;
 
-import art_method;
-import thread;
-import common;
-import clazz;
-import handle;
+import :art_method;
+import :thread;
+import :common;
+import :clazz;
+import :handle;
+import :runtime;
 import hook_helper;
-import runtime;
 
 namespace lsplant::art {
 export class ClassLinker {

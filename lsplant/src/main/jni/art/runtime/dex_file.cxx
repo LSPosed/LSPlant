@@ -6,9 +6,9 @@ module;
 
 #include "logging.hpp"
 
-export module dex_file;
+export module lsplant:dex_file;
 
-import common;
+import :common;
 import hook_helper;
 
 namespace lsplant::art {

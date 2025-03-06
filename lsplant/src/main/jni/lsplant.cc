@@ -1,3 +1,7 @@
+module;
+
+#include "lsplant.hpp"
+
 #include <android/api-level.h>
 #include <bits/sysconf.h>
 #include <jni.h>
@@ -12,29 +16,23 @@
 
 #include "logging.hpp"
 
+module lsplant;
+
 import dex_builder;
-import lsplant;
 
-import common;
-import art_method;
-import clazz;
-import thread;
-import instrumentation;
-import runtime;
-import thread_list;
-import class_linker;
-import scope_gc_critical_section;
-import jit_code_cache;
-import jni_id_manager;
-import dex_file;
-import jit;
-import hook_helper;
-
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wunknown-pragmas"
-#pragma ide diagnostic ignored "ConstantConditionsOC"
-#pragma ide diagnostic ignored "Simplify"
-#pragma ide diagnostic ignored "UnreachableCode"
+import :common;
+import :art_method;
+import :clazz;
+import :thread;
+import :instrumentation;
+import :runtime;
+import :thread_list;
+import :class_linker;
+import :scope_gc_critical_section;
+import :jit_code_cache;
+import :jni_id_manager;
+import :dex_file;
+import :jit;
 
 namespace lsplant {
 
@@ -633,6 +631,7 @@ std::string GetProxyMethodShorty(JNIEnv *env, jobject proxy_method) {
 }  // namespace
 
 inline namespace v2 {
+extern "C++" {
 
 using ::lsplant::IsHooked;
 
@@ -835,8 +834,7 @@ using ::lsplant::IsHooked;
     if (!cookie) return false;
     return DexFile::SetTrusted(env, cookie);
 }
+}
 }  // namespace v2
 
 }  // namespace lsplant
-
-#pragma clang diagnostic pop

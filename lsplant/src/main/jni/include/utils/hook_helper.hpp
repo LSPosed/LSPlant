@@ -12,13 +12,6 @@ namespace lsplant {
 template <size_t N>
 struct FixedString {
     consteval FixedString(const char (&str)[N]) { std::copy_n(str, N, data); }
-#if defined(__LP64__)
-    template <size_t M>
-    consteval FixedString(const char (&)[M], const char (&str)[N]) : FixedString(str) {}
-#else
-    template <size_t M>
-    consteval FixedString(const char (&str)[N], const char (&)[M]) : FixedString(str) {}
-#endif
     char data[N] = {};
 };
 
@@ -181,29 +174,11 @@ private:
     }
 };
 
-
-struct Dummy;
+template<typename F>
+concept Backup = std::is_function_v<std::remove_pointer_t<F>>;
 
 template<typename F>
-concept Backup = std::is_function_v<std::remove_pointer_t<F>> || requires(F&& f) { { f(std::declval<Dummy*>()) } -> std::same_as<Dummy*>; };
-
-template<typename F>
-concept MemBackup = std::is_function_v<std::remove_pointer_t<F>> || requires(F&& f) { { f(std::declval<Dummy*>()) } -> std::same_as<Dummy**>; };
-
-template <typename T>
-T return_t();
-
-// for ndk 29+, use decltype(F::template operator()<&decltype([] static {})::operator()>)
-// and remove Dummy, set MemBackup as std::is_member_function_pointer_v<F>
-template<typename F, bool mem>
-using Signature = decltype(F::template operator()<[](auto...a) static {
-    using D = std::conditional_t<mem, Dummy**, Dummy*>;
-    if constexpr ((false || ... || std::is_same_v<decltype(a), Dummy*>)) {
-        return return_t<D>();
-    } else {
-        return return_t<decltype(F::template operator()<[](auto...) -> D {}>(std::declval<decltype(a)>()...))>();
-    }
-}>);
+concept MemBackup = std::is_member_function_pointer_v<std::remove_pointer_t<F>> || Backup<F>;
 
 template<FixedString S>
 struct Symbol {
@@ -218,21 +193,18 @@ struct Symbol {
 
     [[no_unique_address]] struct Hook {
         template<typename F>
-        requires(requires { std::declval<Signature<F, false>>(); })
         auto operator->*(F&&) const {
-            using HookerType = Hooker<S, Signature<F, false>>;
-            return HookerType{static_cast<decltype(HookerType::replace_)>(&F::template operator()<HookerType::operator()>)};
+            using Signature = decltype(F::template operator()<&decltype([] static {})::operator()>);
+            if constexpr (requires { F::template operator()<&decltype([] {})::operator()>; }) {
+                using HookerType = Hooker<S, decltype([]<class This, typename Ret, typename... Args>(Ret(*)(This*, Args...)) -> Ret(This::*)(Args...) {
+                    return {};
+                }.template operator()(std::declval<Signature>()))>;
+                return HookerType{static_cast<decltype(HookerType::replace_)>(&F::template operator()<HookerType::operator()>)};
+            } else {
+                using HookerType = Hooker<S, Signature>;
+                return HookerType{static_cast<decltype(HookerType::replace_)>(&F::template operator()<HookerType::operator()>)};
+            }
         };
-        template<typename F>
-        requires(requires { std::declval<Signature<F, true>>(); })
-        auto operator->*(F&&) const {
-            constexpr auto c = []<class This, typename Ret, typename... Args>(Ret(*f)(This*, Args...)) -> Ret(This::*)(Args...) {
-                return {};
-            };
-            using HookerType = Hooker<S, decltype(c.template operator()(std::declval<Signature<F, true>>()))>;
-            return HookerType{static_cast<decltype(HookerType::replace_)>(&F::template operator()<HookerType::operator()>)};
-        };
-
     } hook;
 };
 

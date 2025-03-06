@@ -1,6 +1,6 @@
 module;
 
-export module thread;
+export module lsplant:thread;
 
 import hook_helper;
 
