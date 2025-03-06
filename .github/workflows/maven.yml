@@ -23,6 +23,8 @@ jobs:
       - uses: seanmiddleditch/gha-setup-ninja@master
         with:
           version: 1.12.0
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
       - name: Build with Gradle
         run: |
           rm -rf $ANDROID_HOME/cmake

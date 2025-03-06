@@ -38,6 +38,8 @@ jobs:
         with:
           key: ${{ runner.os }}-${{ github.sha }}
           restore-keys: ${{ runner.os }}
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
       - name: Remove Android's cmake
         shell: bash
         run: rm -rf $ANDROID_HOME/cmake
