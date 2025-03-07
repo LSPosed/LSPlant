@@ -220,10 +220,4 @@ consteval auto operator|([[maybe_unused]] Symbol<S> a, [[maybe_unused]] Symbol<P
     return a;
 #endif
 }
-
-void test() {
-    "test"_sym.hook->*[]<MemBackup auto backup>(std::string *x) static -> char {
-        return backup(x);
-    };
-}
 }  // namespace lsplant
