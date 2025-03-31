@@ -28,6 +28,9 @@ class ArtMethod {
     inline static auto GetMethodShorty_ =
             "_ZN3art15GetMethodShortyEP7_JNIEnvP10_jmethodID"_sym.as<const char *(JNIEnv *env, jmethodID mid)>;
 
+    inline static auto SetNotIntrinsic_ =
+            "_ZN3art9ArtMethod15SetNotIntrinsicEv"_sym.as<void (ArtMethod::*)()>;
+
     inline static auto ThrowInvocationTimeError_ =
             "_ZN3art9ArtMethod24ThrowInvocationTimeErrorEv"_sym.as<void(ArtMethod::*)()>;
 
@@ -103,6 +106,16 @@ public:
         SetAccessFlags(access_flags);
     }
 
+    void SetNonIntrinsic() {
+        if (SetNotIntrinsic_) [[likely]] {
+            SetNotIntrinsic_(this);
+        } else {
+            auto access_flags = GetAccessFlags();
+            access_flags &= ~kAccIntrinsic;
+            SetAccessFlags(access_flags);
+        }
+    }
+
     bool IsPrivate() { return GetAccessFlags() & kAccPrivate; }
     bool IsProtected() { return GetAccessFlags() & kAccProtected; }
     bool IsPublic() { return GetAccessFlags() & kAccPublic; }
@@ -110,6 +123,7 @@ public:
     bool IsStatic() { return GetAccessFlags() & kAccStatic; }
     bool IsNative() { return GetAccessFlags() & kAccNative; }
     bool IsConstructor() { return GetAccessFlags() & kAccConstructor; }
+    bool IsIntrinsic() { return GetAccessFlags() & kAccIntrinsic; }
 
     void CopyFrom(const ArtMethod *other) { memcpy(this, other, art_method_size); }
 
@@ -302,6 +316,10 @@ public:
 
         handler(PrettyMethod_, PrettyMethodStatic_, PrettyMethodMirror_);
 
+        if (sdk_int >= __ANDROID_API_O__) {
+            handler(SetNotIntrinsic_);
+        }
+
         if (sdk_int <= __ANDROID_API_O__) [[unlikely]] {
             auto abstract_method_error = JNI_FindClass(env, "java/lang/AbstractMethodError");
             if (!abstract_method_error) {
@@ -367,6 +385,7 @@ private:
     inline static uint32_t kAccPreCompiled = 0x00200000;
     inline static uint32_t kAccCompileDontBother = 0x02000000;
     inline static uint32_t kAccDefaultConflict = 0x01000000;
+    inline static uint32_t kAccIntrinsic = 0x80000000;
 };
 
 }  // namespace lsplant::art
