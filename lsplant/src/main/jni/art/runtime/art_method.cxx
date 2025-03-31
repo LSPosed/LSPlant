@@ -316,7 +316,7 @@ public:
 
         handler(PrettyMethod_, PrettyMethodStatic_, PrettyMethodMirror_);
 
-        if (sdk_int >= __ANDROID_API_V__) {
+        if (sdk_int >= __ANDROID_API_O__) {
             handler(SetNotIntrinsic_);
         }
 
