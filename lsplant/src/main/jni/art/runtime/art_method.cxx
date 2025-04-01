@@ -316,8 +316,10 @@ public:
 
         handler(PrettyMethod_, PrettyMethodStatic_, PrettyMethodMirror_);
 
-        if (sdk_int >= __ANDROID_API_O__) {
+        if (sdk_int >= __ANDROID_API_O__) [[likely]] {
             handler(SetNotIntrinsic_);
+        } else {
+            kAccIntrinsic = 0;
         }
 
         if (sdk_int <= __ANDROID_API_O__) [[unlikely]] {

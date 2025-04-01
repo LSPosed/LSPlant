@@ -539,9 +539,7 @@ bool DoHook(ArtMethod *target, ArtMethod *hook, ArtMethod *backup) {
     } else {
         LOGV("Generated trampoline %p", entrypoint);
 
-        if (GetAndroidApiLevel() >= __ANDROID_API_O__ && target->IsIntrinsic()) [[unlikely]] {
-            target->SetNonIntrinsic();
-        }
+        target->SetNonIntrinsic();
 
         hook->SetNonCompilable();
 
