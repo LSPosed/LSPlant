@@ -308,6 +308,7 @@ public:
             kAccPreCompiled = 0x00800000;
         }
         if (sdk_int < __ANDROID_API_Q__) kAccFastInterpreterToInterpreterInvoke = 0;
+        if (sdk_int < __ANDROID_API_O__) kAccIntrinsic = 0;
 
         if (!handler(GetMethodShortyL_, true, GetMethodShorty_)) {
             LOGE("Failed to find GetMethodShorty");
@@ -318,8 +319,6 @@ public:
 
         if (sdk_int >= __ANDROID_API_O__) [[likely]] {
             handler(SetNotIntrinsic_);
-        } else {
-            kAccIntrinsic = 0;
         }
 
         if (sdk_int <= __ANDROID_API_O__) [[unlikely]] {
