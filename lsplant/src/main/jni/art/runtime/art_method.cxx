@@ -28,6 +28,9 @@ class ArtMethod {
     inline static auto GetMethodShorty_ =
             "_ZN3art15GetMethodShortyEP7_JNIEnvP10_jmethodID"_sym.as<const char *(JNIEnv *env, jmethodID mid)>;
 
+    inline static auto SetNotIntrinsic_ =
+            "_ZN3art9ArtMethod15SetNotIntrinsicEv"_sym.as<void (ArtMethod::*)()>;
+
     inline static auto ThrowInvocationTimeError_ =
             "_ZN3art9ArtMethod24ThrowInvocationTimeErrorEv"_sym.as<void(ArtMethod::*)()>;
 
@@ -100,6 +103,12 @@ public:
     void SetNonNative() {
         auto access_flags = GetAccessFlags();
         access_flags &= ~kAccNative;
+        SetAccessFlags(access_flags);
+    }
+
+    void SetNonIntrinsic() {
+        auto access_flags = GetAccessFlags();
+        access_flags &= ~kAccIntrinsic;
         SetAccessFlags(access_flags);
     }
 
@@ -294,6 +303,7 @@ public:
             kAccPreCompiled = 0x00800000;
         }
         if (sdk_int < __ANDROID_API_Q__) kAccFastInterpreterToInterpreterInvoke = 0;
+        if (sdk_int < __ANDROID_API_O__) kAccIntrinsic = 0;
 
         if (!handler(GetMethodShortyL_, true, GetMethodShorty_)) {
             LOGE("Failed to find GetMethodShorty");
@@ -301,6 +311,22 @@ public:
         }
 
         handler(PrettyMethod_, PrettyMethodStatic_, PrettyMethodMirror_);
+
+        if (sdk_int >= __ANDROID_API_O__ && handler(SetNotIntrinsic_)) {
+            auto dummy = first->Clone();
+            dummy->SetAccessFlags(kAccIntrinsic);
+            SetNotIntrinsic_(dummy.get());
+            if (dummy->GetAccessFlags() == kAccIntrinsic) [[unlikely]] {
+                for (auto shift = 16U; 32U > shift; ++shift) {
+                    auto acc = 1U << shift;
+                    dummy->SetAccessFlags(acc);
+                    SetNotIntrinsic_(dummy.get());
+                    if (dummy->GetAccessFlags() == acc) continue;
+                    kAccIntrinsic = acc;
+                    break;
+                }
+            }
+        }
 
         if (sdk_int <= __ANDROID_API_O__) [[unlikely]] {
             auto abstract_method_error = JNI_FindClass(env, "java/lang/AbstractMethodError");
@@ -367,6 +393,7 @@ private:
     inline static uint32_t kAccPreCompiled = 0x00200000;
     inline static uint32_t kAccCompileDontBother = 0x02000000;
     inline static uint32_t kAccDefaultConflict = 0x01000000;
+    inline static uint32_t kAccIntrinsic = 0x80000000;
 };
 
 }  // namespace lsplant::art
