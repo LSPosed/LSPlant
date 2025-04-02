@@ -107,13 +107,9 @@ public:
     }
 
     void SetNonIntrinsic() {
-        if (SetNotIntrinsic_) [[likely]] {
-            SetNotIntrinsic_(this);
-        } else {
-            auto access_flags = GetAccessFlags();
-            access_flags &= ~kAccIntrinsic;
-            SetAccessFlags(access_flags);
-        }
+        auto access_flags = GetAccessFlags();
+        access_flags &= ~kAccIntrinsic;
+        SetAccessFlags(access_flags);
     }
 
     bool IsPrivate() { return GetAccessFlags() & kAccPrivate; }
@@ -123,7 +119,6 @@ public:
     bool IsStatic() { return GetAccessFlags() & kAccStatic; }
     bool IsNative() { return GetAccessFlags() & kAccNative; }
     bool IsConstructor() { return GetAccessFlags() & kAccConstructor; }
-    bool IsIntrinsic() { return GetAccessFlags() & kAccIntrinsic; }
 
     void CopyFrom(const ArtMethod *other) { memcpy(this, other, art_method_size); }
 
@@ -317,8 +312,20 @@ public:
 
         handler(PrettyMethod_, PrettyMethodStatic_, PrettyMethodMirror_);
 
-        if (sdk_int >= __ANDROID_API_O__) [[likely]] {
-            handler(SetNotIntrinsic_);
+        if (sdk_int >= __ANDROID_API_O__ && handler(SetNotIntrinsic_)) {
+            auto dummy = first->Clone();
+            dummy->SetAccessFlags(kAccIntrinsic);
+            SetNotIntrinsic_(dummy.get());
+            if (dummy->GetAccessFlags() == kAccIntrinsic) [[unlikely]] {
+                for (auto shift = 16U; 32U > shift; ++shift) {
+                    auto acc = 1U << shift;
+                    dummy->SetAccessFlags(acc);
+                    SetNotIntrinsic_(dummy.get());
+                    if (dummy->GetAccessFlags() == acc) continue;
+                    kAccIntrinsic = acc;
+                    break;
+                }
+            }
         }
 
         if (sdk_int <= __ANDROID_API_O__) [[unlikely]] {
