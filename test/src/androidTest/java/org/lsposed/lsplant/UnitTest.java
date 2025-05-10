@@ -21,22 +21,29 @@ public class UnitTest {
     }
 
     @Test
-    public void t01_staticMethod() throws NoSuchMethodException, InvocationTargetException, IllegalAccessException {
+    public void t01_staticMethod() throws NoSuchMethodException, InvocationTargetException, IllegalAccessException, InterruptedException {
         var staticMethod = LSPTest.class.getDeclaredMethod("staticMethod");
         var staticMethodReplacement = Replacement.class.getDeclaredMethod("staticMethodReplacement", Hooker.MethodCallback.class);
         Assert.assertFalse(LSPTest.staticMethod());
 
         Hooker hooker = Hooker.hook(staticMethod, staticMethodReplacement, null);
         Assert.assertNotNull(hooker);
-        Assert.assertTrue(LSPTest.staticMethod());
-        Assert.assertFalse((boolean) hooker.backup.invoke(null));
+
+        for (int i = 0; i < 10000; ++i) {
+            Assert.assertTrue(LSPTest.staticMethod());
+            Assert.assertFalse((boolean) hooker.backup.invoke(null));
+
+            if (i == 5000) {
+                Thread.sleep(5000);
+            }
+        }
 
         Assert.assertTrue(hooker.unhook());
         Assert.assertFalse(LSPTest.staticMethod());
     }
 
     @Test
-    public void t02_normalMethod() throws NoSuchMethodException, InvocationTargetException, IllegalAccessException {
+    public void t02_normalMethod() throws NoSuchMethodException, InvocationTargetException, IllegalAccessException, InterruptedException {
         var normalMethod = LSPTest.class.getDeclaredMethod("normalMethod", String.class, int.class, long.class);
         var normalMethodReplacement = Replacement.class.getDeclaredMethod("normalMethodReplacement", Hooker.MethodCallback.class);
         var a = "test";
@@ -49,8 +56,15 @@ public class UnitTest {
 
         Hooker hooker = Hooker.hook(normalMethod, normalMethodReplacement, new Replacement());
         Assert.assertNotNull(hooker);
-        Assert.assertEquals(r, test.normalMethod(a, b, c));
-        Assert.assertEquals(o, hooker.backup.invoke(test, a, b, c));
+
+        for (int i = 0; i < 10000; ++i) {
+            Assert.assertEquals(r, test.normalMethod(a, b, c));
+            Assert.assertEquals(o, hooker.backup.invoke(test, a, b, c));
+
+            if (i == 5000) {
+                Thread.sleep(5000);
+            }
+        }
 
         Assert.assertTrue(hooker.unhook());
         Assert.assertEquals(o, test.normalMethod(a, b, c));
@@ -100,7 +114,7 @@ public class UnitTest {
     }
 
     @Test
-    public void t05_uninitializedStaticMethod() throws NoSuchMethodException, InvocationTargetException, IllegalAccessException, ClassNotFoundException {
+    public void t05_uninitializedStaticMethod() throws NoSuchMethodException, InvocationTargetException, IllegalAccessException, ClassNotFoundException, InterruptedException {
         var uninitializedClass = Class.forName("org.lsposed.lsplant.LSPTest$NeedInitialize", false, LSPTest.class.getClassLoader());
         var staticMethod = uninitializedClass.getDeclaredMethod("staticMethod");
         var callStaticMethod = uninitializedClass.getDeclaredMethod("callStaticMethod");
@@ -108,9 +122,13 @@ public class UnitTest {
 
         Hooker hooker = Hooker.hook(staticMethod, staticMethodReplacement, null);
         Assert.assertNotNull(hooker);
-        for (int i = 0; i < 5000; ++i) {
+        for (int i = 0; i < 10000; ++i) {
             Assert.assertTrue("Iter " + i, (Boolean) callStaticMethod.invoke(null));
             Assert.assertFalse("Iter " + i, (boolean) hooker.backup.invoke(null));
+
+            if (i == 5000) {
+                Thread.sleep(5000);
+            }
         }
 
         Assert.assertTrue(hooker.unhook());
@@ -159,9 +177,9 @@ public class UnitTest {
         Assert.assertEquals(o, sb.toString());
 
         Hooker hooker = Hooker.hook(intrinsicMethod, intrinsicMethodReplacement, new Replacement());
+        Assert.assertNotNull(hooker);
 
         for (int i = 0; i < 10000; ++i) {
-            Assert.assertNotNull(hooker);
             Assert.assertEquals(r, sb.toString());
             Assert.assertEquals(o, hooker.backup.invoke(sb));
 
