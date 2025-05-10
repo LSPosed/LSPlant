@@ -15,6 +15,15 @@ public class Replacement {
         return a + b + c + "replace";
     }
 
+    String intrinsicMethodReplacement(Hooker.MethodCallback callback) throws InvocationTargetException, IllegalAccessException {
+        var sb = (StringBuilder) callback.args[0];
+        var out = (String) callback.backup.invoke(sb);
+        if (out.equals("test")) {
+            return "testreplace";
+        }
+        return out;
+    }
+
     void constructorReplacement(Hooker.MethodCallback callback) throws InvocationTargetException, IllegalAccessException {
         var test = (LSPTest) callback.args[0];
         callback.backup.invoke(test);

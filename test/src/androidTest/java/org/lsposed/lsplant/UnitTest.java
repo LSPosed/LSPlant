@@ -145,4 +145,33 @@ public class UnitTest {
         Assert.assertEquals(abstractMethod.invoke(proxy, a, b, c, d, e, f, g, h, e, f), r);
         Assert.assertEquals(hooker.backup.invoke(proxy, a, b, c, d, e, f, g, h, e, f), o);
     }
+
+    @Test
+    public void t07_intrinsicMethod() throws NoSuchMethodException, InvocationTargetException, IllegalAccessException, InterruptedException {
+        var intrinsicMethod = StringBuilder.class.getDeclaredMethod("toString");
+
+        var intrinsicMethodReplacement = Replacement.class.getDeclaredMethod("intrinsicMethodReplacement", Hooker.MethodCallback.class);
+
+        StringBuilder sb = new StringBuilder("test");
+        var o = "test";
+        var r = "testreplace";
+
+        Assert.assertEquals(o, sb.toString());
+
+        Hooker hooker = Hooker.hook(intrinsicMethod, intrinsicMethodReplacement, new Replacement());
+
+        for (int i = 0; i < 10000; ++i) {
+            Assert.assertNotNull(hooker);
+            Assert.assertEquals(r, sb.toString());
+            Assert.assertEquals(o, hooker.backup.invoke(sb));
+
+            if (i == 5000) {
+                Thread.sleep(5000);
+            }
+        }
+
+        Assert.assertTrue(hooker.unhook());
+        Assert.assertEquals(o, sb.toString());
+
+    }
 }
