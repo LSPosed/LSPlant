@@ -539,9 +539,9 @@ bool DoHook(ArtMethod *target, ArtMethod *hook, ArtMethod *backup) {
     } else {
         LOGV("Generated trampoline %p", entrypoint);
 
-        hook->SetNonCompilable();
-
         target->BackupTo(backup);
+
+        hook->SetNonCompilable();
 
         target->SetEntryPoint(entrypoint);
 
