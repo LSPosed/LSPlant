@@ -541,7 +541,7 @@ bool DoHook(ArtMethod *target, ArtMethod *hook, ArtMethod *backup) {
 
         target->BackupTo(backup);
 
-        hook->SetNonCompilable();
+        target->SetNonCompilable();
 
         target->SetEntryPoint(entrypoint);
 
