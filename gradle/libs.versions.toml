@@ -9,7 +9,7 @@ lsplugin-publish = { id = "org.lsposed.lsplugin.publish", version = "1.1" }
 lsplugin-cmaker = { id = "org.lsposed.lsplugin.cmaker", version = "1.2" }
 
 [libraries]
-cxx = { module = "org.lsposed.libcxx:libcxx", version = "27.0.12077973" }
+cxx = { module = "org.lsposed.libcxx:libcxx", version = "29.0.13113456-beta1" }
 dobby = { module = "io.github.vvb2060.ndk:dobby", version = "1.2" }
 test-ext-junit = { module = "androidx.test.ext:junit", version = "1.2.1" }
 test-runner = { module = "androidx.test:runner", version = "1.6.2" }
