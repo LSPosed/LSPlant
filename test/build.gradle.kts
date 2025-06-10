@@ -56,7 +56,7 @@ android {
 
     testOptions {
         managedDevices {
-            devices {
+            allDevices {
                 fun createDevice(api: Int, is64: Boolean, target: String = "default") = create<ManagedVirtualDevice>("""avd-$api-${if(is64) "x86_64" else "x86"}-$target""") {
                     device = "Pixel 2"
                     apiLevel = api
