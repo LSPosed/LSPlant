@@ -3,15 +3,16 @@ module;
 #include "lsplant.hpp"
 
 #include <android/api-level.h>
-#include <bits/sysconf.h>
+#include <fcntl.h>
 #include <jni.h>
+#include <linux/ashmem.h>
 #include <sys/mman.h>
-#include <sys/system_properties.h>
 #include <unistd.h>
 
 #include <array>
 #include <atomic>
 #include <bit>
+#include <string>
 #include <string_view>
 #include <tuple>
 
@@ -41,6 +42,7 @@ using art::ArtMethod;
 using art::ClassLinker;
 using art::DexFile;
 using art::Instrumentation;
+using art::JavaDebuggableGuard;
 using art::Runtime;
 using art::Thread;
 using art::gc::ScopedGCCriticalSection;
@@ -49,8 +51,8 @@ using art::jit::JitCodeCache;
 using art::jni::JniIdManager;
 using art::mirror::Class;
 using art::thread_list::ScopedSuspendAll;
-using art::JavaDebuggableGuard;
 
+using namespace std::string_literals;
 using namespace std::string_view_literals;
 
 namespace {
@@ -119,23 +121,32 @@ std::string generated_source_name;
 std::string generated_field_name;
 std::string generated_method_name;
 
+InitInfo::MemoryAllocator executable_memory_allocator;
+InitInfo::MemoryRecycler executable_memory_recycler;
+
 bool InitConfig(const InitInfo &info) {
     if (info.generated_class_name.empty()) {
         LOGE("generated class name cannot be empty");
         return false;
     }
-    generated_class_name = info.generated_class_name;
     if (info.generated_field_name.empty()) {
         LOGE("generated field name cannot be empty");
         return false;
     }
-    generated_field_name = info.generated_field_name;
     if (info.generated_method_name.empty()) {
         LOGE("generated method name cannot be empty");
         return false;
     }
+    if (info.executable_memory_allocator && !info.executable_memory_recycler) {
+        LOGE("executable memory recycler cannot be null");
+        return false;
+    }
+    generated_class_name = info.generated_class_name;
+    generated_field_name = info.generated_field_name;
     generated_method_name = info.generated_method_name;
     generated_source_name = info.generated_source_name;
+    executable_memory_allocator = info.executable_memory_allocator;
+    executable_memory_recycler = info.executable_memory_recycler;
     return true;
 }
 
@@ -482,7 +493,96 @@ constexpr size_t kTrampolineSize = RoundUpTo(sizeof(trampoline), kPointerSize);
 const auto kPageSize = static_cast<size_t>(getpagesize());  // assume
 const auto kPageMask = static_cast<uintptr_t>(kPageSize - 1);
 
+SharedHashSet<void *> mmap_regions;
+SharedHashSet<void *> ashmem_regions;
+
+auto ashmem_device_path = [] {
+    if (auto fd = open("/proc/sys/kernel/random/boot_id", O_RDONLY | O_CLOEXEC, 0); fd >= 0)
+        [[likely]] {
+        std::array<char, 36> boot_id;
+        auto size = read(fd, boot_id.data(), boot_id.size());
+        close(fd);
+        if (size == boot_id.size()) {
+            auto path = "/dev/ashmem"s + std::string{boot_id.data(), boot_id.size()};
+            if (access(path.c_str(), F_OK) == 0) [[likely]] {
+                return path;
+            }
+        }
+    }
+    return "/dev/ashmem"s;
+}();
+
+void *AllocateMemoryFromAshmem() {
+    auto ashmem = open(ashmem_device_path.c_str(), O_RDWR | O_CLOEXEC, 0);
+    if (ashmem < 0) [[unlikely]] {
+        PLOGE("open ashmem");
+        return nullptr;
+    }
+    if (ioctl(ashmem, ASHMEM_SET_SIZE, kPageSize) < 0) [[unlikely]] {
+        PLOGE("truncate ashmem");
+        close(ashmem);
+        return nullptr;
+    }
+
+    auto reserved_size = kPageSize * 2;
+    auto *reserved = static_cast<uint8_t *>(
+        mmap(nullptr, reserved_size, PROT_NONE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0));
+    if (reserved == MAP_FAILED) [[unlikely]] {
+        PLOGE("mmap reserved memory");
+        close(ashmem);
+        return nullptr;
+    }
+
+    auto *executable_memory =
+        mmap(reserved, kPageSize, PROT_READ | PROT_EXEC, MAP_SHARED | MAP_FIXED, ashmem, 0);
+    auto *writable_memory = mmap(reserved + kPageSize, kPageSize, PROT_READ | PROT_WRITE,
+                                 MAP_SHARED | MAP_FIXED, ashmem, 0);
+    if (executable_memory == MAP_FAILED || writable_memory == MAP_FAILED) [[unlikely]] {
+        PLOGE("mmap ashmem");
+        munmap(reserved, reserved_size);
+        close(ashmem);
+        return nullptr;
+    }
+
+    close(ashmem);
+
+    ashmem_regions.emplace(reserved);
+    LOGV("ashmem regions: r-xs = %p, rw-s = %p, source = %s", executable_memory, writable_memory,
+         ashmem_device_path.c_str());
+    return reserved;
+}
+
+void *AllocateMemory() {
+    if (!ashmem_device_path.empty()) [[likely]] {
+        if (auto *memory = AllocateMemoryFromAshmem()) [[likely]] {
+            LOGV("memory allocated from ashmem: %p", memory);
+            return memory;
+        }
+        ashmem_device_path = {};
+    }
+    auto *memory = mmap(nullptr, kPageSize, PROT_READ | PROT_WRITE | PROT_EXEC,
+                        MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+    if (memory == MAP_FAILED) [[unlikely]] {
+        PLOGE("mmap trampoline");
+        return nullptr;
+    }
+    mmap_regions.emplace(memory);
+    LOGV("memory allocated from mmap: %p", memory);
+    return memory;
+}
+
 void *GenerateTrampolineFor(art::ArtMethod *hook) {
+    auto data = trampoline;
+    *reinterpret_cast<ArtMethod **>(data.data() + art_method_offset) = hook;
+
+    if (executable_memory_allocator) {
+        if (auto *memory = static_cast<char *>(executable_memory_allocator(data))) [[likely]] {
+            __builtin___clear_cache(memory, memory + data.size());
+            LOGV("allocate memory from user: %p", memory);
+            return memory;
+        }
+    }
+
     static const size_t kTrampolineNumPerPage = kPageSize / kTrampolineSize;
     unsigned count;
     uintptr_t address;
@@ -495,11 +595,8 @@ void *GenerateTrampolineFor(art::ArtMethod *hook) {
                 trampoline_lock.wait(true, std::memory_order_acquire);
                 continue;
             }
-            address = reinterpret_cast<uintptr_t>(mmap(nullptr, kPageSize,
-                                                       PROT_READ | PROT_WRITE | PROT_EXEC,
-                                                       MAP_ANONYMOUS | MAP_PRIVATE, -1, 0));
-            if (address == reinterpret_cast<uintptr_t>(MAP_FAILED)) {
-                PLOGE("mmap trampoline");
+            address = reinterpret_cast<uintptr_t>(AllocateMemory());
+            if (!address) [[unlikely]] {
                 trampoline_lock.clear(std::memory_order_release);
                 trampoline_lock.notify_all();
                 return nullptr;
@@ -517,11 +614,13 @@ void *GenerateTrampolineFor(art::ArtMethod *hook) {
         break;
     }
     auto *address_ptr = reinterpret_cast<char *>(address);
-    std::memcpy(address_ptr, trampoline.data(), trampoline.size());
+    if (ashmem_regions.contains(__builtin_align_down(address_ptr, kPageSize))) [[likely]] {
+        std::memcpy(address_ptr + kPageSize, data.data(), data.size());
+    } else {
+        std::memcpy(address_ptr, data.data(), data.size());
+    }
 
-    *reinterpret_cast<art::ArtMethod **>(address_ptr + art_method_offset) = hook;
-
-    __builtin___clear_cache(address_ptr, reinterpret_cast<char *>(address + trampoline.size()));
+    __builtin___clear_cache(address_ptr, reinterpret_cast<char *>(address + data.size()));
 
     return address_ptr;
 }
@@ -562,8 +661,14 @@ bool DoUnHook(ArtMethod *target, ArtMethod *backup) {
     ScopedSuspendAll suspend("LSPlant Hook", false);
     LOGV("Unhooking: target = %p, backup = %p", target, backup);
     auto access_flags = target->GetAccessFlags();
+    auto *entry_point = target->GetEntryPoint();
     target->CopyFrom(backup);
     target->SetAccessFlags(access_flags);
+    if (auto *start = __builtin_align_down(entry_point, kPageSize);
+        executable_memory_recycler && !mmap_regions.contains(start) &&
+        !ashmem_regions.contains(start)) {
+        executable_memory_recycler(entry_point);
+    }
     LOGV("Done unhook: target(%p:0x%x) -> %p; backup(%p:0x%x) -> %p;", target,
          target->GetAccessFlags(), target->GetEntryPoint(), backup, backup->GetAccessFlags(),
          backup->GetEntryPoint());
