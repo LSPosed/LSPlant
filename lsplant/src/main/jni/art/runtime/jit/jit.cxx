@@ -55,7 +55,7 @@ public:
             kOptimized = static_cast<CompilationKind>(2);
         }
 
-        if (sdk_int <= __ANDROID_API_U__) [[likely]] {
+        if (sdk_int <= kSdkUpsideDownCake) [[likely]] {
             handler(EnqueueOptimizedCompilation_);
             handler(AddCompileTask_);
         }

@@ -104,7 +104,7 @@ public:
 
         int sdk_int = GetAndroidApiLevel();
 
-        if (sdk_int < __ANDROID_API_O__) {
+        if (sdk_int < kSdkOreo) {
             if (!handler(SetStatus_, ClassSetStatus_)) {
                 return false;
             }
@@ -114,11 +114,11 @@ public:
             }
         }
 
-        if (sdk_int >= __ANDROID_API_R__) {
+        if (sdk_int >= kSdkR) {
             initialized_status = 15;
-        } else if (sdk_int >= __ANDROID_API_P__) {
+        } else if (sdk_int >= kSdkPie) {
             initialized_status = 14;
-        } else if (sdk_int == __ANDROID_API_O_MR1__) {
+        } else if (sdk_int == kSdkOreoMr1) {
             initialized_status = 11;
         } else {
             initialized_status = 10;

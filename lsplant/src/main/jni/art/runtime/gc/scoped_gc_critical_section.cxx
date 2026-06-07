@@ -117,7 +117,7 @@ public:
     static bool Init(const HookHandler &handler) {
         // for Android M, it's safe to not found since we have suspendVM & resumeVM
         auto sdk_int = GetAndroidApiLevel();
-        if (sdk_int >= __ANDROID_API_N__) [[likely]] {
+        if (sdk_int >= kSdkNougat) [[likely]] {
             if (!handler(constructor_) || !handler(destructor_)) {
                 return false;
             }

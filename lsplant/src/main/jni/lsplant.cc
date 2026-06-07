@@ -152,7 +152,7 @@ bool InitConfig(const InitInfo &info) {
 
 bool InitJNI(JNIEnv *env) {
     int sdk_int = GetAndroidApiLevel();
-    if (sdk_int >= __ANDROID_API_O__) {
+    if (sdk_int >= kSdkOreo) {
         executable = JNI_NewGlobalRef(env, JNI_FindClass(env, "java/lang/reflect/Executable"));
     } else {
         executable = JNI_NewGlobalRef(env, JNI_FindClass(env, "java/lang/reflect/AbstractMethod"));
@@ -232,14 +232,14 @@ bool InitJNI(JNIEnv *env) {
         LOGE("Failed to find DexFile");
         return false;
     }
-    if (sdk_int >= __ANDROID_API_Q__) {
+    if (sdk_int >= kSdkQ) {
         dex_file_init_with_cl = JNI_GetMethodID(
             env, dex_file_class, "<init>",
             "([Ljava/nio/ByteBuffer;Ljava/lang/ClassLoader;[Ldalvik/system/DexPathList$Element;)V");
-    } else if (sdk_int >= __ANDROID_API_O__) {
+    } else if (sdk_int >= kSdkOreo) {
         dex_file_init = JNI_GetMethodID(env, dex_file_class, "<init>", "(Ljava/nio/ByteBuffer;)V");
     }
-    if (sdk_int >= __ANDROID_API_O__ && !dex_file_init_with_cl && !dex_file_init) {
+    if (sdk_int >= kSdkOreo && !dex_file_init_with_cl && !dex_file_init) {
         LOGE("Failed to find DexFile.<init>");
         return false;
     }

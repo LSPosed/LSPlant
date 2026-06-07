@@ -58,7 +58,7 @@ public:
             return false;
         }
         LOGD("runtime instance = %p", *instance_);
-        if (sdk_int >= __ANDROID_API_O__) {
+        if (sdk_int >= kSdkOreo) {
             if (!handler(SetJavaDebuggable_, SetRuntimeDebugState_)) {
                 return false;
             }

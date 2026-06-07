@@ -63,7 +63,7 @@ public:
             return true;
         }
         int sdk_int = GetAndroidApiLevel();
-        if (sdk_int >= __ANDROID_API_P__) [[likely]] {
+        if (sdk_int >= kSdkPie) [[likely]] {
             if (!handler(ReinitializeMethodsCode_, InitializeMethodsCode_, UpdateMethodsCodeToInterpreterEntryPoint_)) {
                 return false;
             }

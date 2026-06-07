@@ -27,7 +27,7 @@ private:
 public:
     static bool Init(JNIEnv *env, const HookHandler &handler) {
         int sdk_int = GetAndroidApiLevel();
-        if (sdk_int >= __ANDROID_API_R__) {
+        if (sdk_int >= kSdkR) {
             if (IsJavaDebuggable(env) && !handler(EncodeGenericId_)) {
                 LOGW("Failed to hook EncodeGenericId, attaching debugger may crash the process");
             }

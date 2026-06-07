@@ -92,12 +92,12 @@ public:
 
     static bool Init(JNIEnv* env, const HookHandler& handler) {
         auto sdk_int = GetAndroidApiLevel();
-        if (sdk_int >= __ANDROID_API_P__) [[likely]] {
+        if (sdk_int >= kSdkPie) [[likely]] {
             if (!handler(DexFile_setTrusted_, true)) {
                 LOGW("DexFile.setTrusted not found, MakeDexFileTrusted will not work.");
             }
         }
-        if (sdk_int >= __ANDROID_API_O__) [[likely]] {
+        if (sdk_int >= kSdkOreo) [[likely]] {
             return true;
         }
         if (!handler(OpenMemory_, OpenMemoryRaw_, OpenMemoryWithoutOdex_)) [[unlikely]] {
@@ -108,7 +108,7 @@ public:
         if (!dex_file_class) [[unlikely]] {
             return false;
         }
-        if (sdk_int >= __ANDROID_API_M__) [[unlikely]] {
+        if (sdk_int >= kSdkMarshmallow) [[unlikely]] {
             cookie_field = JNI_GetFieldID(env, dex_file_class, "mCookie", "Ljava/lang/Object;");
         } else {
             cookie_field = JNI_GetFieldID(env, dex_file_class, "mCookie", "J");
@@ -121,7 +121,7 @@ public:
         if (!file_name_field) [[unlikely]] {
             return false;
         }
-        if (sdk_int >= __ANDROID_API_N__) [[likely]] {
+        if (sdk_int >= kSdkNougat) [[likely]] {
             internal_cookie_field =
                 JNI_GetFieldID(env, dex_file_class, "mInternalCookie", "Ljava/lang/Object;");
             if (!internal_cookie_field) [[unlikely]] {

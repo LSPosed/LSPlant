@@ -46,12 +46,12 @@ export class JitCodeCache {
 public:
     static bool Init(const HookHandler &handler) {
         auto sdk_int = GetAndroidApiLevel();
-        if (sdk_int >= __ANDROID_API_O__) [[likely]] {
+        if (sdk_int >= kSdkOreo) [[likely]] {
             if (!handler(MoveObsoleteMethod_)) [[unlikely]] {
                 return false;
             }
         }
-        if (sdk_int >= __ANDROID_API_N__) [[likely]] {
+        if (sdk_int >= kSdkNougat) [[likely]] {
             if (!handler(GarbageCollectCache_, DoCollection_)) [[unlikely]] {
                 return false;
             }

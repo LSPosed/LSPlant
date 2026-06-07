@@ -304,7 +304,7 @@ public:
     static bool Init(JNIEnv *env, const HookHandler &handler) {
         int sdk_int = GetAndroidApiLevel();
 
-        if (sdk_int >= __ANDROID_API_N__ && sdk_int < __ANDROID_API_T__) {
+        if (sdk_int >= kSdkNougat && sdk_int < kSdkTiramisu) {
             handler(ShouldUseInterpreterEntrypoint_);
         }
 
@@ -334,7 +334,7 @@ public:
             return false;
         }
 
-        if (sdk_int >= __ANDROID_API_R__) {
+        if (sdk_int >= kSdkR) {
             if constexpr (!is_arch_v<Arch::kX86, Arch::kAmd64>) {
                 // fixup static trampoline may have been inlined
                 handler(AdjustThreadVisibilityCounter_, MarkVisiblyInitialized_);

@@ -221,9 +221,9 @@ public:
     static bool Init(JNIEnv *env, const HookHandler handler) {
         auto sdk_int = GetAndroidApiLevel();
         ScopedLocalRef<jclass> executable{env, nullptr};
-        if (sdk_int >= __ANDROID_API_O__) {
+        if (sdk_int >= kSdkOreo) {
             executable = JNI_FindClass(env, "java/lang/reflect/Executable");
-        } else if (sdk_int >= __ANDROID_API_M__) {
+        } else if (sdk_int >= kSdkMarshmallow) {
             executable = JNI_FindClass(env, "java/lang/reflect/AbstractMethod");
         } else {
             executable = JNI_FindClass(env, "java/lang/reflect/ArtMethod");
@@ -233,7 +233,7 @@ public:
             return false;
         }
 
-        if (sdk_int >= __ANDROID_API_M__) [[likely]] {
+        if (sdk_int >= kSdkMarshmallow) [[likely]] {
             if (art_method_field = JNI_GetFieldID(env, executable, "artMethod", "J");
                 !art_method_field) {
                 LOGE("Failed to find artMethod field");
@@ -264,7 +264,7 @@ public:
         LOGD("ArtMethod size: %zu", art_method_size);
 
         if (RoundUpTo(4 * 9, kPointerSize) + kPointerSize * 3 < art_method_size) [[unlikely]] {
-            if (sdk_int >= __ANDROID_API_M__) {
+            if (sdk_int >= kSdkMarshmallow) {
                 LOGW("ArtMethod size exceeds maximum assume. There may be something wrong.");
             }
         }
@@ -272,7 +272,7 @@ public:
         entry_point_offset = art_method_size - kPointerSize;
         data_offset = entry_point_offset - kPointerSize;
 
-        if (sdk_int >= __ANDROID_API_M__) [[likely]] {
+        if (sdk_int >= kSdkMarshmallow) [[likely]] {
             if (auto access_flags_field = JNI_GetFieldID(env, executable, "accessFlags", "I");
                 access_flags_field) {
                 uint32_t real_flags = JNI_GetIntField(env, first_ctor, access_flags_field);
@@ -307,7 +307,7 @@ public:
             access_flags_offset = get_offset_from_art_method("accessFlags", "I");
             declaring_class_offset =
                 get_offset_from_art_method("declaringClass", "Ljava/lang/Class;");
-            if (sdk_int == __ANDROID_API_L__) {
+            if (sdk_int == kSdkLollipop) {
                 entry_point_offset =
                     get_offset_from_art_method("entryPointFromQuickCompiledCode", "J");
                 interpreter_entry_point_offset =
@@ -320,15 +320,15 @@ public:
         LOGD("ArtMethod::data offset: %zu", data_offset);
         LOGD("ArtMethod::access_flags offset: %zu", access_flags_offset);
 
-        if (sdk_int < __ANDROID_API_R__) {
+        if (sdk_int < kSdkR) {
             kAccPreCompiled = 0;
-        } else if (sdk_int >= __ANDROID_API_S__) {
+        } else if (sdk_int >= kSdkS) {
             kAccPreCompiled = 0x00800000;
         }
-        if (sdk_int < __ANDROID_API_Q__) kAccFastInterpreterToInterpreterInvoke = 0;
-        if (sdk_int < __ANDROID_API_O__) kAccIntrinsic = 0;
+        if (sdk_int < kSdkQ) kAccFastInterpreterToInterpreterInvoke = 0;
+        if (sdk_int < kSdkOreo) kAccIntrinsic = 0;
 
-        if (sdk_int >= __ANDROID_API_P__ && !handler(SetNotIntrinsic_)) {
+        if (sdk_int >= kSdkPie && !handler(SetNotIntrinsic_)) {
             LOGW("Failed to find SetNotIntrinsic, use hard-coded kAccIntrinsic instead");
         }
 
@@ -339,13 +339,13 @@ public:
 
         handler(PrettyMethod_, PrettyMethodStatic_, PrettyMethodMirror_);
 
-        if (sdk_int <= __ANDROID_API_O__) [[unlikely]] {
+        if (sdk_int <= kSdkOreo) [[unlikely]] {
             auto abstract_method_error = JNI_FindClass(env, "java/lang/AbstractMethodError");
             if (!abstract_method_error) {
                 LOGE("Failed to find AbstractMethodError");
                 return false;
             }
-            if (sdk_int == __ANDROID_API_O__) [[unlikely]] {
+            if (sdk_int == kSdkOreo) [[unlikely]] {
                 auto executable_get_name =
                     JNI_GetMethodID(env, executable, "getName", "()Ljava/lang/String;");
                 if (!executable_get_name) {
@@ -367,7 +367,7 @@ public:
                 kAccCompileDontBother = kAccDefaultConflict;
             }
         }
-        if (sdk_int == __ANDROID_API_M__) [[unlikely]] {
+        if (sdk_int == kSdkMarshmallow) [[unlikely]] {
             auto executable_get_name =
                 JNI_GetMethodID(env, executable, "getName", "()Ljava/lang/String;");
             if (!executable_get_name) {
@@ -382,14 +382,14 @@ public:
                 LOGW("Failed to hook GetQuickFrameInfo, hooking proxy method may crash");
             }
         }
-        if (sdk_int < __ANDROID_API_N__) {
+        if (sdk_int < kSdkNougat) {
             kAccCompileDontBother = 0;
         }
-        if (sdk_int <= __ANDROID_API_M__) [[unlikely]] {
+        if (sdk_int <= kSdkMarshmallow) [[unlikely]] {
             if (!handler(art_interpreter_to_compiled_code_bridge_)) {
                 return false;
             }
-            if (sdk_int >= __ANDROID_API_L_MR1__) {
+            if (sdk_int >= kSdkLollipopMr1) {
                 interpreter_entry_point_offset = entry_point_offset - 2 * kPointerSize;
             }
         }
