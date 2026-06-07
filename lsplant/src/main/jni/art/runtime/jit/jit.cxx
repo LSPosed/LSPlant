@@ -49,7 +49,7 @@ public:
     static bool Init(const HookHandler &handler) {
         auto sdk_int = GetAndroidApiLevel();
 
-        if (handler(EnqueueBaselineCompilation_)) [[likely]] {
+        if (sdk_int >= kSdkCinnamonBun || handler(EnqueueBaselineCompilation_)) [[likely]] {
             kOptimized = static_cast<CompilationKind>(3);
         } else {
             kOptimized = static_cast<CompilationKind>(2);
