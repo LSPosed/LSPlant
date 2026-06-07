@@ -489,7 +489,7 @@ static_assert(std::atomic_uintptr_t::is_always_lock_free, "Unsupported architect
 
 std::atomic_uintptr_t trampoline_pool{0};
 std::atomic_flag trampoline_lock{false};
-constexpr size_t kTrampolineSize = RoundUpTo(sizeof(trampoline), kPointerSize);
+constexpr size_t kTrampolineSize = __builtin_align_up(trampoline.size(), kPointerSize);
 const auto kPageSize = static_cast<size_t>(getpagesize());  // assume
 const auto kPageMask = static_cast<uintptr_t>(kPageSize - 1);
 

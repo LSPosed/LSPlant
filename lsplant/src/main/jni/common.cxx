@@ -56,11 +56,6 @@ constexpr int kSdkVanillaIceCream = 35;
 constexpr int kSdkBaklava = 36;
 constexpr int kSdkCinnamonBun = 37;
 
-template <typename T>
-constexpr inline auto RoundUpTo(T v, size_t size) {
-    return v + size - 1 - ((v + size - 1) & (size - 1));
-}
-
 [[gnu::const]] inline auto GetAndroidApiLevel() {
     static auto kApiLevel = [] {
         std::array<char, PROP_VALUE_MAX> prop_value;

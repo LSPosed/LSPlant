@@ -263,7 +263,7 @@ public:
         art_method_size = reinterpret_cast<uintptr_t>(second) - reinterpret_cast<uintptr_t>(first);
         LOGD("ArtMethod size: %zu", art_method_size);
 
-        if (RoundUpTo(4 * 9, kPointerSize) + kPointerSize * 3 < art_method_size) [[unlikely]] {
+        if (__builtin_align_up(4 * 9, kPointerSize) + kPointerSize * 3 < art_method_size) [[unlikely]] {
             if (sdk_int >= kSdkMarshmallow) {
                 LOGW("ArtMethod size exceeds maximum assume. There may be something wrong.");
             }
