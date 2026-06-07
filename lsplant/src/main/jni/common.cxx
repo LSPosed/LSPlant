@@ -116,7 +116,7 @@ SharedHashSet<art::ArtMethod *> deoptimized_methods_set_;
 SharedHashMap<const art::dex::ClassDef *, phmap::flat_hash_set<art::ArtMethod *>>
     deoptimized_classes_;
 
-SharedHashSet<art::ArtMethod *> backuped_proxy_methods_;
+SharedHashSet<art::ArtMethod *> proxied_backup_methods_;
 
 std::list<std::pair<art::ArtMethod *, art::ArtMethod *>> jit_movements_;
 std::shared_mutex jit_movements_lock_;

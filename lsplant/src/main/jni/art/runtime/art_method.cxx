@@ -49,7 +49,7 @@ class ArtMethod {
     inline static auto GetQuickFrameInfo_ =
         "_ZN3art9ArtMethod17GetQuickFrameInfoEv"_sym.hook->*
         []<MemBackup auto backup>(ArtMethod *thiz) static -> QuickMethodFrameInfo {
-        if (backuped_proxy_methods_.contains(thiz)) [[unlikely]] {
+        if (proxied_backup_methods_.contains(thiz)) [[unlikely]] {
             return backup(abstract_method_);
         }
         return backup(thiz);

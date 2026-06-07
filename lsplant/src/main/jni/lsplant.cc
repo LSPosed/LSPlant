@@ -834,7 +834,7 @@ using ::lsplant::IsHooked;
         if (!is_proxy) [[likely]] {
             RecordJitMovement(target, backup);
         } else {
-            backuped_proxy_methods_.emplace(backup);
+            proxied_backup_methods_.emplace(backup);
         }
         // Always record backup as deoptimized since we dont want its entrypoint to be updated
         // by FixupStaticTrampolines on hooker class
@@ -863,7 +863,7 @@ using ::lsplant::IsHooked;
     }
     // FIXME: not atomic, but should be fine
     hooked_methods_.erase(backup);
-    backuped_proxy_methods_.erase(backup);
+    proxied_backup_methods_.erase(backup);
     hooked_classes_.erase_if(target->GetDeclaringClass()->GetClassDef(), [&target](auto &it) {
         it.second.erase(target);
         return it.second.empty();
