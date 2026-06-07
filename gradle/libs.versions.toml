@@ -1,6 +1,6 @@
 [versions]
 agp = "8.9.3"
-ndk = "29.0.13599879-beta2"
+ndk = "29.0.14206865"
 
 [plugins]
 agp-app = { id = "com.android.application", version.ref = "agp" }
