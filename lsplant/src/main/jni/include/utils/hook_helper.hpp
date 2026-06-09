@@ -1,5 +1,6 @@
 #pragma once
 
+#include <array>
 #include <cstddef>
 #include <string_view>
 #include <type_traits>
@@ -12,8 +13,8 @@ namespace lsplant {
 template <size_t N, char... Cs>
 struct FixedString {
     static constexpr auto data = [] consteval {
-        static constexpr char kString[] = {Cs...};
-        return std::string_view{kString, N};
+        static constexpr auto kString = std::array{Cs...};
+        return std::string_view{kString.data(), N};
     }();
 };
 
@@ -28,9 +29,9 @@ struct Function<Sym, Ret(Args...)> {
     [[gnu::always_inline]] static Ret operator()(Args... args) {
         return inner_.function_(std::forward<Args>(args)...);
     }
-    [[gnu::always_inline]] operator bool() { return inner_.raw_function_ != nullptr; }
+    [[gnu::always_inline]] operator bool() const { return inner_.raw_function_ != nullptr; }
     [[gnu::always_inline]] auto operator&() const { return inner_.function_; }
-    [[gnu::always_inline]] auto &operator=(void *function) {
+    [[gnu::always_inline]] auto &operator=(void *function) const {
         inner_.raw_function_ = function;
         return *this;
     }
@@ -50,13 +51,15 @@ struct BaseMemberFunction {
         return (reinterpret_cast<ThisType *>(thiz)->*Derived::inner_.function_)(
             std::forward<Args>(args)...);
     }
-    [[gnu::always_inline]] operator bool() { return Derived::inner_.raw_function_ != nullptr; }
+    [[gnu::always_inline]] operator bool() const {
+        return Derived::inner_.raw_function_ != nullptr;
+    }
     [[gnu::always_inline]] auto operator&() const {
         return reinterpret_cast<Ret (*)(This *, Args...)>(Derived::inner_.raw_function_);
     }
 
 protected:
-    [[gnu::always_inline]] auto &operator=(void *function) {
+    [[gnu::always_inline]] auto &operator=(void *function) const {
         Derived::inner_.raw_function_ = function;
         return *this;
     }
@@ -78,7 +81,7 @@ protected:
 template <FixedString Sym, class This, typename Ret, typename... Args>
 struct Function<Sym, Ret (This::*)(Args...)>
     : BaseMemberFunction<Function<Sym, Ret (This::*)(Args...)>, This, Ret, Args...> {
-    [[gnu::always_inline]] auto &operator=(void *function) {
+    [[gnu::always_inline]] auto &operator=(void *function) const {
         Function::BaseMemberFunction::operator=(function);
         return *this;
     }
@@ -91,7 +94,7 @@ private:
 template <FixedString Sym, class This, typename Ret, typename... Args>
 struct Function<Sym, Ret (This::*const)(Args...)>
     : BaseMemberFunction<Function<Sym, Ret (This::*const)(Args...)>, const This, Ret, Args...> {
-    [[gnu::always_inline]] auto &operator=(void *function) {
+    [[gnu::always_inline]] auto &operator=(void *function) const {
         Function::BaseMemberFunction::operator=(function);
         return *this;
     }
@@ -103,11 +106,11 @@ private:
 
 template <FixedString, typename T>
 struct Field {
-    [[gnu::always_inline]] T *operator->() { return inner_.field_; }
-    [[gnu::always_inline]] T &operator*() { return *inner_.field_; }
-    [[gnu::always_inline]] operator bool() { return inner_.raw_field_ != nullptr; }
-    [[gnu::always_inline]] auto operator&() { return inner_.field_; }
-    [[gnu::always_inline]] auto &operator=(void *field) {
+    [[gnu::always_inline]] T *operator->() const { return inner_.field_; }
+    [[gnu::always_inline]] T &operator*() const { return *inner_.field_; }
+    [[gnu::always_inline]] operator bool() const { return inner_.raw_field_ != nullptr; }
+    [[gnu::always_inline]] auto operator&() const { return inner_.field_; }
+    [[gnu::always_inline]] auto &operator=(void *field) const {
         inner_.raw_field_ = field;
         return *this;
     }
@@ -126,16 +129,17 @@ struct Hooker;
 
 template <FixedString Sym, typename Ret, typename... Args>
 struct Hooker<Sym, Ret(Args...)> : Function<Sym, Ret(Args...)> {
-    [[gnu::always_inline]] auto &operator=(void *function) {
+    [[gnu::always_inline]] auto &operator=(void *function) const {
         Hooker::Function::operator=(function);
         return *this;
     }
 
 private:
-    [[gnu::always_inline]] constexpr Hooker(Ret (*replace)(Args...)) { replace_ = replace; };
+    consteval Hooker(Ret (*replace)(Args...)) : replace_{replace} {};
 
-    inline static Ret (*replace_)(Args...) = nullptr;
     inline static void *address_ = nullptr;
+
+    Ret (*replace_)(Args...);
 
     friend struct HookHandler;
     template <FixedString S>
@@ -144,18 +148,17 @@ private:
 
 template <FixedString Sym, class This, typename Ret, typename... Args>
 struct Hooker<Sym, Ret (This::*)(Args...)> : Function<Sym, Ret (This::*)(Args...)> {
-    [[gnu::always_inline]] auto &operator=(void *function) {
+    [[gnu::always_inline]] auto &operator=(void *function) const {
         Hooker::Function::operator=(function);
         return *this;
     }
 
 private:
-    [[gnu::always_inline]] constexpr Hooker(Ret (*replace)(This *, Args...)) {
-        replace_ = replace;
-    };
+    consteval Hooker(Ret (*replace)(This *, Args...)) : replace_{replace} {};
 
-    inline static Ret (*replace_)(This *, Args...) = nullptr;
     inline static void *address_ = nullptr;
+
+    Ret (*replace_)(This *, Args...);
 
     friend struct HookHandler;
     template <FixedString S>
@@ -183,7 +186,7 @@ struct HookHandler {
 
     template <FixedString Sym, typename... Us, template <FixedString, typename...> typename T>
         requires(requires { T<Sym, Us...>::replace_; })
-    [[gnu::always_inline]] bool unhook(T<Sym, Us...> &hooker) const {
+    [[gnu::always_inline]] bool unhook(const T<Sym, Us...> &hooker) const {
         if (hooker.address_ && info_.inline_unhooker && info_.inline_unhooker(hooker.address_)) {
             hooker = nullptr;
             hooker.address_ = nullptr;
@@ -197,13 +200,13 @@ private:
 
     template <FixedString Sym, typename... Us, template <FixedString, typename...> typename T>
         requires(!requires { T<Sym, Us...>::replace_; })
-    [[gnu::always_inline]] bool handle(T<Sym, Us...> &target, bool match_prefix) const {
+    [[gnu::always_inline]] bool handle(const T<Sym, Us...> &target, bool match_prefix) const {
         return target = dlsym<Sym>(match_prefix);
     }
 
     template <FixedString Sym, typename... Us, template <FixedString, typename...> typename T>
         requires(requires { T<Sym, Us...>::replace_; })
-    [[gnu::always_inline]] bool handle(T<Sym, Us...> &hooker, bool match_prefix) const {
+    [[gnu::always_inline]] bool handle(const T<Sym, Us...> &hooker, bool match_prefix) const {
         return hooker = hook(hooker.address_ = dlsym<Sym>(match_prefix),
                              reinterpret_cast<void *>(hooker.replace_));
     }
@@ -248,7 +251,7 @@ struct Symbol {
 
     [[no_unique_address]] struct Hook {
         template <typename F>
-        auto operator->*(F && /*unused*/) const {
+        consteval auto operator->*(F && /*unused*/) const {
             using Signature = decltype(F::template operator()<&decltype([] static {})::operator()>);
             if constexpr (requires { F::template operator()<&decltype([] {})::operator()>; }) {
                 using HookerType =

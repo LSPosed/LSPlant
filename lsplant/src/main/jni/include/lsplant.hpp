@@ -32,7 +32,7 @@ struct InitInfo {
     /// \p return is the absolute address in the memory that points to the target symbol. It should
     /// be null if the symbol cannot be found. <br>
     /// \note It should be able to resolve symbols from both .dynsym and .symtab.
-    using ArtSymbolResolver = std::function<void *(std::string_view symbol_name)>;
+    using ArtSymbolResolver = std::function<void *(const std::string_view &symbol_name)>;
 
     /// \brief Type of prefix symbol resolver to \p libart.so.
     /// In \ref std::function form so that user can use lambda expression with capture list.<br>
@@ -40,7 +40,7 @@ struct InitInfo {
     /// \p return is the first absolute address in the memory that points to the target symbol.
     /// It should be null if the symbol cannot be found. <br>
     /// \note It should be able to resolve symbols from both .dynsym and .symtab.
-    using ArtSymbolPrefixResolver = std::function<void *(std::string_view symbol_prefix)>;
+    using ArtSymbolPrefixResolver = std::function<void *(const std::string_view &symbol_prefix)>;
 
     /// \brief Type of memory allocator for executable code.
     /// In \ref std::function form, but it MUST NOT have a capture list.<br>
