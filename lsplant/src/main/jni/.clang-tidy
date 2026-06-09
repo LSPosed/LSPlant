@@ -12,6 +12,7 @@ Checks: >
   llvm-include-order,
   -modernize-use-trailing-return-type,
   -readability-implicit-bool-conversion,
+  -readability-static-accessed-through-instance,
   -performance-no-int-to-ptr,
 
 CheckOptions:
