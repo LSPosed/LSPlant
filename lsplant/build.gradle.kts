@@ -18,6 +18,7 @@ android {
     compileSdk = androidCompileSdkVersion
     ndkVersion = androidNdkVersion
     buildToolsVersion = androidBuildToolsVersion
+    enableKotlin = false
 
     buildFeatures {
         buildConfig = false
@@ -63,14 +64,8 @@ android {
     namespace = "org.lsposed.lsplant"
 
     publishing {
-        singleVariant("release") {
-            withSourcesJar()
-            withJavadocJar()
-        }
-        singleVariant("standalone") {
-            withSourcesJar()
-            withJavadocJar()
-        }
+        singleVariant("release")
+        singleVariant("standalone")
     }
 }
 
@@ -122,9 +117,8 @@ val repo = jgit.repo(true)
 val ver = repo?.latestTag?.removePrefix("v") ?: "0.0"
 println("${rootProject.name} version: $ver")
 
-publish {
-    githubRepo = "LSPosed/LSPlant"
-    publications {
+afterEvaluate {
+    publishing {
         fun MavenPublication.setup() {
             group = "org.lsposed.lsplant"
             version = ver
@@ -150,21 +144,19 @@ publish {
                 }
             }
         }
-        register<MavenPublication>("lsplant") {
-            artifactId = "lsplant"
-            afterEvaluate {
-                from(components.getByName("release"))
+        publications {
+            create<MavenPublication>("lsplant") {
+                from(components["release"])
+                artifactId = "lsplant"
                 artifact(symbolsReleaseTask)
+                setup()
             }
-            setup()
-        }
-        register<MavenPublication>("lsplantStandalone") {
-            artifactId = "lsplant-standalone"
-            afterEvaluate {
-                from(components.getByName("standalone"))
+            create<MavenPublication>("lsplantStandalone") {
+                from(components["standalone"])
+                artifactId = "lsplant-standalone"
                 artifact(symbolsStandaloneTask)
+                setup()
             }
-            setup()
         }
     }
 }

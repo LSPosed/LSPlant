@@ -16,6 +16,7 @@ android {
     compileSdk = androidCompileSdkVersion
     ndkVersion = androidNdkVersion
     buildToolsVersion = androidBuildToolsVersion
+    enableKotlin = false
 
     buildFeatures {
         buildConfig = false
