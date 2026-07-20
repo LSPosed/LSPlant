@@ -65,7 +65,11 @@ public:
         int sdk_int = GetAndroidApiLevel();
         if (sdk_int >= kSdkPie) [[likely]] {
             if (!handler(ReinitializeMethodsCode_, InitializeMethodsCode_, UpdateMethodsCodeToInterpreterEntryPoint_)) {
-                return false;
+                // Some userdebug ART builds strip every debuggable-only code-update symbol.
+                // InitNative forces the runtime non-debuggable after initialization, which also
+                // prevents ART from resetting hooked method entrypoints.
+                LOGW("Instrumentation code-update hooks unavailable; relying on the "
+                     "non-debuggable runtime workaround");
             }
         }
         return true;
