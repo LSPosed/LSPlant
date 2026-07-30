@@ -59,8 +59,7 @@ struct InitInfo {
     InlineUnhookFunType inline_unhooker;
     /// \brief The symbol resolver to \p libart.so. Must not be null.
     ArtSymbolResolver art_symbol_resolver;
-
-    /// \brief The symbol prefix resolver to \p libart.so. May be null.
+    /// \brief The symbol prefix resolver to \p libart.so. Must not be null.
     ArtSymbolPrefixResolver art_symbol_prefix_resolver;
 
     /// \brief The generated class name. Must not be empty. It contains a field and a method
