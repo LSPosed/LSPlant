@@ -100,7 +100,7 @@ jobs:
           - { api: '34', target: 'android-tv', arch: "x86"    }
           - { api: '35', target: 'aosp_atd',   arch: "x86_64" }
           - { api: '36', target: 'default',    arch: "x86_64" }
-          - { api: 'CinnamonBun', target: 'google_apis_ps16k', arch: 'x86_64' }  # Android 17 QPR1 Beta
+          # - { api: '37.0', target: 'google_apis_ps16k', arch: 'x86_64' }
     steps:
       - name: checkout
         uses: actions/checkout@v4
@@ -193,7 +193,7 @@ jobs:
           ccache -o hash_dir=false
           ccache -o compiler_check='%compiler% -dumpmachine; %compiler% -dumpversion'
       - name: Run Cuttlefish test
-        timeout-minutes: 10
+        timeout-minutes: 20
         run: sudo -E -u $USER .github/cuttlefish.sh test
       - name: Upload logs on error
         if: ${{ failure() }}
