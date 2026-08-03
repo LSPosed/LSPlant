@@ -316,9 +316,13 @@ public:
                 extern void (*restore_backup)(
                     Thread *, ObjPtr<mirror::Class>) asm("lsplant_bridge_restore_backup");
                 fixup_static_trampolines = &FixupStaticTrampolinesWithThread_;
-                restore_backup = +[](Thread *self, ObjPtr<mirror::Class> mirror_class) {
-                    RestoreBackup(mirror_class->GetClassDef(), self);
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wunknown-attributes"
+                restore_backup = +[] [[gnu::force_align_arg_pointer]] (
+                                      Thread * self, ObjPtr<mirror::Class> mirror_class) static {
+                    RestoreBackup(nullptr, Thread::Current());
                 };
+#pragma clang diagnostic pop
             } else {
                 handler(FixupStaticTrampolines_, FixupStaticTrampolinesRaw_);
             }
