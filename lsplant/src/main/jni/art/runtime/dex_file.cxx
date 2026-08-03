@@ -69,14 +69,15 @@ public:
         if (!java_dex_file) [[unlikely]] {
             return nullptr;
         }
-        auto close_guard =
-            JNI_CallStaticObjectMethod(env, close_guard_class, close_guard_get);
-        if (!close_guard) [[unlikely]] {
-            LOGE("Failed to initialize DexFile CloseGuard");
-            env->DeleteLocalRef(java_dex_file);
-            return nullptr;
+        if (close_guard_field) [[unlikely]] {
+            auto close_guard = JNI_CallStaticObjectMethod(env, close_guard_class, close_guard_get);
+            if (!close_guard) [[unlikely]] {
+                LOGE("Failed to initialize DexFile CloseGuard");
+                env->DeleteLocalRef(java_dex_file);
+                return nullptr;
+            }
+            JNI_SetObjectField(env, java_dex_file, close_guard_field, close_guard);
         }
-        JNI_SetObjectField(env, java_dex_file, close_guard_field, close_guard);
         auto cookie = JNI_NewLongArray(env, dex_file_start_index + 1);
         if (dex_file_start_index != size_t(-1)) [[likely]] {
             cookie[oat_file_index] = 0;
@@ -119,18 +120,22 @@ public:
         if (!dex_file_class) [[unlikely]] {
             return false;
         }
-        close_guard_class =
-            JNI_NewGlobalRef(env, JNI_FindClass(env, "dalvik/system/CloseGuard"));
-        if (!close_guard_class) [[unlikely]] {
-            return false;
-        }
-        close_guard_get =
-            JNI_GetStaticMethodID(env, close_guard_class, "get",
-                                  "()Ldalvik/system/CloseGuard;");
-        close_guard_field =
-            JNI_GetFieldID(env, dex_file_class, "guard", "Ldalvik/system/CloseGuard;");
-        if (!close_guard_get || !close_guard_field) [[unlikely]] {
-            return false;
+        if (sdk_int <= kSdkNougat) [[unlikely]] {
+            close_guard_class =
+                JNI_NewGlobalRef(env, JNI_FindClass(env, "dalvik/system/CloseGuard"));
+            if (!close_guard_class) [[unlikely]] {
+                return false;
+            }
+            close_guard_get = JNI_GetStaticMethodID(env, close_guard_class, "get",
+                                                    "()Ldalvik/system/CloseGuard;");
+            if (!close_guard_get) [[unlikely]] {
+                return false;
+            }
+            close_guard_field =
+                JNI_GetFieldID(env, dex_file_class, "guard", "Ldalvik/system/CloseGuard;");
+            if (!close_guard_field) [[unlikely]] {
+                return false;
+            }
         }
         if (sdk_int >= kSdkMarshmallow) [[unlikely]] {
             cookie_field = JNI_GetFieldID(env, dex_file_class, "mCookie", "Ljava/lang/Object;");
