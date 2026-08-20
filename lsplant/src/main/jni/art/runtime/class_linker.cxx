@@ -338,7 +338,7 @@ public:
             return false;
         }
 
-        if (sdk_int >= kSdkR) {
+        if (sdk_int >= kSdkR && sdk_int < 36) {
             if constexpr (!is_arch_v<Arch::kX86, Arch::kAmd64>) {
                 // fixup static trampoline may have been inlined
                 handler(AdjustThreadVisibilityCounter_, MarkVisiblyInitialized_);
