@@ -66,7 +66,7 @@ private:
     inline static auto RegisterNativeFast_ =
         "_ZN3art9ArtMethod14RegisterNativeEPKvb"_sym.hook->*[]
         <MemBackup auto backup>
-        (ClassLinker *thiz, ArtMethod *method, const void *native_method, bool is_fast) static -> void {
+        (ClassLinker *thiz, ArtMethod *method, const void *native_method, bool is_fast) static -> const void * {
             return backup(thiz, MayGetBackup(method), native_method, is_fast);
         };
 
@@ -82,13 +82,6 @@ private:
         <MemBackup auto backup>
         (ClassLinker *thiz, ArtMethod *method, const void *native_method) static -> const void * {
             return backup(thiz, MayGetBackup(method), native_method);
-        };
-
-    inline static auto UnregisterNative_ =
-        "_ZN3art9ArtMethod16UnregisterNativeEv"_sym.hook->*[]
-        <MemBackup auto backup>
-        (ClassLinker *thiz, ArtMethod *method) static -> const void * {
-            return backup(thiz, MayGetBackup(method));
         };
 
     inline static auto RegisterNativeClassLinker_ =
@@ -333,7 +326,7 @@ public:
 
         if (!handler(RegisterNativeClassLinker_, RegisterNative_, RegisterNativeFast_,
                           RegisterNativeThread_) ||
-            !handler(UnregisterNativeClassLinker_, UnregisterNative_, UnregisterNativeFast_,
+            !handler(UnregisterNativeClassLinker_, UnregisterNativeFast_,
                           UnregisterNativeThread_)) {
             return false;
         }
