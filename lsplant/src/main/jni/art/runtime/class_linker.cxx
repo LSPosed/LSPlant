@@ -52,43 +52,45 @@ private:
     inline static auto RegisterNativeThread_ =
         "_ZN3art6mirror9ArtMethod14RegisterNativeEPNS_6ThreadEPKvb"_sym.hook->*[]
         <MemBackup auto backup>
-        (ClassLinker *thiz, ArtMethod *method, Thread *thread, const void *native_method, bool is_fast) static -> void {
-            return backup(thiz, MayGetBackup(method), thread, native_method, is_fast);
+        (ArtMethod *method, Thread *thread, const void *native_method,
+         bool is_fast) static -> void {
+            return backup(MayGetBackup(method), thread, native_method, is_fast);
         };
 
     inline static auto UnregisterNativeThread_ =
         "_ZN3art6mirror9ArtMethod16UnregisterNativeEPNS_6ThreadE"_sym.hook->*[]
         <MemBackup auto backup>
-        (ClassLinker *thiz, ArtMethod *method, Thread *thread) static -> void {
-            return backup(thiz, MayGetBackup(method), thread);
+        (ArtMethod *method, Thread *thread) static -> void {
+            return backup(MayGetBackup(method), thread);
         };
 
     inline static auto RegisterNativeFast_ =
         "_ZN3art9ArtMethod14RegisterNativeEPKvb"_sym.hook->*[]
         <MemBackup auto backup>
-        (ClassLinker *thiz, ArtMethod *method, const void *native_method, bool is_fast) static -> void {
-            return backup(thiz, MayGetBackup(method), native_method, is_fast);
+        (ArtMethod *method, const void *native_method, bool is_fast) static -> void {
+            return backup(MayGetBackup(method), native_method, is_fast);
         };
 
-    inline static auto UnregisterNativeFast_ =
-        "_ZN3art9ArtMethod16UnregisterNativeEv"_sym.hook->*[]
+    inline static auto RegisterNativeFastWithReturn_ =
+        "_ZN3art9ArtMethod14RegisterNativeEPKvb"_sym.hook->*[]
         <MemBackup auto backup>
-        (ClassLinker *thiz, ArtMethod *method) static -> void{
-            return backup(thiz, MayGetBackup(method));
+        (ArtMethod *method, const void *native_method,
+         bool is_fast) static -> const void * {
+            return backup(MayGetBackup(method), native_method, is_fast);
         };
 
     inline static auto RegisterNative_ =
         "_ZN3art9ArtMethod14RegisterNativeEPKv"_sym.hook->*[]
         <MemBackup auto backup>
-        (ClassLinker *thiz, ArtMethod *method, const void *native_method) static -> const void * {
-            return backup(thiz, MayGetBackup(method), native_method);
+        (ArtMethod *method, const void *native_method) static -> const void * {
+            return backup(MayGetBackup(method), native_method);
         };
 
     inline static auto UnregisterNative_ =
         "_ZN3art9ArtMethod16UnregisterNativeEv"_sym.hook->*[]
         <MemBackup auto backup>
-        (ClassLinker *thiz, ArtMethod *method) static -> const void * {
-            return backup(thiz, MayGetBackup(method));
+        (ArtMethod *method) static -> void {
+            return backup(MayGetBackup(method));
         };
 
     inline static auto RegisterNativeClassLinker_ =
@@ -101,7 +103,7 @@ private:
     inline static auto UnregisterNativeClassLinker_ =
         "_ZN3art11ClassLinker16UnregisterNativeEPNS_6ThreadEPNS_9ArtMethodE"_sym.hook->*[]
         <MemBackup auto backup>
-        (ClassLinker *thiz, Thread *self, ArtMethod *method) static -> const void * {
+        (ClassLinker *thiz, Thread *self, ArtMethod *method) static -> void {
             return backup(thiz, self, MayGetBackup(method));
         };
 
@@ -331,10 +333,13 @@ public:
                     FixupStaticTrampolinesRaw_);
         }
 
-        if (!handler(RegisterNativeClassLinker_, RegisterNative_, RegisterNativeFast_,
-                          RegisterNativeThread_) ||
-            !handler(UnregisterNativeClassLinker_, UnregisterNative_, UnregisterNativeFast_,
-                          UnregisterNativeThread_)) {
+        auto register_native_hooked = sdk_int >= kSdkOreo && sdk_int < kSdkPie
+                                          ? handler(RegisterNativeFastWithReturn_)
+                                          : handler(RegisterNativeClassLinker_, RegisterNative_,
+                                                    RegisterNativeFast_, RegisterNativeThread_);
+        if (!register_native_hooked ||
+            !handler(UnregisterNativeClassLinker_, UnregisterNative_,
+                     UnregisterNativeThread_)) {
             return false;
         }
 
