@@ -112,13 +112,15 @@ jclass executable = nullptr;
 // for proxy method
 jmethodID method_get_parameter_types = nullptr;
 jmethodID method_get_return_type = nullptr;
-// for old platform
+
+jmethodID in_memory_dex_class_loader_init = nullptr;
 jmethodID path_class_loader_init = nullptr;
 
 constexpr auto kInternalMethods = std::make_tuple(
     &method_get_name, &method_get_declaring_class, &class_get_name, &class_get_class_loader,
     &class_get_declared_constructors, &dex_file_init, &dex_file_init_with_cl, &load_class,
-    &set_accessible, &method_get_parameter_types, &method_get_return_type, &path_class_loader_init);
+    &set_accessible, &method_get_parameter_types, &method_get_return_type,
+    &in_memory_dex_class_loader_init, &path_class_loader_init);
 
 std::string generated_class_name;
 std::string generated_source_name;
@@ -220,16 +222,32 @@ bool InitJNI(JNIEnv *env) {
         LOGE("Failed to find Class.accessFlags");
         return false;
     }
-    auto path_class_loader = JNI_FindClass(env, "dalvik/system/PathClassLoader");
-    if (!path_class_loader) {
-        LOGE("Failed to find PathClassLoader");
-        return false;
-    }
-    if (path_class_loader_init = JNI_GetMethodID(env, path_class_loader, "<init>",
+    if (sdk_int >= kSdkOreo) {
+        auto in_memory_dex_class_loader =
+            JNI_FindClass(env, "dalvik/system/InMemoryDexClassLoader");
+        if (!in_memory_dex_class_loader) {
+            LOGE("Failed to find InMemoryDexClassLoader");
+            return false;
+        }
+        in_memory_dex_class_loader_init =
+            JNI_GetMethodID(env, in_memory_dex_class_loader, "<init>",
+                            "([Ljava/nio/ByteBuffer;Ljava/lang/ClassLoader;)V");
+        if (!in_memory_dex_class_loader_init) {
+            LOGE("Failed to find InMemoryDexClassLoader.<init>");
+            return false;
+        }
+    } else {
+        auto path_class_loader = JNI_FindClass(env, "dalvik/system/PathClassLoader");
+        if (!path_class_loader) {
+            LOGE("Failed to find PathClassLoader");
+            return false;
+        }
+        path_class_loader_init = JNI_GetMethodID(env, path_class_loader, "<init>",
                                                  "(Ljava/lang/String;Ljava/lang/ClassLoader;)V");
-        !path_class_loader_init) {
-        LOGE("Failed to find PathClassLoader.<init>");
-        return false;
+        if (!path_class_loader_init) {
+            LOGE("Failed to find PathClassLoader.<init>");
+            return false;
+        }
     }
     auto dex_file_class = JNI_FindClass(env, "dalvik/system/DexFile");
     if (!dex_file_class) {
@@ -454,15 +472,28 @@ std::tuple<jclass, jfieldID, jmethodID, jmethodID> BuildDex(JNIEnv *env, jobject
         }
     }
 
-    if (auto path_class_loader = JNI_FindClass(env, "dalvik/system/PathClassLoader");
-        java_dex_file) {
-        auto my_cl = JNI_NewObject(env, path_class_loader, path_class_loader_init,
-                                   JNI_NewStringUTF(env, "."), class_loader);
-        target_class =
-            JNI_Cast<jclass>(
-                JNI_CallObjectMethod(env, java_dex_file, load_class,
-                                     JNI_NewStringUTF(env, generated_class_name.data()), my_cl))
-                .release();
+    if (java_dex_file) {
+        ScopedLocalRef<jobject> my_cl{nullptr};
+        if (in_memory_dex_class_loader_init) {
+            auto in_memory_dex_class_loader =
+                JNI_FindClass(env, "dalvik/system/InMemoryDexClassLoader");
+            // Keep the array empty to bypass background verification
+            my_cl = JNI_NewObject(
+                env, in_memory_dex_class_loader, in_memory_dex_class_loader_init,
+                JNI_NewObjectArray(env, 0, JNI_FindClass(env, "java/nio/ByteBuffer"), nullptr),
+                class_loader);
+        } else {
+            auto path_class_loader = JNI_FindClass(env, "dalvik/system/PathClassLoader");
+            my_cl = JNI_NewObject(env, path_class_loader, path_class_loader_init,
+                                  JNI_NewStringUTF(env, "."), class_loader);
+        }
+        if (my_cl) {
+            target_class =
+                JNI_Cast<jclass>(
+                    JNI_CallObjectMethod(env, java_dex_file, load_class,
+                                         JNI_NewStringUTF(env, generated_class_name.data()), my_cl))
+                    .release();
+        }
     }
 
     if (target_class) {
