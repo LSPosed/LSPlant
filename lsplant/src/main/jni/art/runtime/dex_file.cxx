@@ -121,20 +121,21 @@ public:
             return false;
         }
         if (sdk_int <= kSdkNougat) [[unlikely]] {
-            close_guard_class =
-                JNI_NewGlobalRef(env, JNI_FindClass(env, "dalvik/system/CloseGuard"));
-            if (!close_guard_class) [[unlikely]] {
-                return false;
-            }
-            close_guard_get = JNI_GetStaticMethodID(env, close_guard_class, "get",
-                                                    "()Ldalvik/system/CloseGuard;");
-            if (!close_guard_get) [[unlikely]] {
-                return false;
-            }
             close_guard_field =
-                JNI_GetFieldID(env, dex_file_class, "guard", "Ldalvik/system/CloseGuard;");
-            if (!close_guard_field) [[unlikely]] {
-                return false;
+                env->GetFieldID(dex_file_class, "guard", "Ldalvik/system/CloseGuard;");
+            if (close_guard_field) [[likely]] {
+                close_guard_class =
+                    JNI_NewGlobalRef(env, JNI_FindClass(env, "dalvik/system/CloseGuard"));
+                if (!close_guard_class) [[unlikely]] {
+                    return false;
+                }
+                close_guard_get = JNI_GetStaticMethodID(env, close_guard_class, "get",
+                                                        "()Ldalvik/system/CloseGuard;");
+                if (!close_guard_get) [[unlikely]] {
+                    return false;
+                }
+            } else {
+                env->ExceptionClear();
             }
         }
         if (sdk_int >= kSdkMarshmallow) [[unlikely]] {
