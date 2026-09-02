@@ -2,11 +2,11 @@ module;
 
 #include "lsplant.hpp"
 
-#include <android/api-level.h>
 #include <fcntl.h>
 #include <jni.h>
 #include <linux/ashmem.h>
 #include <sys/mman.h>
+#include <sys/system_properties.h>
 #include <sys/utsname.h>
 #include <syscall.h>
 #include <unistd.h>
@@ -500,7 +500,11 @@ const auto kPageMask = static_cast<uintptr_t>(kPageSize - 1);
 SharedHashSet<void *> mmap_regions;
 SharedHashSet<void *> dual_regions;
 
-auto [ashmem_device_path, use_memfd] = [] {
+auto [ashmem_device_path, use_memfd] = [] -> std::pair<std::string, bool> {
+    if (std::array<char, PROP_VALUE_MAX> prop_value;
+        __system_property_get("ro.config.knox", prop_value.data()) > 0) {
+        return {};
+    }
     if (utsname un{}; GetAndroidApiLevel() >= kSdkQ && uname(&un) == 0) [[likely]] {
         static constexpr uintptr_t kRequiredMajor = 3;
         static constexpr uintptr_t kRequiredMinor = 17;
@@ -511,7 +515,7 @@ auto [ashmem_device_path, use_memfd] = [] {
 
         if (major > kRequiredMajor || (major == kRequiredMajor && minor > kRequiredMinor))
             [[likely]] {
-            return std::pair{std::string{}, true};
+            return {{}, true};
         }
     }
     if (auto fd = open("/proc/sys/kernel/random/boot_id", O_RDONLY | O_CLOEXEC, 0); fd >= 0)
@@ -522,11 +526,11 @@ auto [ashmem_device_path, use_memfd] = [] {
         if (size == boot_id.size()) {
             auto path = "/dev/ashmem"s + std::string{boot_id.data(), boot_id.size()};
             if (access(path.c_str(), F_OK) == 0) [[likely]] {
-                return std::pair{path, false};
+                return {path, {}};
             }
         }
     }
-    return std::pair{"/dev/ashmem"s, false};
+    return {"/dev/ashmem", {}};
 }();
 
 std::pair<void *, void *> CreateDualMapping(int fd) {
