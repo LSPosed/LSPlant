@@ -6,6 +6,7 @@ export module lsplant:jni_id_manager;
 
 import :art_method;
 import :common;
+import :clazz;
 import :handle;
 import hook_helper;
 
@@ -27,10 +28,10 @@ private:
     };
 
     inline static auto EncodeGenericIdWithClass_ =
-        "_ZN3art3jni12JniIdManager15EncodeGenericIdINS_9ArtMethodEEEmNS_6HandleINS_6mirror5ClassEEENS_16ReflectiveHandleIT_EE"_sym
+        ("_ZN3art3jni12JniIdManager15EncodeGenericIdINS_9ArtMethodEEEjNS_6HandleINS_6mirror5ClassEEENS_16ReflectiveHandleIT_EE"_sym |
+         "_ZN3art3jni12JniIdManager15EncodeGenericIdINS_9ArtMethodEEEmNS_6HandleINS_6mirror5ClassEEENS_16ReflectiveHandleIT_EE"_sym)
             .hook
-            ->*[]<MemBackup auto backup>(JniIdManager *thiz,
-                                         Handle<mirror::Class> klass,
+            ->*[]<MemBackup auto backup>(JniIdManager *thiz, Handle<mirror::Class> klass,
                                          ReflectiveHandle<ArtMethod> method) static -> uintptr_t {
         if (auto *target = IsBackup(method.Get()); target) {
             LOGD("get generic id for %s", method.Get()->PrettyMethod().c_str());
@@ -43,7 +44,7 @@ public:
     static bool Init(JNIEnv *env, const HookHandler &handler) {
         int sdk_int = GetAndroidApiLevel();
         if (sdk_int >= kSdkR) {
-            if (IsJavaDebuggable(env) && !handler(EncodeGenericId_, EncodeGenericIdWithClass_)) {
+            if (IsJavaDebuggable(env) && !handler(EncodeGenericIdWithClass_, EncodeGenericId_)) {
                 LOGW("Failed to hook EncodeGenericId, attaching debugger may crash the process");
             }
         }
