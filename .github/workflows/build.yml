@@ -41,6 +41,8 @@ jobs:
           restore-keys: ${{ runner.os }}
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools
       - name: Remove Android's cmake
         shell: bash
         run: rm -rf $ANDROID_HOME/cmake
