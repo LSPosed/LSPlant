@@ -1,12 +1,10 @@
 module;
 
-#include <memory>
-#include <string>
-#include <vector>
-
 #include "logging.hpp"
 
 export module lsplant:dex_file;
+
+import std;
 
 import :common;
 import hook_helper;

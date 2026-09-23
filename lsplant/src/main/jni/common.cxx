@@ -4,13 +4,11 @@ module;
 #include <parallel_hashmap/phmap.h>
 #include <sys/system_properties.h>
 
-#include <list>
-#include <shared_mutex>
-#include <string_view>
-
 #include "logging.hpp"
 
 export module lsplant:common;
+
+import std;
 export import jni_helper;
 export import hook_helper;
 export import type_traits;
@@ -60,7 +58,7 @@ constexpr int kSdkCinnamonBun = 37;
     static auto kApiLevel = [] {
         std::array<char, PROP_VALUE_MAX> prop_value;
         __system_property_get("ro.build.version.sdk", prop_value.data());
-        return atoi(prop_value.data());
+        return std::atoi(prop_value.data());
     }();
     [[assume(kApiLevel >= __ANDROID_API__)]];
     return kApiLevel;

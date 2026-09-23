@@ -10,9 +10,16 @@ if (CCACHE)
     set(CMAKE_C_COMPILER_LAUNCHER ${CCACHE})
 endif ()
 
+find_package(cxx REQUIRED CONFIG)
 if (LSPLANT_STANDALONE)
-    find_package(cxx REQUIRED CONFIG)
     link_libraries(cxx::cxx)
+else()
+    # Import the module providers without replacing the NDK's shared runtime.
+    get_target_property(cxx_headers cxx::cxx INTERFACE_INCLUDE_DIRECTORIES)
+    include_directories(SYSTEM ${cxx_headers})
+    add_compile_options($<$<COMPILE_LANGUAGE:CXX>:-nostdinc++>)
+    get_target_property(cxx_modules cxx::cxx INTERFACE_LINK_LIBRARIES)
+    link_libraries(${cxx_modules})
 endif()
 
 set(SOURCES lsplant.cc)
@@ -23,6 +30,7 @@ list(FILTER MODULE_INTERFACES EXCLUDE REGEX "${PROJECT_SOURCE_DIR}.external.+")
 
 set(DEX_BUILDER_BUILD_SHARED OFF CACHE INTERNAL "" FORCE)
 add_subdirectory(external/dex_builder)
+set_target_properties(phmap PROPERTIES SYSTEM ON)
 
 option(LSPLANT_BUILD_SHARED "If ON, lsplant will also build shared library" ON)
 

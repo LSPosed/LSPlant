@@ -4,6 +4,8 @@ module;
 
 export module lsplant:jni_id_manager;
 
+import std;
+
 import :art_method;
 import :common;
 import :clazz;

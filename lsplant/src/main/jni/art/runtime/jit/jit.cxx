@@ -4,6 +4,8 @@ module;
 
 export module lsplant:jit;
 
+import std;
+
 import :art_method;
 import :common;
 import :thread;

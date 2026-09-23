@@ -5,24 +5,19 @@ module;
 #include <fcntl.h>
 #include <jni.h>
 #include <linux/ashmem.h>
+#include <limits.h>
+#include <string.h>
 #include <sys/mman.h>
 #include <sys/system_properties.h>
 #include <sys/utsname.h>
 #include <syscall.h>
 #include <unistd.h>
 
-#include <array>
-#include <atomic>
-#include <bit>
-#include <cstdlib>
-#include <string>
-#include <string_view>
-#include <tuple>
-#include <utility>
-
 #include "logging.hpp"
 
 module lsplant;
+
+import std;
 
 import dex_builder;
 
@@ -441,7 +436,7 @@ std::tuple<jclass, jfieldID, jmethodID, jmethodID> BuildDex(JNIEnv *env, jobject
     } else {
         void *target =
             mmap(nullptr, image.size(), PROT_WRITE | PROT_READ, MAP_ANONYMOUS | MAP_PRIVATE, -1, 0);
-        memcpy(target, image.ptr(), image.size());
+        ::memcpy(target, image.ptr(), image.size());
         mprotect(target, image.size(), PROT_READ);
         std::string err_msg;
         const auto *dex = DexFile::OpenMemory(
@@ -510,8 +505,8 @@ auto [ashmem_device_path, use_memfd] = [] -> std::pair<std::string, bool> {
         static constexpr uintptr_t kRequiredMinor = 17;
 
         char *minor_str = nullptr;
-        auto major = strtoul(un.release, &minor_str, 10);
-        auto minor = minor_str ? strtoul(minor_str + 1, nullptr, 10) : 0UL;
+        auto major = std::strtoul(un.release, &minor_str, 10);
+        auto minor = minor_str ? std::strtoul(minor_str + 1, nullptr, 10) : 0UL;
 
         if (major > kRequiredMajor || (major == kRequiredMajor && minor > kRequiredMinor))
             [[likely]] {
@@ -673,9 +668,9 @@ void *GenerateTrampolineFor(art::ArtMethod *hook) {
     }
     auto *address_ptr = reinterpret_cast<char *>(address);
     if (dual_regions.contains(__builtin_align_down(address_ptr, kPageSize))) [[likely]] {
-        std::memcpy(address_ptr + kPageSize, data.data(), data.size());
+        ::memcpy(address_ptr + kPageSize, data.data(), data.size());
     } else {
-        std::memcpy(address_ptr, data.data(), data.size());
+        ::memcpy(address_ptr, data.data(), data.size());
     }
 
     __builtin___clear_cache(address_ptr, reinterpret_cast<char *>(address + data.size()));

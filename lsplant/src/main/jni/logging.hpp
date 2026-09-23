@@ -1,6 +1,7 @@
 #pragma once
 
 #include <android/log.h>
+#include <errno.h>
 
 #ifndef LOG_TAG
 #define LOG_TAG "LSPlant"
@@ -33,5 +34,5 @@
 #define LOGW(...) __android_log_print(ANDROID_LOG_WARN, LOG_TAG, __VA_ARGS__)
 #define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, __VA_ARGS__)
 #define LOGF(...) __android_log_print(ANDROID_LOG_FATAL, LOG_TAG, __VA_ARGS__)
-#define PLOGE(fmt, args...) LOGE(fmt " failed with %d: %s", ##args, errno, strerror(errno))
+#define PLOGE(fmt, args...) LOGE(fmt " failed with %d: %s", ##args, errno, std::strerror(errno))
 #endif
