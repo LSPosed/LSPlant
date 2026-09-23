@@ -23,13 +23,8 @@ jobs:
       - uses: seanmiddleditch/gha-setup-ninja@master
         with:
           version: 1.12.0
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
-        with:
-          packages: platform-tools
       - name: Build with Gradle
         run: |
-          rm -rf $ANDROID_HOME/cmake
           ./gradlew :lsplant:publish
         env:
           ORG_GRADLE_PROJECT_signingKey: ${{ secrets.maven_pgp_signingKey }}
