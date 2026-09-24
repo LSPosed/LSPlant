@@ -39,11 +39,6 @@ jobs:
         with:
           key: ${{ runner.os }}-${{ github.sha }}
           restore-keys: ${{ runner.os }}
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
-      - name: Remove Android's cmake
-        shell: bash
-        run: rm -rf $ANDROID_HOME/cmake
       - name: Build with Gradle
         run: |
           ccache -o cache_dir=${{ github.workspace }}/.ccache
@@ -134,7 +129,6 @@ jobs:
           arch: ${{ matrix.android.arch }}
           target: ${{ matrix.android.target }}
           script: |
-            rm -rf $ANDROID_HOME/cmake
             ccache -o cache_dir=${{ github.workspace }}/.ccache
             ccache -o hash_dir=false
             ccache -o compiler_check='%compiler% -dumpmachine; %compiler% -dumpversion'
@@ -188,7 +182,6 @@ jobs:
           curl -LO https://github.com/ninja-build/ninja/releases/download/v1.12.1/ninja-linux.zip
           unzip ninja-linux.zip -d $ANDROID_HOME/platform-tools
           chmod +x $ANDROID_HOME/platform-tools/ninja
-          rm -rf $ANDROID_HOME/cmake
           ccache -o cache_dir=${{ github.workspace }}/.ccache
           ccache -o hash_dir=false
           ccache -o compiler_check='%compiler% -dumpmachine; %compiler% -dumpversion'

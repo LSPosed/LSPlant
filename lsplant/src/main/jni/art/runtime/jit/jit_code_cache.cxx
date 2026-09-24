@@ -4,6 +4,8 @@ module;
 
 export module lsplant:jit_code_cache;
 
+import std;
+
 import :art_method;
 import :common;
 import :thread;

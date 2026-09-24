@@ -1,12 +1,10 @@
 module;
 
-#include <atomic>
-#include <memory>
-#include <string>
-
 #include "logging.hpp"
 
 export module lsplant:art_method;
+
+import std;
 
 import :common;
 import hook_helper;
@@ -143,7 +141,7 @@ public:
     bool IsAbstract() { return GetAccessFlags() & kAccAbstract; }
     bool IsConstructor() { return GetAccessFlags() & kAccConstructor; }
 
-    void CopyFrom(const ArtMethod *other) { memcpy(this, other, art_method_size); }
+    void CopyFrom(const ArtMethod *other) { std::memcpy(this, other, art_method_size); }
 
     void SetEntryPoint(void *entry_point) {
         *reinterpret_cast<void **>(reinterpret_cast<uintptr_t>(this) + entry_point_offset) =
