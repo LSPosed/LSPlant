@@ -52,9 +52,19 @@ Initialize LSPlant for the proceeding hook. It mainly prefetch needed symbols an
 
 + `env` is the Java environment.
 
-+ `info` is the information for initialized.
++ `info` is the information for initialization.
 
-  Basically, the info provides the inline hooker and unhooker together with a symbol resolver of `libart.so` to hook and extract needed native functions of ART.
+  `InitInfo` requires four non-null callbacks; `Init` returns false if any of them is null:
+
+  + `inline_hooker` and `inline_unhooker` install and remove an inline hook on a native function.
+  + `art_symbol_resolver` and `art_symbol_prefix_resolver` resolve a symbol and a symbol prefix in `libart.so`, respectively. Each must be able to resolve symbols from both `.dynsym` and `.symtab`.
+
+  The other fields are optional:
+
+  + `generated_class_name`, `generated_source_name`, `generated_field_name` and `generated_method_name` customize the generated hook stub, which helps debugging.
+  + `executable_memory_allocator` and `executable_memory_recycler` provide custom allocation and recycling of executable (trampoline) memory. They must be supplied as a pair: if an allocator is set, the recycler must be non-null too, and neither callback may have a capture list.
+
+  Obtain `env` in `JNI_OnLoad` so that it has no hidden-API access restrictions. The inline hookers and symbol resolvers must not call JNI or wait for suspended ART threads.
 
 ```c++
 bool Init(JNIEnv *env,
