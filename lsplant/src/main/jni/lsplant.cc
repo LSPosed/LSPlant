@@ -931,14 +931,16 @@ using ::lsplant::IsHooked;
         LOGE("Unable to unhook a method that is not hooked");
         return false;
     }
-    // FIXME: not atomic, but should be fine
-    hooked_methods_.erase(backup);
-    proxied_backup_methods_.erase(backup);
     hooked_classes_.erase_if(target->GetDeclaringClass()->GetClassDef(), [&target](auto &it) {
         it.second.erase(target);
         return it.second.empty();
     });
+    // Encode before the backup is unregistered: with opaque JNI ids (java-debuggable runtime)
+    // this call goes through JniIdManager::EncodeGenericId, which relies on IsBackup().
     auto *backup_method = env->FromReflectedMethod(reflected_backup);
+    // FIXME: not atomic, but should be fine
+    hooked_methods_.erase(backup);
+    proxied_backup_methods_.erase(backup);
     env->DeleteGlobalRef(reflected_backup);
     if (DoUnHook(target, backup)) {
         std::apply(
