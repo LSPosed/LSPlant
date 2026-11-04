@@ -45,11 +45,24 @@ private:
 public:
     static bool Init(bool java_debuggable, const HookHandler &handler) {
         int sdk_int = GetAndroidApiLevel();
-        if (sdk_int >= kSdkR) {
-            if (java_debuggable && !handler(EncodeGenericIdWithClass_, EncodeGenericId_)) {
-                LOGW("Failed to hook EncodeGenericId, attaching debugger may crash the process");
-            }
+        if (sdk_int < kSdkR) {
+            return true;
         }
+        // Whether FromReflectedMethod goes through JniIdManager::EncodeMethodId is not strictly
+        // tied to the java-debuggable flag: vendor ART builds (e.g. Android 16 release builds)
+        // keep that path enabled while VMRuntime.isJavaDebuggable() reports false. A backup
+        // ArtMethod is a private clone that lives outside its class' method array, so encoding
+        // one there computes a bogus method index and SIGSEGVs. Install the remap whenever the
+        // symbol resolves instead of trusting the debuggable flag; the hook is never reached on
+        // runtimes that hand out plain method pointers.
+        const bool hooked_with_class = handler(EncodeGenericIdWithClass_);
+        const bool hooked_without_class = handler(EncodeGenericId_);
+        if (!hooked_with_class && !hooked_without_class) {
+            LOGW("Failed to hook EncodeGenericId, encoding a backup method may crash the process");
+            return true;
+        }
+        LOGD("Hooked EncodeGenericId (with_class=%d, plain=%d, debuggable=%d)", hooked_with_class,
+             hooked_without_class, java_debuggable);
         return true;
     }
 };
