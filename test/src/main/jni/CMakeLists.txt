@@ -15,4 +15,4 @@ target_sources(lsplant::lsplant INTERFACE FILE_SET CXX_MODULES BASE_DIRS ${lspla
 set_target_properties(lsplant::lsplant PROPERTIES IMPORTED_CXX_MODULES_COMPILE_FEATURES "cxx_std_23")
 set_target_properties(lsplant::lsplant PROPERTIES IMPORTED_CXX_MODULES_INCLUDE_DIRECTORIES "${lsplant_INCLUDE}")
 
-target_link_libraries(test log dobby::dobby lsplant::lsplant lsparself)
+target_link_libraries(test log dobby::dobby lsplant::lsplant lsparself_static)
