@@ -3,9 +3,9 @@
 #include <sys/mman.h>
 #include <string_view>
 #include "logging.h"
+#include "lsparself/elf.hpp"
 
 import lsplant;
-import lsparself;
 
 #define _uintval(p)               reinterpret_cast<uintptr_t>(p)
 #define _ptr(p)                   reinterpret_cast<void *>(p)
@@ -58,15 +58,25 @@ JNI_OnLoad(JavaVM* vm, void* reserved) {
     if (vm->GetEnv((void**) &env, JNI_VERSION_1_6) != JNI_OK) {
         return JNI_ERR;
     }
-    lsparself::Elf art("/libart.so");
+
+    auto module = lsparself::Elf::FindModuleContainingAddress(vm->functions->GetEnv);
+    if (!module) {
+        return JNI_ERR;
+    }
+
+    lsparself::Elf art(*module);
+    if (!art.IsValid()) {
+        return JNI_ERR;
+    }
+
     lsplant::InitInfo initInfo{
             .inline_hooker = InlineHooker,
             .inline_unhooker = InlineUnhooker,
-            .art_symbol_resolver = [&art](std::string_view symbol) -> void* {
-                return art.getSymbAddress(symbol);
+            .art_symbol_resolver = [&](auto symbol) {
+                return art.ExactLookup(symbol);
             },
-            .art_symbol_prefix_resolver = [&art](auto symbol) {
-                return art.getSymbPrefixFirstAddress(symbol);
+            .art_symbol_prefix_resolver = [&](auto symbol) {
+                return art.PrefixLookup(symbol);
             },
     };
     init_result = lsplant::Init(env, initInfo);
