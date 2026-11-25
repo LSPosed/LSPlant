@@ -1,13 +1,13 @@
 [versions]
-agp = "8.9.3"
+agp = "9.5.3"
 ndk = "30.0.16248370"
 
 [plugins]
 agp-app = { id = "com.android.application", version.ref = "agp" }
 agp-lib = { id = "com.android.library", version.ref = "agp" }
-lsplugin-jgit = { id = "org.lsposed.lsplugin.jgit", version = "1.1" }
-lsplugin-publish = { id = "org.lsposed.lsplugin.publish", version = "1.1" }
-lsplugin-cmaker = { id = "org.lsposed.lsplugin.cmaker", version = "1.2" }
+lsplugin-jgit = { id = "org.lsposed.lsplugin.jgit", version = "1.2" }
+lsplugin-publish = { id = "org.lsposed.lsplugin.publish", version = "1.4" }
+lsplugin-cmaker = { id = "org.lsposed.lsplugin.cmaker", version = "1.5" }
 
 [libraries]
 cxx = { module = "org.lsposed.libcxx:libcxx", version.ref = "ndk" }
